@@ -35,31 +35,33 @@ class BukuAdapter(private var daftarArsip: List<ArsipEntity>) : RecyclerView.Ada
 
         // Mesin Pemutar Visual (Sampul Gambar)
         holder.wadahFotoPenuh.removeAllViews()
-        if (arsip.daftarFoto.isNotEmpty()) {
+        
+        if (arsip.daftarFoto.isNotBlank()) {
             holder.wadahFotoPenuh.visibility = View.VISIBLE
-            val tautanGambar = arsip.daftarFoto.split(",").firstOrUrl() // Mengambil gambar pertama
             
-            val injeksiGambar = ImageView(holder.itemView.context).apply {
-                layoutParams = LinearLayout.LayoutParams(
-                    LinearLayout.LayoutParams.MATCH_PARENT, 
-                    800 // Tinggi statis proyektor gambar
-                )
-                scaleType = ImageView.ScaleType.CENTER_CROP
-            }
+            // Ekstraksi presisi: Pecah sabuk transmisi, ambil blok pertama dengan aman, pangkas residu spasi
+            val tautanGambar = arsip.daftarFoto.split(",").firstOrNull()?.trim()
             
-            Glide.with(holder.itemView.context)
-                .load(tautanGambar)
-                .into(injeksiGambar)
+            // Kunci arus data secara eksplisit agar mesin Glide tidak mengalami ambiguitas
+            if (!tautanGambar.isNullOrEmpty()) {
+                val injeksiGambar = ImageView(holder.itemView.context).apply {
+                    layoutParams = LinearLayout.LayoutParams(
+                        LinearLayout.LayoutParams.MATCH_PARENT, 
+                        800 // Tinggi statis proyektor gambar
+                    )
+                    scaleType = ImageView.ScaleType.CENTER_CROP
+                }
                 
-            holder.wadahFotoPenuh.addView(injeksiGambar)
+                Glide.with(holder.itemView.context)
+                    .load(tautanGambar) // Material telah dikunci absolut sebagai String
+                    .into(injeksiGambar)
+                    
+                holder.wadahFotoPenuh.addView(injeksiGambar)
+            }
         } else {
             holder.wadahFotoPenuh.visibility = View.GONE
         }
     }
 
     override fun getItemCount(): Int = daftarArsip.size
-
-    private fun String.firstOrUrl(): String {
-        return this.trim()
-    }
 }
