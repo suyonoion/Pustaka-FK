@@ -1,5 +1,11 @@
 package com.fk.arsip
 
+import android.app.DownloadManager
+import android.content.BroadcastReceiver
+import android.content.Context
+import android.content.Intent
+import android.content.IntentFilter
+import android.net.Uri
 import android.os.Bundle
 import android.text.Editable
 import android.text.TextWatcher
@@ -20,10 +26,16 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import org.json.JSONArray
 import java.io.BufferedReader
-import java.io.InputStreamReader
+import java.io.File
+import java.io.FileReader
 
 class MainActivity : AppCompatActivity() {
 
+    // Kordinat Awan
+    private val namaFile = "Master_Data_Arsip_FK_11_Juli_2026.json"
+    private val urlKargo = "https://github.com/suyonoion/Pustaka-FK/releases/download/v1.0.0/Master_Data_Arsip_FK_11_Juli_2026.json"
+
+    // Komponen Sasis Visual
     private lateinit var recyclerGridMode: RecyclerView
     private lateinit var wadahModeBuku: RelativeLayout
     private lateinit var proyektorBuku: ViewPager2
@@ -68,7 +80,6 @@ class MainActivity : AppCompatActivity() {
         onBackPressedDispatcher.addCallback(this, object : OnBackPressedCallback(true) {
             override fun handleOnBackPressed() {
                 if (wadahModeBuku.visibility == View.VISIBLE) {
-                    // Tutup buku, kembali ke etalase
                     wadahModeBuku.visibility = View.GONE
                     recyclerGridMode.visibility = View.VISIBLE
                 } else {
@@ -78,80 +89,39 @@ class MainActivity : AppCompatActivity() {
             }
         })
 
-        // 5. Pemicu Sakelar Pemompa Data & UI
-        eksekusiPabrikData()
+        // 5. Pemicu Sakelar Utama
         aktifkanSirkuitPencarian()
+        eksekusiPabrikData()
     }
 
+    // ==========================================
+    // SIRKUIT 1: MANAJEMEN DATABASE & LOGISTIK
+    // ==========================================
     private fun eksekusiPabrikData() {
         lifecycleScope.launch(Dispatchers.IO) {
             val mesinDb = ArsipDatabase.operasikanMesin(this@MainActivity)
             val lenganRobot = mesinDb.arsipDao()
 
-            // Jika tangki kosong, hisap JSON 115 MB
+            // Jika Database Kosong
             if (lenganRobot.hitungTotalArsip() == 0) {
-                withContext(Dispatchers.Main) {
-                    Toast.makeText(this@MainActivity, "Memulai ekstraksi 115MB...", Toast.LENGTH_SHORT).show()
-                }
-                try {
-                    val inputStream = assets.open("Master_Data_Arsip_FK_11_Juli_2026.json")
-                    val reader = BufferedReader(InputStreamReader(inputStream))
-                    val jsonString = reader.readText()
-                    reader.close()
-
-                    val dataArray = JSONArray(jsonString)
-                    val totalBlok = dataArray.length()
-                    val muatanSementara = mutableListOf<ArsipEntity>() 
-
-                    for (i in 0 until totalBlok) {
-                        val obj = dataArray.getJSONObject(i)
-                        val idPosting = obj.optString("postId", "ID_$i")
-                        val userObj = obj.optJSONObject("user")
-                        val namaPenulis = userObj?.optString("name", "Fatwa Kehidupan") ?: "Fatwa Kehidupan"
-                        val urlProfilPic = userObj?.optString("profilePic", "") ?: ""
-                        val waktuRilis = obj.optLong("timestamp", 0L)
-                        val waktuMentah = obj.optString("time", "-")
-                        val tanggalBaca = if (waktuMentah.length >= 10) waktuMentah.substring(0, 10) else waktuMentah
-                        val tautanAsli = obj.optString("url", "")
-
-                        var kontenPenuh = obj.optString("text", "")
-                        val sharedObj = obj.optJSONObject("sharedPost")
-                        if (sharedObj != null) {
-                            val namaAsli = sharedObj.optJSONObject("user")?.optString("name", "Entitas") ?: "Entitas"
-                            val teksAsli = sharedObj.optString("text", "")
-                            if (teksAsli.isNotEmpty()) kontenPenuh += "\n\n--- Membagikan Status: $namaAsli ---\n$teksAsli"
-                        }
-
-                        val kategori = mesinDeteksiKategori(kontenPenuh)
-
-                        val daftarFoto = mutableListOf<String>()
-                        val mediaArray = obj.optJSONArray("media") ?: sharedObj?.optJSONArray("media")
-                        if (mediaArray != null) {
-                            for (m in 0 until mediaArray.length()) {
-                                val mediaObj = mediaArray.getJSONObject(m)
-                                if (mediaObj.optString("__typename", "") == "Video") {
-                                    val uriThumb = mediaObj.optJSONObject("thumbnailImage")?.optString("uri", "") ?: mediaObj.optString("thumbnail", "")
-                                    if (uriThumb.isNotEmpty()) daftarFoto.add(uriThumb)
-                                } else {
-                                    val uriGbr = mediaObj.optJSONObject("image")?.optString("uri", "") ?: ""
-                                    if (uriGbr.isNotEmpty()) daftarFoto.add(uriGbr)
-                                }
-                            }
-                        }
-
-                        muatanSementara.add(ArsipEntity(idPosting, namaPenulis, urlProfilPic, waktuRilis, tanggalBaca, kontenPenuh, tautanAsli, daftarFoto.joinToString(","), kategori))
-
-                        if (muatanSementara.size >= 500 || i == totalBlok - 1) {
-                            lenganRobot.injeksiMassal(muatanSementara)
-                            muatanSementara.clear()
-                        }
+                val fileTarget = File(getExternalFilesDir(null), namaFile)
+                
+                // Cek Keberadaan Biner Mentah
+                if (!fileTarget.exists()) {
+                    withContext(Dispatchers.Main) {
+                        Toast.makeText(this@MainActivity, "Tangki biner kosong. Memulai transmisi awan...", Toast.LENGTH_LONG).show()
+                        aktifkanMesinPenyedot()
                     }
-                } catch (e: Exception) {
-                    e.printStackTrace()
+                    return@launch // Putus arus coroutine di sini, tunggu unduhan selesai
+                } else {
+                    withContext(Dispatchers.Main) {
+                        Toast.makeText(this@MainActivity, "Mengekstrak kargo 115MB ke ruang mesin...", Toast.LENGTH_SHORT).show()
+                    }
+                    ekstrakDanInjeksiKeDb(fileTarget, lenganRobot)
                 }
             }
 
-            // Setelah database siap, tarik data dan operasikan ke Layar
+            // Database Terisi -> Tarik ke Layar
             daftarArsipAktif = lenganRobot.tarikSemuaArsip()
             withContext(Dispatchers.Main) {
                 pompaDataKeLayar(daftarArsipAktif)
@@ -159,14 +129,101 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
+    private fun aktifkanMesinPenyedot() {
+        val request = DownloadManager.Request(Uri.parse(urlKargo))
+            .setTitle("Arsip Fatwa Kehidupan")
+            .setDescription("Menyedot matriks data 115MB...")
+            .setNotificationVisibility(DownloadManager.Request.VISIBILITY_VISIBLE_NOTIFY_COMPLETED)
+            .setDestinationInExternalFilesDir(this, null, namaFile)
+            .setAllowedOverMetered(true)
+            .setAllowedOverRoaming(true)
+
+        val downloadManager = getSystemService(Context.DOWNLOAD_SERVICE) as DownloadManager
+        val idUnduhan = downloadManager.enqueue(request)
+
+        val sensorSelesai = object : BroadcastReceiver() {
+            override fun onReceive(context: Context?, intent: Intent?) {
+                val id = intent?.getLongExtra(DownloadManager.EXTRA_DOWNLOAD_ID, -1)
+                if (id == idUnduhan) {
+                    Toast.makeText(this@MainActivity, "Transmisi awan selesai. Menjalankan mesin injeksi...", Toast.LENGTH_LONG).show()
+                    unregisterReceiver(this)
+                    // Picu ulang siklus pabrik setelah kargo mendarat
+                    eksekusiPabrikData()
+                }
+            }
+        }
+        registerReceiver(sensorSelesai, IntentFilter(DownloadManager.ACTION_DOWNLOAD_COMPLETE))
+    }
+
+    private fun ekstrakDanInjeksiKeDb(fileTarget: File, lenganRobot: com.fk.arsip.database.ArsipDao) {
+        try {
+            // Perubahan Krusial: Baca dari fileTarget (Eksternal), bukan assets
+            val reader = BufferedReader(FileReader(fileTarget))
+            val jsonString = reader.readText()
+            reader.close()
+
+            val dataArray = JSONArray(jsonString)
+            val totalBlok = dataArray.length()
+            val muatanSementara = mutableListOf<ArsipEntity>() 
+
+            for (i in 0 until totalBlok) {
+                val obj = dataArray.getJSONObject(i)
+                val idPosting = obj.optString("postId", "ID_$i")
+                val userObj = obj.optJSONObject("user")
+                val namaPenulis = userObj?.optString("name", "Fatwa Kehidupan") ?: "Fatwa Kehidupan"
+                val urlProfilPic = userObj?.optString("profilePic", "") ?: ""
+                val waktuRilis = obj.optLong("timestamp", 0L)
+                val waktuMentah = obj.optString("time", "-")
+                val tanggalBaca = if (waktuMentah.length >= 10) waktuMentah.substring(0, 10) else waktuMentah
+                val tautanAsli = obj.optString("url", "")
+
+                var kontenPenuh = obj.optString("text", "")
+                val sharedObj = obj.optJSONObject("sharedPost")
+                if (sharedObj != null) {
+                    val namaAsli = sharedObj.optJSONObject("user")?.optString("name", "Entitas") ?: "Entitas"
+                    val teksAsli = sharedObj.optString("text", "")
+                    if (teksAsli.isNotEmpty()) kontenPenuh += "\n\n--- Membagikan Status: $namaAsli ---\n$teksAsli"
+                }
+
+                val kategori = mesinDeteksiKategori(kontenPenuh)
+
+                val daftarFoto = mutableListOf<String>()
+                val mediaArray = obj.optJSONArray("media") ?: sharedObj?.optJSONArray("media")
+                if (mediaArray != null) {
+                    for (m in 0 until mediaArray.length()) {
+                        val mediaObj = mediaArray.getJSONObject(m)
+                        if (mediaObj.optString("__typename", "") == "Video") {
+                            val uriThumb = mediaObj.optJSONObject("thumbnailImage")?.optString("uri", "") ?: mediaObj.optString("thumbnail", "")
+                            if (uriThumb.isNotEmpty()) daftarFoto.add(uriThumb)
+                        } else {
+                            val uriGbr = mediaObj.optJSONObject("image")?.optString("uri", "") ?: ""
+                            if (uriGbr.isNotEmpty()) daftarFoto.add(uriGbr)
+                        }
+                    }
+                }
+
+                muatanSementara.add(ArsipEntity(idPosting, namaPenulis, urlProfilPic, waktuRilis, tanggalBaca, kontenPenuh, tautanAsli, daftarFoto.joinToString(","), kategori))
+
+                // Injeksi per 500 blok agar RAM tidak kolaps
+                if (muatanSementara.size >= 500 || i == totalBlok - 1) {
+                    lenganRobot.injeksiMassal(muatanSementara)
+                    muatanSementara.clear()
+                }
+            }
+        } catch (e: Exception) {
+            e.printStackTrace()
+        }
+    }
+
+    // ==========================================
+    // SIRKUIT 2: PROYEKSI VISUAL & INTERAKSI
+    // ==========================================
     private fun pompaDataKeLayar(dataLayar: List<ArsipEntity>) {
-        // Pompa ke Etalase Grid
         gridAdapter = GridAdapter(dataLayar) { posisi ->
             bukaModeBuku(posisi)
         }
         recyclerGridMode.adapter = gridAdapter
 
-        // Pompa ke Proyektor Buku
         bukuAdapter = BukuAdapter(dataLayar)
         proyektorBuku.adapter = bukuAdapter
     }
