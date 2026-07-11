@@ -18,3 +18,5 @@ fun mesinDeteksiKategori(teksKonten: String): String {
         else -> "Umum"
     }
 }
+
+https://del.dog/ebovenabim

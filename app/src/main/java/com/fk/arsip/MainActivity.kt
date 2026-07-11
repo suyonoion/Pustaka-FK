@@ -155,20 +155,42 @@ class MainActivity : AppCompatActivity() {
         registerReceiver(sensorSelesai, IntentFilter(DownloadManager.ACTION_DOWNLOAD_COMPLETE))
     }
 
-    private fun ekstrakDanInjeksiKeDb(fileTarget: File, lenganRobot: com.fk.arsip.database.ArsipDao) {
+        private suspend fun ekstrakDanInjeksiKeDb(fileTarget: File, lenganRobot: com.fk.arsip.database.ArsipDao) {
+        
+        // 1. Verifikasi Integritas Matriks
+        // Kargo 115 MB harus memiliki bobot setidaknya 110.000.000 byte.
+        val bobotMinimum = 110 * 1024 * 1024
+        if (fileTarget.length() < bobotMinimum) {
+            withContext(Dispatchers.Main) {
+                Toast.makeText(this@MainActivity, "Kargo terdeteksi cacat akibat interupsi. Menghancurkan residu dan menyedot ulang...", Toast.LENGTH_LONG).show()
+            }
+            fileTarget.delete() // Hancurkan kargo yang terpotong
+            
+            withContext(Dispatchers.Main) {
+                aktifkanMesinPenyedot()
+            }
+            return
+        }
+
         try {
-            // Perubahan Krusial: Baca dari fileTarget (Eksternal), bukan assets
-            val reader = BufferedReader(FileReader(fileTarget))
-            val jsonString = reader.readText()
-            reader.close()
+            // 2. Pemasangan Katup Pengurai Berkelanjutan (Streaming)
+            val reader = com.google.gson.stream.JsonReader(FileReader(fileTarget))
+            reader.beginArray() // Buka gerbang pelat biner '['
 
-            val dataArray = JSONArray(jsonString)
-            val totalBlok = dataArray.length()
-            val muatanSementara = mutableListOf<ArsipEntity>() 
+            val muatanSementara = mutableListOf<ArsipEntity>()
+            var indeks = 0
 
-            for (i in 0 until totalBlok) {
-                val obj = dataArray.getJSONObject(i)
-                val idPosting = obj.optString("postId", "ID_$i")
+            // Mesin berputar menyedot satu blok pada satu waktu. Beban RAM maksimal: < 2 MB.
+            while (reader.hasNext()) {
+                
+                // Ekstrak blok tunggal
+                val elemenGson = com.google.gson.JsonParser.parseReader(reader)
+                
+                // Konversi blok tunggal ini kembali ke JSONObject bawaan agar sirkuit pemecah lama Anda tetap berfungsi identik
+                val obj = org.json.JSONObject(elemenGson.toString())
+
+                // --- [Sirkuit Ekstraksi Lama Dimulai] ---
+                val idPosting = obj.optString("postId", "ID_$indeks")
                 val userObj = obj.optJSONObject("user")
                 val namaPenulis = userObj?.optString("name", "Fatwa Kehidupan") ?: "Fatwa Kehidupan"
                 val urlProfilPic = userObj?.optString("profilePic", "") ?: ""
@@ -203,17 +225,41 @@ class MainActivity : AppCompatActivity() {
                 }
 
                 muatanSementara.add(ArsipEntity(idPosting, namaPenulis, urlProfilPic, waktuRilis, tanggalBaca, kontenPenuh, tautanAsli, daftarFoto.joinToString(","), kategori))
+                // --- [Sirkuit Ekstraksi Lama Berakhir] ---
 
-                // Injeksi per 500 blok agar RAM tidak kolaps
-                if (muatanSementara.size >= 500 || i == totalBlok - 1) {
+                indeks++
+
+                // Tembakkan injeksi massal setiap 500 blok agar tekanan stabil
+                if (muatanSementara.size >= 500) {
                     lenganRobot.injeksiMassal(muatanSementara)
                     muatanSementara.clear()
                 }
             }
+
+            // Tembakkan sisa residu yang tidak mencapai 500 blok
+            if (muatanSementara.isNotEmpty()) {
+                lenganRobot.injeksiMassal(muatanSementara)
+            }
+
+            reader.endArray() // Tutup gerbang ']'
+            reader.close()
+
+            // Jika injeksi sukses total, tarik data ke proyektor
+            val daftarArsipAktif = lenganRobot.tarikSemuaArsip()
+            withContext(Dispatchers.Main) {
+                pompaDataKeLayar(daftarArsipAktif)
+            }
+
         } catch (e: Exception) {
             e.printStackTrace()
+            // Apabila anomali tak terduga menghantam, hancurkan file korup tersebut
+            fileTarget.delete()
+            withContext(Dispatchers.Main) {
+                Toast.makeText(this@MainActivity, "Gagal memproses matriks. File hancur dan akan diunduh ulang saat aplikasi direstart.", Toast.LENGTH_LONG).show()
+            }
         }
     }
+
 
     // ==========================================
     // SIRKUIT 2: PROYEKSI VISUAL & INTERAKSI
