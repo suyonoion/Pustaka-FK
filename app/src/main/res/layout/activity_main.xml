@@ -1,0 +1,41 @@
+<?xml version="1.0" encoding="utf-8"?>
+<RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="#F0F2F5">
+
+    <!-- Mesin Pencari di Bagian Atas -->
+    <EditText
+        android:id="@+id/edtPencarian"
+        android:layout_width="match_parent"
+        android:layout_height="50dp"
+        android:layout_margin="10dp"
+        android:padding="10dp"
+        android:background="@android:color/white"
+        android:hint="Cari Fatwa..."
+        android:elevation="2dp" />
+
+    <!-- Etalase Grid (Mode Default) -->
+    <androidx.recyclerview.widget.RecyclerView
+        android:id="@+id/recyclerGridMode"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:layout_below="@id/edtPencarian"
+        android:padding="5dp" />
+
+    <!-- Wadah Buku (Mode Detail, Tersembunyi saat awal) -->
+    <RelativeLayout
+        android:id="@+id/wadahModeBuku"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:visibility="gone"
+        android:background="@android:color/white">
+
+        <androidx.viewpager2.widget.ViewPager2
+            android:id="@+id/proyektorBuku"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent" />
+            
+    </RelativeLayout>
+
+</RelativeLayout>

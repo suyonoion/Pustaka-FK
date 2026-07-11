@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="utf-8"?>
+<ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:padding="16dp">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical">
+
+        <TextView android:id="@+id/txtNamaPenulis" android:layout_width="match_parent" android:layout_height="wrap_content" android:textStyle="bold" android:textSize="18sp" />
+        <TextView android:id="@+id/txtTanggalWaktu" android:layout_width="match_parent" android:layout_height="wrap_content" />
+        <TextView android:id="@+id/txtKategori" android:layout_width="match_parent" android:layout_height="wrap_content" android:textColor="#E91E63" />
+        
+        <LinearLayout android:id="@+id/wadahFotoPenuh" android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="vertical" android:layout_marginTop="10dp" />
+        
+        <TextView android:id="@+id/txtIsiKonten" android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="10dp" android:textSize="16sp" />
+    </LinearLayout>
+</ScrollView>
