@@ -192,7 +192,8 @@ class MainActivity : AppCompatActivity() {
     private fun pantauTekananUnduhan(idUnduhan: Long, downloadManager: DownloadManager) {
         lifecycleScope.launch(Dispatchers.Main) {
             var selesai = false
-            while (!selmesh) {
+            // Perbaikan: Gunakan sakelar 'selesai', bukan 'selmesh'
+            while (!selesai) {
                 val query = DownloadManager.Query().setFilterById(idUnduhan)
                 val cursor = downloadManager.query(query)
                 
@@ -212,7 +213,7 @@ class MainActivity : AppCompatActivity() {
                         }
 
                         if (status == DownloadManager.STATUS_SUCCESSFUL || status == DownloadManager.STATUS_FAILED) {
-                            selesai = true
+                            selesai = true // Sakelar memutus perulangan
                         }
                     }
                 }
@@ -221,6 +222,7 @@ class MainActivity : AppCompatActivity() {
             }
         }
     }
+
 
     private suspend fun ekstrakDanInjeksiKeDb(fileTarget: File, lenganRobot: com.fk.arsip.database.ArsipDao) {
         val bobotMinimum = 110 * 1024 * 1024
