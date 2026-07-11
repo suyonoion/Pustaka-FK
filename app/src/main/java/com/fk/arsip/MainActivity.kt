@@ -11,7 +11,9 @@ import android.text.Editable
 import android.text.TextWatcher
 import android.view.View
 import android.widget.EditText
+import android.widget.LinearLayout
 import android.widget.RelativeLayout
+import android.widget.TextView
 import android.widget.Toast
 import androidx.activity.OnBackPressedCallback
 import androidx.appcompat.app.AppCompatActivity
@@ -22,6 +24,7 @@ import androidx.viewpager2.widget.ViewPager2
 import com.fk.arsip.database.ArsipDatabase
 import com.fk.arsip.database.ArsipEntity
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import org.json.JSONArray
@@ -31,36 +34,43 @@ import java.io.FileReader
 
 class MainActivity : AppCompatActivity() {
 
-    // Kordinat Awan
+    // 1. Parameter Transmisi Awan & Logistik
     private val namaFile = "Master_Data_Arsip_FK_11_Juli_2026.json"
     private val urlKargo = "https://github.com/suyonoion/Pustaka-FK/releases/download/v1.0.0/Master_Data_Arsip_FK_11_Juli_2026.json"
 
-    // Komponen Sasis Visual
+    // 2. Komponen Sasis Visual (UI)
     private lateinit var recyclerGridMode: RecyclerView
     private lateinit var wadahModeBuku: RelativeLayout
     private lateinit var proyektorBuku: ViewPager2
     private lateinit var edtPencarian: EditText
+    
+    // 3. Komponen Indikator Kontrol
+    private lateinit var panelIndikator: LinearLayout
+    private lateinit var txtIndikatorProses: TextView
 
+    // 4. Sabuk Transmisi Data (Adapter)
     private lateinit var gridAdapter: GridAdapter
     private lateinit var bukuAdapter: BukuAdapter
     
-    // Penampung Arus Data Aktif
+    // 5. Penampung Arus Data Aktif
     private var daftarArsipAktif: List<ArsipEntity> = listOf()
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
 
-        // 1. Inisialisasi Tuas Antarmuka
+        // Fase I: Pengait Pelat Fisik (XML) ke Struktur Logika
         recyclerGridMode = findViewById(R.id.recyclerGridMode)
         wadahModeBuku = findViewById(R.id.wadahModeBuku)
         proyektorBuku = findViewById(R.id.proyektorBuku)
         edtPencarian = findViewById(R.id.edtPencarian)
+        panelIndikator = findViewById(R.id.panelIndikator)
+        txtIndikatorProses = findViewById(R.id.txtIndikatorProses)
 
-        // 2. Kalibrasi Etalase Kotak (Grid 2 Kolom)
+        // Fase II: Konfigurasi Rel Jalur (Grid 2 Kolom)
         recyclerGridMode.layoutManager = GridLayoutManager(this, 2)
 
-        // 3. Injeksi Efek Transmisi Kertas (Page Curl) pada Buku
+        // Fase III: Injeksi Efek Transmisi Kertas (Page Curl) pada Buku
         proyektorBuku.setPageTransformer { page, position ->
             page.pivotX = 0f
             page.pivotY = page.height / 2f
@@ -76,7 +86,7 @@ class MainActivity : AppCompatActivity() {
             else { page.alpha = 0f }
         }
 
-        // 4. Pembajakan Sistem Rem (Tombol Kembali)
+        // Fase IV: Pembajakan Rem Sistem (Tombol Kembali)
         onBackPressedDispatcher.addCallback(this, object : OnBackPressedCallback(true) {
             override fun handleOnBackPressed() {
                 if (wadahModeBuku.visibility == View.VISIBLE) {
@@ -89,7 +99,7 @@ class MainActivity : AppCompatActivity() {
             }
         })
 
-        // 5. Pemicu Sakelar Utama
+        // Fase V: Pengaktifan Sakelar Sirkuit
         aktifkanSirkuitPencarian()
         eksekusiPabrikData()
     }
@@ -102,94 +112,144 @@ class MainActivity : AppCompatActivity() {
             val mesinDb = ArsipDatabase.operasikanMesin(this@MainActivity)
             val lenganRobot = mesinDb.arsipDao()
 
-            // Jika Database Kosong
+            // Cek kondisi volume tangki database
             if (lenganRobot.hitungTotalArsip() == 0) {
                 val fileTarget = File(getExternalFilesDir(null), namaFile)
                 
-                // Cek Keberadaan Biner Mentah
+                // Cek kargo fisik di penyimpanan lokal
                 if (!fileTarget.exists()) {
                     withContext(Dispatchers.Main) {
-                        Toast.makeText(this@MainActivity, "Tangki biner kosong. Memulai transmisi awan...", Toast.LENGTH_LONG).show()
                         aktifkanMesinPenyedot()
                     }
-                    return@launch // Putus arus coroutine di sini, tunggu unduhan selesai
+                    return@launch // Hentikan arus coroutine, serahkan ke mesin download
                 } else {
-                    withContext(Dispatchers.Main) {
-                        Toast.makeText(this@MainActivity, "Mengekstrak kargo 115MB ke ruang mesin...", Toast.LENGTH_SHORT).show()
-                    }
                     ekstrakDanInjeksiKeDb(fileTarget, lenganRobot)
                 }
-            }
-
-            // Database Terisi -> Tarik ke Layar
-            daftarArsipAktif = lenganRobot.tarikSemuaArsip()
-            withContext(Dispatchers.Main) {
-                pompaDataKeLayar(daftarArsipAktif)
+            } else {
+                // Database telah siap, langsung alirkan ke proyektor visual
+                daftarArsipAktif = lenganRobot.tarikSemuaArsip()
+                withContext(Dispatchers.Main) {
+                    panelIndikator.visibility = View.GONE
+                    pompaDataKeLayar(daftarArsipAktif)
+                }
             }
         }
     }
 
     private fun aktifkanMesinPenyedot() {
+        panelIndikator.visibility = View.VISIBLE
+        txtIndikatorProses.text = "Menyalakan Pipa Transmisi..."
+
+        val namaFileTemp = "$namaFile.temp"
+        val fileTempLama = File(getExternalFilesDir(null), namaFileTemp)
+        if (fileTempLama.exists()) fileTempLama.delete()
+
         val request = DownloadManager.Request(Uri.parse(urlKargo))
             .setTitle("Arsip Fatwa Kehidupan")
             .setDescription("Menyedot matriks data 115MB...")
             .setNotificationVisibility(DownloadManager.Request.VISIBILITY_VISIBLE_NOTIFY_COMPLETED)
-            .setDestinationInExternalFilesDir(this, null, namaFile)
+            .setDestinationInExternalFilesDir(this, null, namaFileTemp)
             .setAllowedOverMetered(true)
             .setAllowedOverRoaming(true)
 
         val downloadManager = getSystemService(Context.DOWNLOAD_SERVICE) as DownloadManager
         val idUnduhan = downloadManager.enqueue(request)
 
+        pantauTekananUnduhan(idUnduhan, downloadManager)
+
         val sensorSelesai = object : BroadcastReceiver() {
             override fun onReceive(context: Context?, intent: Intent?) {
                 val id = intent?.getLongExtra(DownloadManager.EXTRA_DOWNLOAD_ID, -1)
                 if (id == idUnduhan) {
-                    Toast.makeText(this@MainActivity, "Transmisi awan selesai. Menjalankan mesin injeksi...", Toast.LENGTH_LONG).show()
                     unregisterReceiver(this)
-                    // Picu ulang siklus pabrik setelah kargo mendarat
-                    eksekusiPabrikData()
+                    
+                    val query = DownloadManager.Query().setFilterById(idUnduhan)
+                    val cursor = downloadManager.query(query)
+                    
+                    if (cursor != null && cursor.moveToFirst()) {
+                        val statusIndex = cursor.getColumnIndex(DownloadManager.COLUMN_STATUS)
+                        if (statusIndex != -1 && cursor.getInt(statusIndex) == DownloadManager.STATUS_SUCCESSFUL) {
+                            
+                            val fileTempSelesai = File(getExternalFilesDir(null), namaFileTemp)
+                            val fileAsli = File(getExternalFilesDir(null), namaFile)
+                            
+                            if (fileTempSelesai.renameTo(fileAsli)) {
+                                Toast.makeText(this@MainActivity, "Kargo Valid. Memulai Ekstraksi...", Toast.LENGTH_LONG).show()
+                                eksekusiPabrikData() 
+                            }
+                        } else {
+                            panelIndikator.visibility = View.GONE
+                            Toast.makeText(this@MainActivity, "Transmisi Awan Gagal.", Toast.LENGTH_LONG).show()
+                        }
+                    }
+                    cursor?.close()
                 }
             }
         }
         registerReceiver(sensorSelesai, IntentFilter(DownloadManager.ACTION_DOWNLOAD_COMPLETE))
     }
 
-        private suspend fun ekstrakDanInjeksiKeDb(fileTarget: File, lenganRobot: com.fk.arsip.database.ArsipDao) {
-        
-        // 1. Verifikasi Integritas Matriks
-        // Kargo 115 MB harus memiliki bobot setidaknya 110.000.000 byte.
+    private fun pantauTekananUnduhan(idUnduhan: Long, downloadManager: DownloadManager) {
+        lifecycleScope.launch(Dispatchers.Main) {
+            var selesai = false
+            while (!selmesh) {
+                val query = DownloadManager.Query().setFilterById(idUnduhan)
+                val cursor = downloadManager.query(query)
+                
+                if (cursor != null && cursor.moveToFirst()) {
+                    val statusIndex = cursor.getColumnIndex(DownloadManager.COLUMN_STATUS)
+                    val diunduhIndex = cursor.getColumnIndex(DownloadManager.COLUMN_BYTES_DOWNLOADED_SO_FAR)
+                    val totalIndex = cursor.getColumnIndex(DownloadManager.COLUMN_TOTAL_SIZE_BYTES)
+                    
+                    if (statusIndex != -1 && diunduhIndex != -1 && totalIndex != -1) {
+                        val status = cursor.getInt(statusIndex)
+                        val diunduh = cursor.getLong(diunduhIndex)
+                        val total = cursor.getLong(totalIndex)
+
+                        if (total > 0) {
+                            val persentase = ((diunduh * 100) / total).toInt()
+                            txtIndikatorProses.text = "Menyedot Kargo: $persentase%"
+                        }
+
+                        if (status == DownloadManager.STATUS_SUCCESSFUL || status == DownloadManager.STATUS_FAILED) {
+                            selesai = true
+                        }
+                    }
+                }
+                cursor?.close()
+                delay(1000) // Interval pemindaian 1 detik
+            }
+        }
+    }
+
+    private suspend fun ekstrakDanInjeksiKeDb(fileTarget: File, lenganRobot: com.fk.arsip.database.ArsipDao) {
         val bobotMinimum = 110 * 1024 * 1024
         if (fileTarget.length() < bobotMinimum) {
             withContext(Dispatchers.Main) {
-                Toast.makeText(this@MainActivity, "Kargo terdeteksi cacat akibat interupsi. Menghancurkan residu dan menyedot ulang...", Toast.LENGTH_LONG).show()
-            }
-            fileTarget.delete() // Hancurkan kargo yang terpotong
-            
-            withContext(Dispatchers.Main) {
+                Toast.makeText(this@MainActivity, "Kargo Cacat (Terpotong). Mengulang unduhan...", Toast.LENGTH_LONG).show()
+                fileTarget.delete()
                 aktifkanMesinPenyedot()
             }
             return
         }
 
+        withContext(Dispatchers.Main) {
+            panelIndikator.visibility = View.VISIBLE
+            txtIndikatorProses.text = "Mengekstrak Matriks Ke Ruang Mesin..."
+        }
+
         try {
-            // 2. Pemasangan Katup Pengurai Berkelanjutan (Streaming)
+            // Katup Aliran Berkelanjutan (Streaming) - Konsumsi RAM Konstan < 2MB
             val reader = com.google.gson.stream.JsonReader(FileReader(fileTarget))
-            reader.beginArray() // Buka gerbang pelat biner '['
+            reader.beginArray() 
 
             val muatanSementara = mutableListOf<ArsipEntity>()
             var indeks = 0
 
-            // Mesin berputar menyedot satu blok pada satu waktu. Beban RAM maksimal: < 2 MB.
             while (reader.hasNext()) {
-                
-                // Ekstrak blok tunggal
                 val elemenGson = com.google.gson.JsonParser.parseReader(reader)
-                
-                // Konversi blok tunggal ini kembali ke JSONObject bawaan agar sirkuit pemecah lama Anda tetap berfungsi identik
                 val obj = org.json.JSONObject(elemenGson.toString())
 
-                // --- [Sirkuit Ekstraksi Lama Dimulai] ---
                 val idPosting = obj.optString("postId", "ID_$indeks")
                 val userObj = obj.optJSONObject("user")
                 val namaPenulis = userObj?.optString("name", "Fatwa Kehidupan") ?: "Fatwa Kehidupan"
@@ -225,41 +285,38 @@ class MainActivity : AppCompatActivity() {
                 }
 
                 muatanSementara.add(ArsipEntity(idPosting, namaPenulis, urlProfilPic, waktuRilis, tanggalBaca, kontenPenuh, tautanAsli, daftarFoto.joinToString(","), kategori))
-                // --- [Sirkuit Ekstraksi Lama Berakhir] ---
-
                 indeks++
 
-                // Tembakkan injeksi massal setiap 500 blok agar tekanan stabil
+                // Injeksi Massal Terjadwal (Per 500 Blok)
                 if (muatanSementara.size >= 500) {
                     lenganRobot.injeksiMassal(muatanSementara)
                     muatanSementara.clear()
                 }
             }
 
-            // Tembakkan sisa residu yang tidak mencapai 500 blok
             if (muatanSementara.isNotEmpty()) {
                 lenganRobot.injeksiMassal(muatanSementara)
             }
 
-            reader.endArray() // Tutup gerbang ']'
+            reader.endArray() 
             reader.close()
 
-            // Jika injeksi sukses total, tarik data ke proyektor
-            val daftarArsipAktif = lenganRobot.tarikSemuaArsip()
+            // Proses Selesai. Ekstrak data final ke layar
+            daftarArsipAktif = lenganRobot.tarikSemuaArsip()
             withContext(Dispatchers.Main) {
+                panelIndikator.visibility = View.GONE
                 pompaDataKeLayar(daftarArsipAktif)
             }
 
         } catch (e: Exception) {
             e.printStackTrace()
-            // Apabila anomali tak terduga menghantam, hancurkan file korup tersebut
             fileTarget.delete()
             withContext(Dispatchers.Main) {
-                Toast.makeText(this@MainActivity, "Gagal memproses matriks. File hancur dan akan diunduh ulang saat aplikasi direstart.", Toast.LENGTH_LONG).show()
+                panelIndikator.visibility = View.GONE
+                Toast.makeText(this@MainActivity, "Korsleting Penguraian. Data Dihancurkan.", Toast.LENGTH_LONG).show()
             }
         }
     }
-
 
     // ==========================================
     // SIRKUIT 2: PROYEKSI VISUAL & INTERAKSI
