@@ -136,7 +136,48 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
+    // Radar untuk mendeteksi apakah mesin DownloadManager sedang beroperasi
+    private fun cariPipaAktif(downloadManager: DownloadManager): Long {
+        val query = DownloadManager.Query().setFilterByStatus(
+            DownloadManager.STATUS_RUNNING or 
+            DownloadManager.STATUS_PENDING or 
+            DownloadManager.STATUS_PAUSED
+        )
+        val cursor = downloadManager.query(query)
+        if (cursor != null) {
+            while (cursor.moveToNext()) {
+                val titleIndex = cursor.getColumnIndex(DownloadManager.COLUMN_TITLE)
+                if (titleIndex != -1) {
+                    val title = cursor.getString(titleIndex)
+                    if (title == "Arsip Fatwa Kehidupan") {
+                        val idIndex = cursor.getColumnIndex(DownloadManager.COLUMN_ID)
+                        val id = cursor.getLong(idIndex)
+                        cursor.close()
+                        return id // Mengembalikan ID pipa yang sedang aktif
+                    }
+                }
+            }
+            cursor.close()
+        }
+        return -1L // Tidak ada pipa aktif
+    }
+
     private fun aktifkanMesinPenyedot() {
+        val downloadManager = getSystemService(Context.DOWNLOAD_SERVICE) as DownloadManager
+        
+        // 1. Eksekusi Radar Pemindai
+        val idPipaAktif = cariPipaAktif(downloadManager)
+        
+        if (idPipaAktif != -1L) {
+            // Pipa sudah terbuka di latar belakang. Jangan buat unduhan baru.
+            // Langsung sambungkan panel indikator ke pipa yang sudah ada.
+            panelIndikator.visibility = View.VISIBLE
+            pantauTekananUnduhan(idPipaAktif, downloadManager)
+            pasangSensorPendaratan(idPipaAktif, downloadManager)
+            return
+        }
+
+        // 2. Jika tidak ada pipa aktif, buka jalur baru
         panelIndikator.visibility = View.VISIBLE
         txtIndikatorProses.text = "Menyalakan Pipa Transmisi..."
 
@@ -152,11 +193,14 @@ class MainActivity : AppCompatActivity() {
             .setAllowedOverMetered(true)
             .setAllowedOverRoaming(true)
 
-        val downloadManager = getSystemService(Context.DOWNLOAD_SERVICE) as DownloadManager
         val idUnduhan = downloadManager.enqueue(request)
 
         pantauTekananUnduhan(idUnduhan, downloadManager)
+        pasangSensorPendaratan(idUnduhan, downloadManager)
+    }
 
+    // Sirkuit penerima (Receiver) yang dipisah dari fungsi utama
+    private fun pasangSensorPendaratan(idUnduhan: Long, downloadManager: DownloadManager) {
         val sensorSelesai = object : BroadcastReceiver() {
             override fun onReceive(context: Context?, intent: Intent?) {
                 val id = intent?.getLongExtra(DownloadManager.EXTRA_DOWNLOAD_ID, -1)
@@ -170,6 +214,7 @@ class MainActivity : AppCompatActivity() {
                         val statusIndex = cursor.getColumnIndex(DownloadManager.COLUMN_STATUS)
                         if (statusIndex != -1 && cursor.getInt(statusIndex) == DownloadManager.STATUS_SUCCESSFUL) {
                             
+                            val namaFileTemp = "$namaFile.temp"
                             val fileTempSelesai = File(getExternalFilesDir(null), namaFileTemp)
                             val fileAsli = File(getExternalFilesDir(null), namaFile)
                             
@@ -188,6 +233,7 @@ class MainActivity : AppCompatActivity() {
         }
         registerReceiver(sensorSelesai, IntentFilter(DownloadManager.ACTION_DOWNLOAD_COMPLETE))
     }
+
 
     private fun pantauTekananUnduhan(idUnduhan: Long, downloadManager: DownloadManager) {
         lifecycleScope.launch(Dispatchers.Main) {
