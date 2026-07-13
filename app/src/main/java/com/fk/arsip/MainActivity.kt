@@ -372,7 +372,8 @@ class MainActivity : AppCompatActivity() {
         proyektorBuku.setCurrentItem(posisi, false)
     }
 
-    // Sirkuit Pencarian Diperkuat Dengan Penangkap Katup Enter Manual (Universal Keyboard Fix)    private fun aktifkanSirkuitPencarian() {
+    // Sirkuit Pencarian Diperkuat Dengan Penangkap Katup Enter Manual (Universal Keyboard Fix
+    private fun aktifkanSirkuitPencarian() {
         edtPencarian.setOnEditorActionListener { _, actionId, event ->
             if (actionId == EditorInfo.IME_ACTION_SEARCH || 
                 (event != null && event.keyCode == KeyEvent.KEYCODE_ENTER && event.action == KeyEvent.ACTION_DOWN)) {
