@@ -23,6 +23,7 @@ import androidx.drawerlayout.widget.DrawerLayout
 import androidx.lifecycle.lifecycleScope
 import androidx.recyclerview.widget.GridLayoutManager
 import androidx.recyclerview.widget.RecyclerView
+import androidx.cardview.widget.CardView
 import androidx.viewpager2.widget.ViewPager2
 import com.google.android.material.navigation.NavigationView
 import com.fk.arsip.database.ArsipDatabase
@@ -46,7 +47,8 @@ class MainActivity : AppCompatActivity() {
     private lateinit var wadahModeBuku: RelativeLayout
     private lateinit var proyektorBuku: ViewPager2
     private lateinit var edtPencarian: EditText
-    private lateinit var panelStatusPencarian: LinearLayout
+    private lateinit var panelStatusPencarian: CardView
+
     private lateinit var loadingPencarian: ProgressBar
     private lateinit var txtStatusPencarian: TextView
     private lateinit var panelIndikator: LinearLayout
