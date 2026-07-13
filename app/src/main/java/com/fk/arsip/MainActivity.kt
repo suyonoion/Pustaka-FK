@@ -69,6 +69,7 @@ class MainActivity : AppCompatActivity() {
         txtIndikatorProses = findViewById(R.id.txtIndikatorProses)
 
         recyclerGridMode.layoutManager = GridLayoutManager(this, 2)
+        sesuaikanKompartemenGrid() // Pemicu kalkulasi saat mesin pertama kali menyala
         proyektorBuku.setPageTransformer(null)
 
         // Inisialisasi awal kompartemen transmisi (Adapter Kosong) untuk mencegah malfungsi layout
@@ -107,6 +108,12 @@ class MainActivity : AppCompatActivity() {
         inisialisasiSirkuitAppDrawer()
         aktifkanSirkuitPencarian()
         eksekusiPabrikData()
+    }
+    // Sensor Penangkap Guncangan Orientasi Layar
+    override fun onConfigurationChanged(newConfig: android.content.res.Configuration) {
+        super.onConfigurationChanged(newConfig)
+        // Jalankan kalkulasi ulang pembagian kolom secara instan
+        sesuaikanKompartemenGrid() 
     }
 
     private fun inisialisasiSirkuitAppDrawer() {
@@ -373,14 +380,6 @@ class MainActivity : AppCompatActivity() {
                 
                 val kataKunci = edtPencarian.text.toString().trim()
                 
-                // =======================================================
-                // [INJEKSI FASE 4]: Tuas Detonator Simulasi Kerusakan
-                // =======================================================
-                if (kataKunci == "PicuLedakanMesin") {
-                    throw java.lang.RuntimeException("Uji coba telemetri: Mesin sengaja diledakkan oleh teknisi.")
-                }
-                // =======================================================
-
                 isSearchMode = kataKunci.isNotEmpty()
                 
                 lifecycleScope.launch(Dispatchers.IO) {
@@ -422,6 +421,27 @@ class MainActivity : AppCompatActivity() {
             .create()
         matriksPanel.show()
     }
+    
+        // Tuas Penyesuai Kompartemen Dinamis
+    private fun sesuaikanKompartemenGrid() {
+        val metrikLayar = resources.displayMetrics
+        // Mengonversi piksel mentah menjadi satuan ruang standar (DP)
+        val lebarLayarDp = metrikLayar.widthPixels / metrikLayar.density
+        
+        // Tentukan spesifikasi lebar ideal satu kotak kargo (180 DP)
+        val lebarIdealKotak = 180 
+        
+        // Hitung berapa banyak kotak yang muat di dalam lantai layar
+        var hitungKolom = (lebarLayarDp / lebarIdealKotak).toInt()
+        
+        // Kunci batas minimum agar tidak kurang dari 2 kolom
+        if (hitungKolom < 2) hitungKolom = 2 
+
+        // Ubah konfigurasi layoutManager secara langsung tanpa merusak struktur data
+        val pengelolaJalur = recyclerGridMode.layoutManager as? GridLayoutManager
+        pengelolaJalur?.spanCount = hitungKolom
+    }
+
 
     private fun mesinDeteksiKategori(teksKonten: String): String {
         val matriksTeks = teksKonten.lowercase()
