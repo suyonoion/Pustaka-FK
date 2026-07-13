@@ -7,9 +7,9 @@ import android.content.Intent
 import android.content.IntentFilter
 import android.net.Uri
 import android.os.Bundle
-import android.text.Editable
-import android.text.TextWatcher
 import android.view.View
+import android.view.inputmethod.EditorInfo
+import android.view.inputmethod.InputMethodManager
 import android.widget.EditText
 import android.widget.LinearLayout
 import android.widget.RelativeLayout
@@ -70,20 +70,38 @@ class MainActivity : AppCompatActivity() {
         // Fase II: Konfigurasi Rel Jalur (Grid 2 Kolom)
         recyclerGridMode.layoutManager = GridLayoutManager(this, 2)
 
-        // Fase III: Injeksi Efek Transmisi Kertas (Page Curl) pada Buku
+        // Fase III: Sirkuit Efek Mekanis Buku (Page Curl Transformer Terkalibrasi)
         proyektorBuku.setPageTransformer { page, position ->
             page.pivotX = 0f
             page.pivotY = page.height / 2f
-            if (position < -1) { page.alpha = 0f } 
-            else if (position <= 0) { 
-                page.alpha = 1f; page.translationX = 0f; page.rotationY = 90f * Math.abs(position)
-            } 
-            else if (position <= 1) { 
-                page.alpha = 1f; page.translationX = -page.width * position
-                val scaleFactor = 0.75f + (1 - 0.75f) * (1 - Math.abs(position))
-                page.scaleX = scaleFactor; page.scaleY = scaleFactor
-            } 
-            else { page.alpha = 0f }
+            
+            when {
+                position < -1 -> { 
+                    // Halaman jauh di sebelah kiri (Tidak Terlihat)
+                    page.alpha = 0f
+                }
+                position <= 0 -> { 
+                    // Halaman utama terbuka ke kiri
+                    page.alpha = 1f
+                    page.translationX = 0f
+                    page.rotationY = 90f * Math.abs(position)
+                    page.scaleX = 1f
+                    page.scaleY = 1f
+                }
+                position <= 1 -> { 
+                    // Halaman penyangga di sebelah kanan (Mengikuti tarikan sasis)
+                    page.alpha = 1f
+                    page.translationX = -page.width * position
+                    val scaleFactor = 0.75f + (1f - 0.75f) * (1f - Math.abs(position))
+                    page.scaleX = scaleFactor
+                    page.scaleY = scaleFactor
+                    page.rotationY = 0f // Reset rotasi agar tidak tumpang tindih
+                }
+                else -> { 
+                    // Halaman jauh di sebelah kanan (Tidak Terlihat)
+                    page.alpha = 0f
+                }
+            }
         }
 
         // Fase IV: Pembajakan Rem Sistem (Tombol Kembali)
@@ -112,11 +130,9 @@ class MainActivity : AppCompatActivity() {
             val mesinDb = ArsipDatabase.operasikanMesin(this@MainActivity)
             val lenganRobot = mesinDb.arsipDao()
 
-            // Cek kondisi volume tangki database
             if (lenganRobot.hitungTotalArsip() == 0) {
                 val fileTarget = File(getExternalFilesDir(null), namaFile)
                 
-                // Cek kargo fisik di penyimpanan lokal
                 if (!fileTarget.exists()) {
                     withContext(Dispatchers.Main) {
                         aktifkanMesinPenyedot()
@@ -126,7 +142,6 @@ class MainActivity : AppCompatActivity() {
                     ekstrakDanInjeksiKeDb(fileTarget, lenganRobot)
                 }
             } else {
-                // Database telah siap, langsung alirkan ke proyektor visual
                 daftarArsipAktif = lenganRobot.tarikSemuaArsip()
                 withContext(Dispatchers.Main) {
                     panelIndikator.visibility = View.GONE
@@ -164,7 +179,6 @@ class MainActivity : AppCompatActivity() {
     private fun aktifkanMesinPenyedot() {
         val downloadManager = getSystemService(Context.DOWNLOAD_SERVICE) as DownloadManager
         
-        // Eksekusi Radar Pemindai untuk mencegah duplikasi pipa
         val idPipaAktif = cariPipaAktif(downloadManager)
         if (idPipaAktif != -1L) {
             panelIndikator.visibility = View.VISIBLE
@@ -373,12 +387,13 @@ class MainActivity : AppCompatActivity() {
         proyektorBuku.setCurrentItem(posisi, false)
     }
 
+    // Katup Filter Terkunci Bersama Tombol Search Keyboard
     private fun aktifkanSirkuitPencarian() {
-        edtPencarian.addTextChangedListener(object : TextWatcher {
-            override fun beforeTextChanged(s: CharSequence?, start: Int, count: Int, after: Int) {}
-            override fun onTextChanged(s: CharSequence?, start: Int, before: Int, count: Int) {}
-            override fun afterTextChanged(s: Editable?) {
-                val kataKunci = s.toString().trim()
+        edtPencarian.setOnEditorActionListener { _, actionId, _ ->
+            if (actionId == EditorInfo.IME_ACTION_SEARCH) {
+                val kataKunci = edtPencarian.text.toString().trim()
+                
+                // Eksekusi penyaringan data
                 lifecycleScope.launch(Dispatchers.IO) {
                     val lenganRobot = ArsipDatabase.operasikanMesin(this@MainActivity).arsipDao()
                     val hasilSaringan = if (kataKunci.isEmpty()) {
@@ -390,10 +405,17 @@ class MainActivity : AppCompatActivity() {
                     withContext(Dispatchers.Main) {
                         daftarArsipAktif = hasilSaringan
                         pompaDataKeLayar(daftarArsipAktif)
+                        
+                        // Tutup paksa katup keyboard setelah perintah selesai
+                        val imm = getSystemService(Context.INPUT_METHOD_SERVICE) as InputMethodManager
+                        imm.hideSoftInputFromWindow(edtPencarian.windowToken, 0)
                     }
                 }
+                true
+            } else {
+                false
             }
-        })
+        }
     }
 
     private fun mesinDeteksiKategori(teksKonten: String): String {

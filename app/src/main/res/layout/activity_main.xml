@@ -4,7 +4,6 @@
     android:layout_height="match_parent"
     android:background="#F0F2F5">
 
-    <!-- Mesin Pencari di Bagian Atas -->
     <EditText
         android:id="@+id/edtPencarian"
         android:layout_width="match_parent"
@@ -13,7 +12,11 @@
         android:padding="10dp"
         android:background="@android:color/white"
         android:hint="Cari Fatwa..."
-        android:elevation="2dp" />
+        android:elevation="2dp"
+        android:inputType="text"
+        android:imeOptions="actionSearch"
+        android:maxLines="1" />
+
 
     <!-- Etalase Grid (Mode Default) -->
     <androidx.recyclerview.widget.RecyclerView
