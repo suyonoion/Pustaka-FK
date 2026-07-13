@@ -69,19 +69,33 @@ class MainActivity : AppCompatActivity() {
         // Hapus PageTransformer tumpang tindih, biarkan bergeser horizontal secara default dan stabil
         proyektorBuku.setPageTransformer(null)
 
+                // Fase IV: Pembajakan Rem Sistem Utama (Tombol Fisik HP)
         onBackPressedDispatcher.addCallback(this, object : OnBackPressedCallback(true) {
             override fun handleOnBackPressed() {
-                if (drawerLayout.isDrawerOpen(android.view.GravityHorizontal.START)) {
-                    drawerLayout.closeDrawer(android.view.GravityHorizontal.START)
-                } else if (wadahModeBuku.visibility == View.VISIBLE) {
+                // Katup 1: Jika Laci Navigasi terbuka -> Tutup Laci
+                if (drawerLayout.isDrawerOpen(androidx.core.view.GravityCompat.START)) {
+                    drawerLayout.closeDrawer(androidx.core.view.GravityCompat.START)
+                } 
+                // Katup 2: Jika Proyektor Buku menyala -> Matikan, kembali ke Grid
+                else if (wadahModeBuku.visibility == View.VISIBLE) {
                     wadahModeBuku.visibility = View.GONE
                     recyclerGridMode.visibility = View.VISIBLE
-                } else {
-                    isEnabled = false
-                    onBackPressedDispatcher.onBackPressed()
+                } 
+                // Katup 3: Jika Kolom Pencarian terisi -> Kosongkan dan Muat Ulang Data Awal
+                else if (edtPencarian.text.toString().isNotEmpty()) {
+                    edtPencarian.text.clear()
+                    edtPencarian.clearFocus()
+                    val imm = getSystemService(Context.INPUT_METHOD_SERVICE) as InputMethodManager
+                    imm.hideSoftInputFromWindow(edtPencarian.windowToken, 0)
+                    eksekusiPabrikData() 
+                } 
+                // Katup 4: Konfirmasi Pemutusan Arus (Keluar Aplikasi)
+                else {
+                    tampilkanPanelKonfirmasiKeluar()
                 }
             }
         })
+
 
         inisialisasiSirkuitAppDrawer()
         aktifkanSirkuitPencarian()
@@ -377,6 +391,24 @@ class MainActivity : AppCompatActivity() {
             }
         }
     }
+
+    // Sakelar Pengaman Pemutusan Arus
+    private fun tampilkanPanelKonfirmasiKeluar() {
+        val matriksPanel = android.app.AlertDialog.Builder(this)
+            .setTitle("Pemutusan Arus")
+            .setMessage("Apakah Anda yakin ingin mematikan mesin dan keluar dari arsip?")
+            .setCancelable(false) // Mengunci panel agar tidak hilang saat disentuh di luarnya
+            .setPositiveButton("Matikan") { _, _ ->
+                finish() // Memutus arus utama aplikasi secara absolut
+            }
+            .setNegativeButton("Batal") { dialog, _ ->
+                dialog.dismiss() // Menutup panel dan membiarkan mesin tetap hidup
+            }
+            .create()
+        
+        matriksPanel.show()
+    }
+
 
     private fun mesinDeteksiKategori(teksKonten: String): String {
         val matriksTeks = teksKonten.lowercase()
