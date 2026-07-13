@@ -366,12 +366,21 @@ class MainActivity : AppCompatActivity() {
     }
 
     // Sirkuit Pencarian Diperkuat Dengan Penangkap Katup Enter Manual (Universal Keyboard Fix)
-    private fun aktifkanSirkuitPencarian() {
+        private fun aktifkanSirkuitPencarian() {
         edtPencarian.setOnEditorActionListener { _, actionId, event ->
             if (actionId == EditorInfo.IME_ACTION_SEARCH || 
                 (event != null && event.keyCode == KeyEvent.KEYCODE_ENTER && event.action == KeyEvent.ACTION_DOWN)) {
                 
                 val kataKunci = edtPencarian.text.toString().trim()
+                
+                // =======================================================
+                // [INJEKSI FASE 4]: Tuas Detonator Simulasi Kerusakan
+                // =======================================================
+                if (kataKunci == "PicuLedakanMesin") {
+                    throw java.lang.RuntimeException("Uji coba telemetri: Mesin sengaja diledakkan oleh teknisi.")
+                }
+                // =======================================================
+
                 isSearchMode = kataKunci.isNotEmpty()
                 
                 lifecycleScope.launch(Dispatchers.IO) {
@@ -401,6 +410,7 @@ class MainActivity : AppCompatActivity() {
             }
         }
     }
+
 
     private fun tampilkanPanelKonfirmasiKeluar() {
         val matriksPanel = android.app.AlertDialog.Builder(this)

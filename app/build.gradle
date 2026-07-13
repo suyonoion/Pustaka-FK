@@ -2,6 +2,8 @@ plugins {
     id 'com.android.application'
     id 'org.jetbrains.kotlin.android'
     id 'kotlin-kapt'
+    id 'com.google.gms.google-services'
+    id 'com.google.firebase.crashlytics'
 }
 
 android {
@@ -49,5 +51,11 @@ dependencies {
     // Proyektor Gambar
     implementation 'com.github.bumptech.glide:glide:4.16.0'
     implementation 'com.google.code.gson:gson:2.10.1'
-
+    
+    // Pipa Transmisi Firebase (BOM mengontrol keselarasan versi secara otomatis)
+    implementation platform('com.google.firebase:firebase-bom:33.1.2')
+    
+    // Sensor Pelacak Kerusakan & Analisis Arus
+    implementation 'com.google.firebase:firebase-crashlytics'
+    implementation 'com.google.firebase:firebase-analytics'
 }

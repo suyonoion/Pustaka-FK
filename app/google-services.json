@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "836083496768",
+    "project_id": "pustakafk-ddafc",
+    "storage_bucket": "pustakafk-ddafc.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:836083496768:android:e6102a0fc898243a986ca5",
+        "android_client_info": {
+          "package_name": "com.fk.arsip"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyAMUeiWhFPWVCKoFn0sxeJazzMFQZeT57g"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
