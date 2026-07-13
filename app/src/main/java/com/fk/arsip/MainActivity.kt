@@ -17,10 +17,12 @@ import android.widget.TextView
 import android.widget.Toast
 import androidx.activity.OnBackPressedCallback
 import androidx.appcompat.app.AppCompatActivity
+import androidx.drawerlayout.widget.DrawerLayout
 import androidx.lifecycle.lifecycleScope
 import androidx.recyclerview.widget.GridLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import androidx.viewpager2.widget.ViewPager2
+import com.google.android.material.navigation.NavigationView
 import com.fk.arsip.database.ArsipDatabase
 import com.fk.arsip.database.ArsipEntity
 import kotlinx.coroutines.Dispatchers
@@ -28,38 +30,33 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import org.json.JSONArray
-import java.io.BufferedReader
 import java.io.File
 import java.io.FileReader
 
 class MainActivity : AppCompatActivity() {
 
-    // 1. Parameter Transmisi Awan & Logistik
     private val namaFile = "Master_Data_Arsip_FK_11_Juli_2026.json"
     private val urlKargo = "https://github.com/suyonoion/Pustaka-FK/releases/download/v1.0.0/Master_Data_Arsip_FK_11_Juli_2026.json"
 
-    // 2. Komponen Sasis Visual (UI)
+    private lateinit var drawerLayout: DrawerLayout
+    private lateinit var navView: NavigationView
     private lateinit var recyclerGridMode: RecyclerView
     private lateinit var wadahModeBuku: RelativeLayout
     private lateinit var proyektorBuku: ViewPager2
     private lateinit var edtPencarian: EditText
-    
-    // 3. Komponen Indikator Kontrol
     private lateinit var panelIndikator: LinearLayout
     private lateinit var txtIndikatorProses: TextView
 
-    // 4. Sabuk Transmisi Data (Adapter)
     private lateinit var gridAdapter: GridAdapter
     private lateinit var bukuAdapter: BukuAdapter
-    
-    // 5. Penampung Arus Data Aktif
     private var daftarArsipAktif: List<ArsipEntity> = listOf()
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
 
-        // Fase I: Pengait Pelat Fisik (XML) ke Struktur Logika
+        drawerLayout = findViewById(R.id.drawerLayout)
+        navView = findViewById(R.id.navView)
         recyclerGridMode = findViewById(R.id.recyclerGridMode)
         wadahModeBuku = findViewById(R.id.wadahModeBuku)
         proyektorBuku = findViewById(R.id.proyektorBuku)
@@ -67,47 +64,16 @@ class MainActivity : AppCompatActivity() {
         panelIndikator = findViewById(R.id.panelIndikator)
         txtIndikatorProses = findViewById(R.id.txtIndikatorProses)
 
-        // Fase II: Konfigurasi Rel Jalur (Grid 2 Kolom)
         recyclerGridMode.layoutManager = GridLayoutManager(this, 2)
 
-        // Fase III: Sirkuit Efek Mekanis Buku (Page Curl Transformer Terkalibrasi)
-        proyektorBuku.setPageTransformer { page, position ->
-            page.pivotX = 0f
-            page.pivotY = page.height / 2f
-            
-            when {
-                position < -1 -> { 
-                    // Halaman jauh di sebelah kiri (Tidak Terlihat)
-                    page.alpha = 0f
-                }
-                position <= 0 -> { 
-                    // Halaman utama terbuka ke kiri
-                    page.alpha = 1f
-                    page.translationX = 0f
-                    page.rotationY = 90f * Math.abs(position)
-                    page.scaleX = 1f
-                    page.scaleY = 1f
-                }
-                position <= 1 -> { 
-                    // Halaman penyangga di sebelah kanan (Mengikuti tarikan sasis)
-                    page.alpha = 1f
-                    page.translationX = -page.width * position
-                    val scaleFactor = 0.75f + (1f - 0.75f) * (1f - Math.abs(position))
-                    page.scaleX = scaleFactor
-                    page.scaleY = scaleFactor
-                    page.rotationY = 0f // Reset rotasi agar tidak tumpang tindih
-                }
-                else -> { 
-                    // Halaman jauh di sebelah kanan (Tidak Terlihat)
-                    page.alpha = 0f
-                }
-            }
-        }
+        // Hapus PageTransformer tumpang tindih, biarkan bergeser horizontal secara default dan stabil
+        proyektorBuku.setPageTransformer(null)
 
-        // Fase IV: Pembajakan Rem Sistem (Tombol Kembali)
         onBackPressedDispatcher.addCallback(this, object : OnBackPressedCallback(true) {
             override fun handleOnBackPressed() {
-                if (wadahModeBuku.visibility == View.VISIBLE) {
+                if (drawerLayout.isDrawerOpen(android.view.GravityHorizontal.START)) {
+                    drawerLayout.closeDrawer(android.view.GravityHorizontal.START)
+                } else if (wadahModeBuku.visibility == View.VISIBLE) {
                     wadahModeBuku.visibility = View.GONE
                     recyclerGridMode.visibility = View.VISIBLE
                 } else {
@@ -117,14 +83,41 @@ class MainActivity : AppCompatActivity() {
             }
         })
 
-        // Fase V: Pengaktifan Sakelar Sirkuit
+        inisialisasiSirkuitAppDrawer()
         aktifkanSirkuitPencarian()
         eksekusiPabrikData()
     }
 
-    // ==========================================
-    // SIRKUIT 1: MANAJEMEN DATABASE & LOGISTIK
-    // ==========================================
+    private fun inisialisasiSirkuitAppDrawer() {
+        navView.setNavigationItemSelectedListener { menuItem ->
+            val kategoriSaringan = when (menuItem.itemId) {
+                R.id.nav_ekonomi -> "Ekonomi"
+                R.id.nav_politik -> "Politik & Negara"
+                R.id.nav_agama -> "Agama & Spiritualitas"
+                R.id.nav_pertanian -> "Pertanian"
+                else -> ""
+            }
+
+            lifecycleScope.launch(Dispatchers.IO) {
+                val lenganRobot = ArsipDatabase.operasikanMesin(this@MainActivity).arsipDao()
+                val hasilSaringan = if (kategoriSaringan.isEmpty()) {
+                    lenganRobot.tarikSemuaArsip()
+                } else {
+                    lenganRobot.saringArsip(kategoriSaringan) // Re-use saringArsip berdasarkan teks kategori
+                }
+
+                withContext(Dispatchers.Main) {
+                    wadahModeBuku.visibility = View.GONE
+                    recyclerGridMode.visibility = View.VISIBLE
+                    daftarArsipAktif = hasilSaringan
+                    pompaDataKeLayar(daftarArsipAktif)
+                    drawerLayout.closeDrawers()
+                }
+            }
+            true
+        }
+    }
+
     private fun eksekusiPabrikData() {
         lifecycleScope.launch(Dispatchers.IO) {
             val mesinDb = ArsipDatabase.operasikanMesin(this@MainActivity)
@@ -132,11 +125,8 @@ class MainActivity : AppCompatActivity() {
 
             if (lenganRobot.hitungTotalArsip() == 0) {
                 val fileTarget = File(getExternalFilesDir(null), namaFile)
-                
                 if (!fileTarget.exists()) {
-                    withContext(Dispatchers.Main) {
-                        aktifkanMesinPenyedot()
-                    }
+                    withContext(Dispatchers.Main) { aktifkanMesinPenyedot() }
                     return@launch 
                 } else {
                     ekstrakDanInjeksiKeDb(fileTarget, lenganRobot)
@@ -153,22 +143,17 @@ class MainActivity : AppCompatActivity() {
 
     private fun cariPipaAktif(downloadManager: DownloadManager): Long {
         val query = DownloadManager.Query().setFilterByStatus(
-            DownloadManager.STATUS_RUNNING or 
-            DownloadManager.STATUS_PENDING or 
-            DownloadManager.STATUS_PAUSED
+            DownloadManager.STATUS_RUNNING or DownloadManager.STATUS_PENDING or DownloadManager.STATUS_PAUSED
         )
         val cursor = downloadManager.query(query)
         if (cursor != null) {
             while (cursor.moveToNext()) {
                 val titleIndex = cursor.getColumnIndex(DownloadManager.COLUMN_TITLE)
-                if (titleIndex != -1) {
-                    val title = cursor.getString(titleIndex)
-                    if (title == "Arsip Fatwa Kehidupan") {
-                        val idIndex = cursor.getColumnIndex(DownloadManager.COLUMN_ID)
-                        val id = cursor.getLong(idIndex)
-                        cursor.close()
-                        return id
-                    }
+                if (titleIndex != -1 && cursor.getString(titleIndex) == "Arsip Fatwa Kehidupan") {
+                    val idIndex = cursor.getColumnIndex(DownloadManager.COLUMN_ID)
+                    val id = cursor.getLong(idIndex)
+                    cursor.close()
+                    return id
                 }
             }
             cursor.close()
@@ -178,7 +163,6 @@ class MainActivity : AppCompatActivity() {
 
     private fun aktifkanMesinPenyedot() {
         val downloadManager = getSystemService(Context.DOWNLOAD_SERVICE) as DownloadManager
-        
         val idPipaAktif = cariPipaAktif(downloadManager)
         if (idPipaAktif != -1L) {
             panelIndikator.visibility = View.VISIBLE
@@ -203,7 +187,6 @@ class MainActivity : AppCompatActivity() {
             .setAllowedOverRoaming(true)
 
         val idUnduhan = downloadManager.enqueue(request)
-
         pantauTekananUnduhan(idUnduhan, downloadManager)
         pasangSensorPendaratan(idUnduhan, downloadManager)
     }
@@ -214,25 +197,21 @@ class MainActivity : AppCompatActivity() {
                 val id = intent?.getLongExtra(DownloadManager.EXTRA_DOWNLOAD_ID, -1)
                 if (id == idUnduhan) {
                     unregisterReceiver(this)
-                    
                     val query = DownloadManager.Query().setFilterById(idUnduhan)
                     val cursor = downloadManager.query(query)
-                    
                     if (cursor != null && cursor.moveToFirst()) {
                         val statusIndex = cursor.getColumnIndex(DownloadManager.COLUMN_STATUS)
                         if (statusIndex != -1 && cursor.getInt(statusIndex) == DownloadManager.STATUS_SUCCESSFUL) {
-                            
                             val namaFileTemp = "$namaFile.temp"
                             val fileTempSelesai = File(getExternalFilesDir(null), namaFileTemp)
                             val fileAsli = File(getExternalFilesDir(null), namaFile)
-                            
                             if (fileTempSelesai.renameTo(fileAsli)) {
                                 Toast.makeText(this@MainActivity, "Kargo Valid. Memulai Ekstraksi...", Toast.LENGTH_LONG).show()
                                 eksekusiPabrikData() 
                             }
                         } else {
                             panelIndikator.visibility = View.GONE
-                            Toast.makeText(this@MainActivity, "Transmisi Awan Gagal.", Toast.LENGTH_LONG).show()
+                            Toast.makeText(this@MainActivity, "Transmisi Gagal.", Toast.LENGTH_LONG).show()
                         }
                     }
                     cursor?.close()
@@ -248,25 +227,19 @@ class MainActivity : AppCompatActivity() {
             while (!selesai) {
                 val query = DownloadManager.Query().setFilterById(idUnduhan)
                 val cursor = downloadManager.query(query)
-                
                 if (cursor != null && cursor.moveToFirst()) {
                     val statusIndex = cursor.getColumnIndex(DownloadManager.COLUMN_STATUS)
                     val diunduhIndex = cursor.getColumnIndex(DownloadManager.COLUMN_BYTES_DOWNLOADED_SO_FAR)
                     val totalIndex = cursor.getColumnIndex(DownloadManager.COLUMN_TOTAL_SIZE_BYTES)
-                    
                     if (statusIndex != -1 && diunduhIndex != -1 && totalIndex != -1) {
                         val status = cursor.getInt(statusIndex)
                         val diunduh = cursor.getLong(diunduhIndex)
                         val total = cursor.getLong(totalIndex)
-
                         if (total > 0) {
                             val persentase = ((diunduh * 100) / total).toInt()
                             txtIndikatorProses.text = "Menyedot Kargo: $persentase%"
                         }
-
-                        if (status == DownloadManager.STATUS_SUCCESSFUL || status == DownloadManager.STATUS_FAILED) {
-                            selesai = true
-                        }
+                        if (status == DownloadManager.STATUS_SUCCESSFUL || status == DownloadManager.STATUS_FAILED) { selesai = true }
                     }
                 }
                 cursor?.close()
@@ -279,7 +252,6 @@ class MainActivity : AppCompatActivity() {
         val bobotMinimum = 110 * 1024 * 1024
         if (fileTarget.length() < bobotMinimum) {
             withContext(Dispatchers.Main) {
-                Toast.makeText(this@MainActivity, "Kargo Cacat. Mengulang unduhan...", Toast.LENGTH_LONG).show()
                 fileTarget.delete()
                 aktifkanMesinPenyedot()
             }
@@ -288,13 +260,12 @@ class MainActivity : AppCompatActivity() {
 
         withContext(Dispatchers.Main) {
             panelIndikator.visibility = View.VISIBLE
-            txtIndikatorProses.text = "Mengekstrak Matriks Ke Ruang Mesin..."
+            txtIndikatorProses.text = "Mengekstrak Matriks..."
         }
 
         try {
             val reader = com.google.gson.stream.JsonReader(FileReader(fileTarget))
             reader.beginArray() 
-
             val muatanSementara = mutableListOf<ArsipEntity>()
             var indeks = 0
 
@@ -320,7 +291,6 @@ class MainActivity : AppCompatActivity() {
                 }
 
                 val kategori = mesinDeteksiKategori(kontenPenuh)
-
                 val daftarFoto = mutableListOf<String>()
                 val mediaArray = obj.optJSONArray("media") ?: sharedObj?.optJSONArray("media")
                 if (mediaArray != null) {
@@ -345,10 +315,7 @@ class MainActivity : AppCompatActivity() {
                 }
             }
 
-            if (muatanSementara.isNotEmpty()) {
-                lenganRobot.injeksiMassal(muatanSementara)
-            }
-
+            if (muatanSementara.isNotEmpty()) { lenganRobot.injeksiMassal(muatanSementara) }
             reader.endArray() 
             reader.close()
 
@@ -357,26 +324,16 @@ class MainActivity : AppCompatActivity() {
                 panelIndikator.visibility = View.GONE
                 pompaDataKeLayar(daftarArsipAktif)
             }
-
         } catch (e: Exception) {
             e.printStackTrace()
             fileTarget.delete()
-            withContext(Dispatchers.Main) {
-                panelIndikator.visibility = View.GONE
-                Toast.makeText(this@MainActivity, "Korsleting Penguraian. Data Dihancurkan.", Toast.LENGTH_LONG).show()
-            }
+            withContext(Dispatchers.Main) { panelIndikator.visibility = View.GONE }
         }
     }
 
-    // ==========================================
-    // SIRKUIT 2: PROYEKSI VISUAL & INTERAKSI
-    // ==========================================
     private fun pompaDataKeLayar(dataLayar: List<ArsipEntity>) {
-        gridAdapter = GridAdapter(dataLayar) { posisi ->
-            bukaModeBuku(posisi)
-        }
+        gridAdapter = GridAdapter(dataLayar) { posisi -> bukaModeBuku(posisi) }
         recyclerGridMode.adapter = gridAdapter
-
         bukuAdapter = BukuAdapter(dataLayar)
         proyektorBuku.adapter = bukuAdapter
     }
@@ -387,13 +344,11 @@ class MainActivity : AppCompatActivity() {
         proyektorBuku.setCurrentItem(posisi, false)
     }
 
-    // Katup Filter Terkunci Bersama Tombol Search Keyboard
     private fun aktifkanSirkuitPencarian() {
         edtPencarian.setOnEditorActionListener { _, actionId, _ ->
             if (actionId == EditorInfo.IME_ACTION_SEARCH) {
                 val kataKunci = edtPencarian.text.toString().trim()
                 
-                // Eksekusi penyaringan data
                 lifecycleScope.launch(Dispatchers.IO) {
                     val lenganRobot = ArsipDatabase.operasikanMesin(this@MainActivity).arsipDao()
                     val hasilSaringan = if (kataKunci.isEmpty()) {
@@ -403,10 +358,15 @@ class MainActivity : AppCompatActivity() {
                     }
                     
                     withContext(Dispatchers.Main) {
+                        // KOREKSI UTAMA: Tutup paksa mode Buku jika sedang terbuka, paksa visual kembali ke Grid
+                        if (wadahModeBuku.visibility == View.VISIBLE) {
+                            wadahModeBuku.visibility = View.GONE
+                            recyclerGridMode.visibility = View.VISIBLE
+                        }
+
                         daftarArsipAktif = hasilSaringan
                         pompaDataKeLayar(daftarArsipAktif)
                         
-                        // Tutup paksa katup keyboard setelah perintah selesai
                         val imm = getSystemService(Context.INPUT_METHOD_SERVICE) as InputMethodManager
                         imm.hideSoftInputFromWindow(edtPencarian.windowToken, 0)
                     }
