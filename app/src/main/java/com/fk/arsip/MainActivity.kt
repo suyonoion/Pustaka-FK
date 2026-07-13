@@ -121,7 +121,7 @@ class MainActivity : AppCompatActivity() {
                     withContext(Dispatchers.Main) {
                         aktifkanMesinPenyedot()
                     }
-                    return@launch // Hentikan arus coroutine, serahkan ke mesin download
+                    return@launch 
                 } else {
                     ekstrakDanInjeksiKeDb(fileTarget, lenganRobot)
                 }
@@ -136,7 +136,6 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
-    // Radar untuk mendeteksi apakah mesin DownloadManager sedang beroperasi
     private fun cariPipaAktif(downloadManager: DownloadManager): Long {
         val query = DownloadManager.Query().setFilterByStatus(
             DownloadManager.STATUS_RUNNING or 
@@ -153,31 +152,27 @@ class MainActivity : AppCompatActivity() {
                         val idIndex = cursor.getColumnIndex(DownloadManager.COLUMN_ID)
                         val id = cursor.getLong(idIndex)
                         cursor.close()
-                        return id // Mengembalikan ID pipa yang sedang aktif
+                        return id
                     }
                 }
             }
             cursor.close()
         }
-        return -1L // Tidak ada pipa aktif
+        return -1L
     }
 
     private fun aktifkanMesinPenyedot() {
         val downloadManager = getSystemService(Context.DOWNLOAD_SERVICE) as DownloadManager
         
-        // 1. Eksekusi Radar Pemindai
+        // Eksekusi Radar Pemindai untuk mencegah duplikasi pipa
         val idPipaAktif = cariPipaAktif(downloadManager)
-        
         if (idPipaAktif != -1L) {
-            // Pipa sudah terbuka di latar belakang. Jangan buat unduhan baru.
-            // Langsung sambungkan panel indikator ke pipa yang sudah ada.
             panelIndikator.visibility = View.VISIBLE
             pantauTekananUnduhan(idPipaAktif, downloadManager)
             pasangSensorPendaratan(idPipaAktif, downloadManager)
             return
         }
 
-        // 2. Jika tidak ada pipa aktif, buka jalur baru
         panelIndikator.visibility = View.VISIBLE
         txtIndikatorProses.text = "Menyalakan Pipa Transmisi..."
 
@@ -199,7 +194,6 @@ class MainActivity : AppCompatActivity() {
         pasangSensorPendaratan(idUnduhan, downloadManager)
     }
 
-    // Sirkuit penerima (Receiver) yang dipisah dari fungsi utama
     private fun pasangSensorPendaratan(idUnduhan: Long, downloadManager: DownloadManager) {
         val sensorSelesai = object : BroadcastReceiver() {
             override fun onReceive(context: Context?, intent: Intent?) {
@@ -234,11 +228,9 @@ class MainActivity : AppCompatActivity() {
         registerReceiver(sensorSelesai, IntentFilter(DownloadManager.ACTION_DOWNLOAD_COMPLETE))
     }
 
-
     private fun pantauTekananUnduhan(idUnduhan: Long, downloadManager: DownloadManager) {
         lifecycleScope.launch(Dispatchers.Main) {
             var selesai = false
-            // Perbaikan: Gunakan sakelar 'selesai', bukan 'selmesh'
             while (!selesai) {
                 val query = DownloadManager.Query().setFilterById(idUnduhan)
                 val cursor = downloadManager.query(query)
@@ -259,22 +251,21 @@ class MainActivity : AppCompatActivity() {
                         }
 
                         if (status == DownloadManager.STATUS_SUCCESSFUL || status == DownloadManager.STATUS_FAILED) {
-                            selesai = true // Sakelar memutus perulangan
+                            selesai = true
                         }
                     }
                 }
                 cursor?.close()
-                delay(1000) // Interval pemindaian 1 detik
+                delay(1000) 
             }
         }
     }
-
 
     private suspend fun ekstrakDanInjeksiKeDb(fileTarget: File, lenganRobot: com.fk.arsip.database.ArsipDao) {
         val bobotMinimum = 110 * 1024 * 1024
         if (fileTarget.length() < bobotMinimum) {
             withContext(Dispatchers.Main) {
-                Toast.makeText(this@MainActivity, "Kargo Cacat (Terpotong). Mengulang unduhan...", Toast.LENGTH_LONG).show()
+                Toast.makeText(this@MainActivity, "Kargo Cacat. Mengulang unduhan...", Toast.LENGTH_LONG).show()
                 fileTarget.delete()
                 aktifkanMesinPenyedot()
             }
@@ -287,7 +278,6 @@ class MainActivity : AppCompatActivity() {
         }
 
         try {
-            // Katup Aliran Berkelanjutan (Streaming) - Konsumsi RAM Konstan < 2MB
             val reader = com.google.gson.stream.JsonReader(FileReader(fileTarget))
             reader.beginArray() 
 
@@ -335,7 +325,6 @@ class MainActivity : AppCompatActivity() {
                 muatanSementara.add(ArsipEntity(idPosting, namaPenulis, urlProfilPic, waktuRilis, tanggalBaca, kontenPenuh, tautanAsli, daftarFoto.joinToString(","), kategori))
                 indeks++
 
-                // Injeksi Massal Terjadwal (Per 500 Blok)
                 if (muatanSementara.size >= 500) {
                     lenganRobot.injeksiMassal(muatanSementara)
                     muatanSementara.clear()
@@ -349,7 +338,6 @@ class MainActivity : AppCompatActivity() {
             reader.endArray() 
             reader.close()
 
-            // Proses Selesai. Ekstrak data final ke layar
             daftarArsipAktif = lenganRobot.tarikSemuaArsip()
             withContext(Dispatchers.Main) {
                 panelIndikator.visibility = View.GONE
