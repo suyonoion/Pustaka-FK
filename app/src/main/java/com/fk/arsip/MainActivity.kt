@@ -45,6 +45,9 @@ class MainActivity : AppCompatActivity() {
     private lateinit var wadahModeBuku: RelativeLayout
     private lateinit var proyektorBuku: ViewPager2
     private lateinit var edtPencarian: EditText
+    private lateinit var panelStatusPencarian: LinearLayout
+    private lateinit var loadingPencarian: ProgressBar
+    private lateinit var txtStatusPencarian: TextView
     private lateinit var panelIndikator: LinearLayout
     private lateinit var txtIndikatorProses: TextView
 
@@ -65,6 +68,10 @@ class MainActivity : AppCompatActivity() {
         wadahModeBuku = findViewById(R.id.wadahModeBuku)
         proyektorBuku = findViewById(R.id.proyektorBuku)
         edtPencarian = findViewById(R.id.edtPencarian)
+        // Tambahkan 3 baris ini:
+        panelStatusPencarian = findViewById(R.id.panelStatusPencarian)
+        loadingPencarian = findViewById(R.id.loadingPencarian)
+        txtStatusPencarian = findViewById(R.id.txtStatusPencarian)
         panelIndikator = findViewById(R.id.panelIndikator)
         txtIndikatorProses = findViewById(R.id.txtIndikatorProses)
 
@@ -93,7 +100,7 @@ class MainActivity : AppCompatActivity() {
                     isSearchMode = false
                     edtPencarian.text.clear()
                     edtPencarian.clearFocus()
-                    
+                    panelStatusPencarian.visibility = View.GONE
                     val imm = getSystemService(Context.INPUT_METHOD_SERVICE) as InputMethodManager
                     imm.hideSoftInputFromWindow(edtPencarian.windowToken, 0)
                     
@@ -137,6 +144,7 @@ class MainActivity : AppCompatActivity() {
                 withContext(Dispatchers.Main) {
                     isSearchMode = false
                     edtPencarian.text.clear()
+                    panelStatusPencarian.visibility = View.GONE
                     wadahModeBuku.visibility = View.GONE
                     recyclerGridMode.visibility = View.VISIBLE
                     pompaDataKeLayar(hasilSaringan)
@@ -381,9 +389,10 @@ class MainActivity : AppCompatActivity() {
                 val kataKunci = edtPencarian.text.toString().trim()
                 isSearchMode = kataKunci.isNotEmpty()
                 
-                // 1. AKTIFKAN INDIKATOR: Kunci layar sejenak untuk proses pemindaian
-                panelIndikator.visibility = View.VISIBLE
-                txtIndikatorProses.text = "Memindai Pangkalan Data..."
+                // 1. AKTIFKAN PANEL PARALEL: Putar mesin indikator
+                panelStatusPencarian.visibility = View.VISIBLE
+                loadingPencarian.visibility = View.VISIBLE
+                txtStatusPencarian.text = "Memindai kargo data..."
                 
                 lifecycleScope.launch(Dispatchers.IO) {
                     val lenganRobot = ArsipDatabase.operasikanMesin(this@MainActivity).arsipDao()
@@ -401,20 +410,11 @@ class MainActivity : AppCompatActivity() {
 
                         pompaDataKeLayar(hasilSaringan)
                         
-                        // 2. MATIKAN INDIKATOR: Buka kembali kuncian layar setelah data mendarat
-                        panelIndikator.visibility = View.GONE
+                        // 2. MATIKAN PUTARAN: Hentikan roda gigi, tinggalkan teks hasil
+                        loadingPencarian.visibility = View.GONE
+                        txtStatusPencarian.text = "Ditemukan ${hasilSaringan.size} hasil dari matriks."
                         
-                        // 3. LOG JUMLAH HASIL: Lontarkan total kargo data yang ditemukan ke layar
-                        Toast.makeText(
-                            this@MainActivity, 
-                            "Pemindaian Selesai: Ditemukan ${hasilSaringan.size} kargo data.", 
-                            Toast.LENGTH_SHORT
-                        ).show()
-                        
-                        // 4. MATIKAN KURSOR: Paksa fokus keluar dari kolom pencarian
                         edtPencarian.clearFocus()
-                        
-                        // Lipat keyboard ke dalam dek bawah
                         val imm = getSystemService(Context.INPUT_METHOD_SERVICE) as InputMethodManager
                         imm.hideSoftInputFromWindow(edtPencarian.windowToken, 0)
                     }
@@ -425,8 +425,6 @@ class MainActivity : AppCompatActivity() {
             }
         }
     }
-
-        
 
 
     private fun tampilkanPanelKonfirmasiKeluar() {
