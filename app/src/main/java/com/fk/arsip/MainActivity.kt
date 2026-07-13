@@ -16,6 +16,7 @@ import android.widget.LinearLayout
 import android.widget.RelativeLayout
 import android.widget.TextView
 import android.widget.Toast
+import android.widget.ProgressBar
 import androidx.activity.OnBackPressedCallback
 import androidx.appcompat.app.AppCompatActivity
 import androidx.drawerlayout.widget.DrawerLayout
@@ -198,18 +199,19 @@ class MainActivity : AppCompatActivity() {
         return -1L
     }
 
-    private fun aktifkanMesinPenyedot() {
+        private fun aktifkanMesinPenyedot() {
         val downloadManager = getSystemService(Context.DOWNLOAD_SERVICE) as DownloadManager
         val idPipaAktif = cariPipaAktif(downloadManager)
         if (idPipaAktif != -1L) {
-            panelIndikator.visibility = View.VISIBLE
+            panelStatusPencarian.visibility = View.VISIBLE
             pantauTekananUnduhan(idPipaAktif, downloadManager)
             pasangSensorPendaratan(idPipaAktif, downloadManager)
             return
         }
 
-        panelIndikator.visibility = View.VISIBLE
-        txtIndikatorProses.text = "Menyalakan Pipa Transmisi..."
+        panelStatusPencarian.visibility = View.VISIBLE
+        loadingPencarian.visibility = View.VISIBLE
+        txtStatusPencarian.text = "Menghubungkan ke server..."
 
         val namaFileTemp = "$namaFile.temp"
         val fileTempLama = File(getExternalFilesDir(null), namaFileTemp)
@@ -217,7 +219,7 @@ class MainActivity : AppCompatActivity() {
 
         val request = DownloadManager.Request(Uri.parse(urlKargo))
             .setTitle("Arsip Fatwa Kehidupan")
-            .setDescription("Menyedot matriks data 115MB...")
+            .setDescription("Mengunduh file data (115MB)...")
             .setNotificationVisibility(DownloadManager.Request.VISIBILITY_VISIBLE_NOTIFY_COMPLETED)
             .setDestinationInExternalFilesDir(this, null, namaFileTemp)
             .setAllowedOverMetered(true)
@@ -228,7 +230,8 @@ class MainActivity : AppCompatActivity() {
         pasangSensorPendaratan(idUnduhan, downloadManager)
     }
 
-    private fun pasangSensorPendaratan(idUnduhan: Long, downloadManager: DownloadManager) {
+
+        private fun pasangSensorPendaratan(idUnduhan: Long, downloadManager: DownloadManager) {
         val sensorSelesai = object : BroadcastReceiver() {
             override fun onReceive(context: Context?, intent: Intent?) {
                 val id = intent?.getLongExtra(DownloadManager.EXTRA_DOWNLOAD_ID, -1)
@@ -243,12 +246,12 @@ class MainActivity : AppCompatActivity() {
                             val fileTempSelesai = File(getExternalFilesDir(null), namaFileTemp)
                             val fileAsli = File(getExternalFilesDir(null), namaFile)
                             if (fileTempSelesai.renameTo(fileAsli)) {
-                                Toast.makeText(this@MainActivity, "Kargo Valid. Memulai Ekstraksi...", Toast.LENGTH_LONG).show()
+                                txtStatusPencarian.text = "Unduhan selesai. Memproses data..."
                                 eksekusiPabrikData() 
                             }
                         } else {
-                            panelIndikator.visibility = View.GONE
-                            Toast.makeText(this@MainActivity, "Transmisi Gagal.", Toast.LENGTH_LONG).show()
+                            panelStatusPencarian.visibility = View.GONE
+                            Toast.makeText(this@MainActivity, "Pengunduhan gagal.", Toast.LENGTH_LONG).show()
                         }
                     }
                     cursor?.close()
@@ -258,7 +261,8 @@ class MainActivity : AppCompatActivity() {
         registerReceiver(sensorSelesai, IntentFilter(DownloadManager.ACTION_DOWNLOAD_COMPLETE))
     }
 
-    private fun pantauTekananUnduhan(idUnduhan: Long, downloadManager: DownloadManager) {
+
+        private fun pantauTekananUnduhan(idUnduhan: Long, downloadManager: DownloadManager) {
         lifecycleScope.launch(Dispatchers.Main) {
             var selesai = false
             while (!selesai) {
@@ -274,7 +278,7 @@ class MainActivity : AppCompatActivity() {
                         val total = cursor.getLong(totalIndex)
                         if (total > 0) {
                             val persentase = ((diunduh * 100) / total).toInt()
-                            txtIndikatorProses.text = "Menyedot Kargo: $persentase%"
+                            txtStatusPencarian.text = "Mengunduh: $persentase%"
                         }
                         if (status == DownloadManager.STATUS_SUCCESSFUL || status == DownloadManager.STATUS_FAILED) { selesai = true }
                     }
@@ -284,6 +288,7 @@ class MainActivity : AppCompatActivity() {
             }
         }
     }
+
 
     private suspend fun ekstrakDanInjeksiKeDb(fileTarget: File, lenganRobot: com.fk.arsip.database.ArsipDao) {
         val bobotMinimum = 110 * 1024 * 1024
@@ -295,10 +300,13 @@ class MainActivity : AppCompatActivity() {
             return
         }
 
-        withContext(Dispatchers.Main) {
-            panelIndikator.visibility = View.VISIBLE
-            txtIndikatorProses.text = "Mengekstrak Matriks..."
-        }
+            // Ganti fragmen teks indikator di dalam fungsi ekstrakDanInjeksiKeDb pada thread utama (Main Context)
+    withContext(Dispatchers.Main) {
+        panelStatusPencarian.visibility = View.VISIBLE
+        loadingPencarian.visibility = View.VISIBLE
+        txtStatusPencarian.text = "Menyimpan data ke database..."
+    }
+
 
         try {
             val reader = com.google.gson.stream.JsonReader(FileReader(fileTarget))
@@ -392,7 +400,7 @@ class MainActivity : AppCompatActivity() {
                 // 1. AKTIFKAN PANEL PARALEL: Putar mesin indikator
                 panelStatusPencarian.visibility = View.VISIBLE
                 loadingPencarian.visibility = View.VISIBLE
-                txtStatusPencarian.text = "Memindai kargo data..."
+                txtStatusPencarian.text = "Mencari data..."
                 
                 lifecycleScope.launch(Dispatchers.IO) {
                     val lenganRobot = ArsipDatabase.operasikanMesin(this@MainActivity).arsipDao()
@@ -412,7 +420,7 @@ class MainActivity : AppCompatActivity() {
                         
                         // 2. MATIKAN PUTARAN: Hentikan roda gigi, tinggalkan teks hasil
                         loadingPencarian.visibility = View.GONE
-                        txtStatusPencarian.text = "Ditemukan ${hasilSaringan.size} hasil dari matriks."
+                        txtStatusPencarian.text = "Ditemukan ${hasilSaringan.size} hasil."
                         
                         edtPencarian.clearFocus()
                         val imm = getSystemService(Context.INPUT_METHOD_SERVICE) as InputMethodManager
@@ -427,16 +435,17 @@ class MainActivity : AppCompatActivity() {
     }
 
 
-    private fun tampilkanPanelKonfirmasiKeluar() {
+        private fun tampilkanPanelKonfirmasiKeluar() {
         val matriksPanel = android.app.AlertDialog.Builder(this)
-            .setTitle("Pemutusan Arus")
-            .setMessage("Apakah Anda yakin ingin mematikan mesin dan keluar dari arsip?")
+            .setTitle("Keluar Aplikasi")
+            .setMessage("Apakah Anda yakin ingin keluar dari aplikasi?")
             .setCancelable(false)
-            .setPositiveButton("Matikan") { _, _ -> finish() }
+            .setPositiveButton("Keluar") { _, _ -> finish() }
             .setNegativeButton("Batal") { dialog, _ -> dialog.dismiss() }
             .create()
         matriksPanel.show()
     }
+
     
         // Tuas Penyesuai Kompartemen Dinamis
     private fun sesuaikanKompartemenGrid() {
