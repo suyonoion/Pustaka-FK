@@ -90,4 +90,10 @@ class BukuAdapter(private var daftarArsip: List<ArsipEntity>) : RecyclerView.Ada
     }
 
     override fun getItemCount(): Int = daftarArsip.size
+
+  fun perbaruiData(baru: List<ArsipEntity>) {
+    this.daftarArsip = baru
+    notifyDataSetChanged()
+}
+
 }

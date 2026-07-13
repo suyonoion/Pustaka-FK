@@ -7,6 +7,7 @@ import android.content.Intent
 import android.content.IntentFilter
 import android.net.Uri
 import android.os.Bundle
+import android.view.KeyEvent
 import android.view.View
 import android.view.inputmethod.EditorInfo
 import android.view.inputmethod.InputMethodManager
@@ -49,7 +50,10 @@ class MainActivity : AppCompatActivity() {
 
     private lateinit var gridAdapter: GridAdapter
     private lateinit var bukuAdapter: BukuAdapter
+    
+    // Penampung Arus Data & Sakelar Status Informasi
     private var daftarArsipAktif: List<ArsipEntity> = listOf()
+    private var isSearchMode = false 
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -65,37 +69,40 @@ class MainActivity : AppCompatActivity() {
         txtIndikatorProses = findViewById(R.id.txtIndikatorProses)
 
         recyclerGridMode.layoutManager = GridLayoutManager(this, 2)
-
-        // Hapus PageTransformer tumpang tindih, biarkan bergeser horizontal secara default dan stabil
         proyektorBuku.setPageTransformer(null)
 
-                // Fase IV: Pembajakan Rem Sistem Utama (Tombol Fisik HP)
+        // Inisialisasi awal kompartemen transmisi (Adapter Kosong) untuk mencegah malfungsi layout
+        gridAdapter = GridAdapter(daftarArsipAktif) { posisi -> bukaModeBuku(posisi) }
+        recyclerGridMode.adapter = gridAdapter
+        bukuAdapter = BukuAdapter(daftarArsipAktif)
+        proyektorBuku.adapter = bukuAdapter
+
+        // PENGELASAN UTAMA: Sirkuit Pengereman Berjenjang Mutlak (Hardware Back Button)
         onBackPressedDispatcher.addCallback(this, object : OnBackPressedCallback(true) {
             override fun handleOnBackPressed() {
-                // Katup 1: Jika Laci Navigasi terbuka -> Tutup Laci
                 if (drawerLayout.isDrawerOpen(androidx.core.view.GravityCompat.START)) {
                     drawerLayout.closeDrawer(androidx.core.view.GravityCompat.START)
                 } 
-                // Katup 2: Jika Proyektor Buku menyala -> Matikan, kembali ke Grid
                 else if (wadahModeBuku.visibility == View.VISIBLE) {
                     wadahModeBuku.visibility = View.GONE
                     recyclerGridMode.visibility = View.VISIBLE
                 } 
-                // Katup 3: Jika Kolom Pencarian terisi -> Kosongkan dan Muat Ulang Data Awal
-                else if (edtPencarian.text.toString().isNotEmpty()) {
+                // Jika sedang dalam mode pencarian, reset total ke struktur awal (Semua Daftar Grid)
+                else if (isSearchMode || edtPencarian.text.toString().isNotEmpty()) {
+                    isSearchMode = false
                     edtPencarian.text.clear()
                     edtPencarian.clearFocus()
+                    
                     val imm = getSystemService(Context.INPUT_METHOD_SERVICE) as InputMethodManager
                     imm.hideSoftInputFromWindow(edtPencarian.windowToken, 0)
-                    eksekusiPabrikData() 
+                    
+                    eksekusiPabrikData() // Tarik ulang seluruh muatan awal
                 } 
-                // Katup 4: Konfirmasi Pemutusan Arus (Keluar Aplikasi)
                 else {
                     tampilkanPanelKonfirmasiKeluar()
                 }
             }
         })
-
 
         inisialisasiSirkuitAppDrawer()
         aktifkanSirkuitPencarian()
@@ -117,14 +124,15 @@ class MainActivity : AppCompatActivity() {
                 val hasilSaringan = if (kategoriSaringan.isEmpty()) {
                     lenganRobot.tarikSemuaArsip()
                 } else {
-                    lenganRobot.saringArsip(kategoriSaringan) // Re-use saringArsip berdasarkan teks kategori
+                    lenganRobot.saringArsip(kategoriSaringan)
                 }
 
                 withContext(Dispatchers.Main) {
+                    isSearchMode = false
+                    edtPencarian.text.clear()
                     wadahModeBuku.visibility = View.GONE
                     recyclerGridMode.visibility = View.VISIBLE
-                    daftarArsipAktif = hasilSaringan
-                    pompaDataKeLayar(daftarArsipAktif)
+                    pompaDataKeLayar(hasilSaringan)
                     drawerLayout.closeDrawers()
                 }
             }
@@ -146,10 +154,10 @@ class MainActivity : AppCompatActivity() {
                     ekstrakDanInjeksiKeDb(fileTarget, lenganRobot)
                 }
             } else {
-                daftarArsipAktif = lenganRobot.tarikSemuaArsip()
+                val semuaData = lenganRobot.tarikSemuaArsip()
                 withContext(Dispatchers.Main) {
                     panelIndikator.visibility = View.GONE
-                    pompaDataKeLayar(daftarArsipAktif)
+                    pompaDataKeLayar(semuaData)
                 }
             }
         }
@@ -333,10 +341,10 @@ class MainActivity : AppCompatActivity() {
             reader.endArray() 
             reader.close()
 
-            daftarArsipAktif = lenganRobot.tarikSemuaArsip()
+            val semuaData = lenganRobot.tarikSemuaArsip()
             withContext(Dispatchers.Main) {
                 panelIndikator.visibility = View.GONE
-                pompaDataKeLayar(daftarArsipAktif)
+                pompaDataKeLayar(semuaData)
             }
         } catch (e: Exception) {
             e.printStackTrace()
@@ -346,10 +354,9 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun pompaDataKeLayar(dataLayar: List<ArsipEntity>) {
-        gridAdapter = GridAdapter(dataLayar) { posisi -> bukaModeBuku(posisi) }
-        recyclerGridMode.adapter = gridAdapter
-        bukuAdapter = BukuAdapter(dataLayar)
-        proyektorBuku.adapter = bukuAdapter
+        daftarArsipAktif = dataLayar
+        gridAdapter.perbaruiData(dataLayar)
+        bukuAdapter.perbaruiData(dataLayar)
     }
 
     private fun bukaModeBuku(posisi: Int) {
@@ -358,10 +365,14 @@ class MainActivity : AppCompatActivity() {
         proyektorBuku.setCurrentItem(posisi, false)
     }
 
+    // Sirkuit Pencarian Diperkuat Dengan Penangkap Katup Enter Manual (Universal Keyboard Fix)
     private fun aktifkanSirkuitPencarian() {
-        edtPencarian.setOnEditorActionListener { _, actionId, _ ->
-            if (actionId == EditorInfo.IME_ACTION_SEARCH) {
+        edtPencarian.setOnEditorActionListener { _, actionId, event ->
+            if (actionId == EditorInfo.IME_ACTION_SEARCH || 
+                (event != null && event.keyCode == KeyEvent.KEYCODE_ENTER && event.action == KeyEvent.ACTION_DOWN)) {
+                
                 val kataKunci = edtPencarian.text.toString().trim()
+                isSearchMode = kataKunci.isNotEmpty()
                 
                 lifecycleScope.launch(Dispatchers.IO) {
                     val lenganRobot = ArsipDatabase.operasikanMesin(this@MainActivity).arsipDao()
@@ -372,14 +383,13 @@ class MainActivity : AppCompatActivity() {
                     }
                     
                     withContext(Dispatchers.Main) {
-                        // KOREKSI UTAMA: Tutup paksa mode Buku jika sedang terbuka, paksa visual kembali ke Grid
+                        // Tutup paksa proyektor buku jika pencarian ditembak saat membaca
                         if (wadahModeBuku.visibility == View.VISIBLE) {
                             wadahModeBuku.visibility = View.GONE
                             recyclerGridMode.visibility = View.VISIBLE
                         }
 
-                        daftarArsipAktif = hasilSaringan
-                        pompaDataKeLayar(daftarArsipAktif)
+                        pompaDataKeLayar(hasilSaringan)
                         
                         val imm = getSystemService(Context.INPUT_METHOD_SERVICE) as InputMethodManager
                         imm.hideSoftInputFromWindow(edtPencarian.windowToken, 0)
@@ -392,23 +402,16 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
-    // Sakelar Pengaman Pemutusan Arus
     private fun tampilkanPanelKonfirmasiKeluar() {
         val matriksPanel = android.app.AlertDialog.Builder(this)
             .setTitle("Pemutusan Arus")
             .setMessage("Apakah Anda yakin ingin mematikan mesin dan keluar dari arsip?")
-            .setCancelable(false) // Mengunci panel agar tidak hilang saat disentuh di luarnya
-            .setPositiveButton("Matikan") { _, _ ->
-                finish() // Memutus arus utama aplikasi secara absolut
-            }
-            .setNegativeButton("Batal") { dialog, _ ->
-                dialog.dismiss() // Menutup panel dan membiarkan mesin tetap hidup
-            }
+            .setCancelable(false)
+            .setPositiveButton("Matikan") { _, _ -> finish() }
+            .setNegativeButton("Batal") { dialog, _ -> dialog.dismiss() }
             .create()
-        
         matriksPanel.show()
     }
-
 
     private fun mesinDeteksiKategori(teksKonten: String): String {
         val matriksTeks = teksKonten.lowercase()
