@@ -372,15 +372,17 @@ class MainActivity : AppCompatActivity() {
         proyektorBuku.setCurrentItem(posisi, false)
     }
 
-    // Sirkuit Pencarian Diperkuat Dengan Penangkap Katup Enter Manual (Universal Keyboard Fix)
-        private fun aktifkanSirkuitPencarian() {
+    // Sirkuit Pencarian Diperkuat Dengan Penangkap Katup Enter Manual (Universal Keyboard Fix)    private fun aktifkanSirkuitPencarian() {
         edtPencarian.setOnEditorActionListener { _, actionId, event ->
             if (actionId == EditorInfo.IME_ACTION_SEARCH || 
                 (event != null && event.keyCode == KeyEvent.KEYCODE_ENTER && event.action == KeyEvent.ACTION_DOWN)) {
                 
                 val kataKunci = edtPencarian.text.toString().trim()
-                
                 isSearchMode = kataKunci.isNotEmpty()
+                
+                // 1. AKTIFKAN INDIKATOR: Kunci layar sejenak untuk proses pemindaian
+                panelIndikator.visibility = View.VISIBLE
+                txtIndikatorProses.text = "Memindai Pangkalan Data..."
                 
                 lifecycleScope.launch(Dispatchers.IO) {
                     val lenganRobot = ArsipDatabase.operasikanMesin(this@MainActivity).arsipDao()
@@ -391,7 +393,6 @@ class MainActivity : AppCompatActivity() {
                     }
                     
                     withContext(Dispatchers.Main) {
-                        // Tutup paksa proyektor buku jika pencarian ditembak saat membaca
                         if (wadahModeBuku.visibility == View.VISIBLE) {
                             wadahModeBuku.visibility = View.GONE
                             recyclerGridMode.visibility = View.VISIBLE
@@ -399,6 +400,20 @@ class MainActivity : AppCompatActivity() {
 
                         pompaDataKeLayar(hasilSaringan)
                         
+                        // 2. MATIKAN INDIKATOR: Buka kembali kuncian layar setelah data mendarat
+                        panelIndikator.visibility = View.GONE
+                        
+                        // 3. LOG JUMLAH HASIL: Lontarkan total kargo data yang ditemukan ke layar
+                        Toast.makeText(
+                            this@MainActivity, 
+                            "Pemindaian Selesai: Ditemukan ${hasilSaringan.size} kargo data.", 
+                            Toast.LENGTH_SHORT
+                        ).show()
+                        
+                        // 4. MATIKAN KURSOR: Paksa fokus keluar dari kolom pencarian
+                        edtPencarian.clearFocus()
+                        
+                        // Lipat keyboard ke dalam dek bawah
                         val imm = getSystemService(Context.INPUT_METHOD_SERVICE) as InputMethodManager
                         imm.hideSoftInputFromWindow(edtPencarian.windowToken, 0)
                     }
@@ -409,6 +424,8 @@ class MainActivity : AppCompatActivity() {
             }
         }
     }
+
+        
 
 
     private fun tampilkanPanelKonfirmasiKeluar() {
