@@ -11,8 +11,6 @@
         android:layout_width="match_parent"
         android:layout_height="match_parent"
         android:orientation="vertical"
-        android:focusable="true"
-        android:focusableInTouchMode="true"
         android:background="#EFEFEF">
 
         <EditText
@@ -25,7 +23,6 @@
             android:hint="Cari Fatwa..."
             android:elevation="2dp"
             android:inputType="text"
-            android:imeOptions="actionSearch"
             android:maxLines="1" />
 
         <androidx.cardview.widget.CardView
@@ -36,7 +33,6 @@
             android:layout_marginBottom="10dp"
             app:cardCornerRadius="8dp"
             app:cardElevation="2dp"
-            app:cardBackgroundColor="@android:color/white"
             android:visibility="gone">
 
             <LinearLayout
@@ -51,7 +47,7 @@
                     style="?android:attr/progressBarStyleSmall"
                     android:layout_width="20dp"
                     android:layout_height="20dp"
-                    android:indeterminateTint="#1877F2" />
+                    android:indeterminateTint="#004D40" />
 
                 <TextView
                     android:id="@+id/txtStatusPencarian"
@@ -61,7 +57,7 @@
                     android:layout_marginStart="10dp"
                     android:textColor="#1C1E21"
                     android:textSize="13sp"
-                    android:text="Memproses..." />
+                    android:text="Memproses data..." />
             </LinearLayout>
         </androidx.cardview.widget.CardView>
 
@@ -69,14 +65,11 @@
             android:layout_width="match_parent"
             android:layout_height="0dp"
             android:layout_weight="1">
-
             <androidx.recyclerview.widget.RecyclerView
                 android:id="@+id/recyclerGridMode"
                 android:layout_width="match_parent"
                 android:layout_height="match_parent"
-                android:padding="4dp"
-                android:clipToPadding="false"/>
-
+                android:padding="4dp" />
             <RelativeLayout
                 android:id="@+id/wadahModeBuku"
                 android:layout_width="match_parent"
@@ -89,7 +82,7 @@
             </RelativeLayout>
         </FrameLayout>
 
-                <LinearLayout
+        <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="44dp"
             android:orientation="horizontal"
@@ -97,7 +90,6 @@
             android:background="#004D40"
             android:elevation="6dp"
             android:baselineAligned="false">
-            
             <LinearLayout
                 android:id="@+id/linkSanFK_induk"
                 android:layout_width="0dp"
@@ -119,10 +111,8 @@
                     android:text="SanFK Kendal"
                     android:textColor="#FFFFFF"
                     android:textSize="10sp"
-                    android:fontFamily="sans-serif-medium"
                     android:layout_marginStart="4dp"/>
             </LinearLayout>
-
             <LinearLayout
                 android:id="@+id/linkSaung_induk"
                 android:layout_width="0dp"
@@ -144,10 +134,8 @@
                     android:text="Saung JAWA"
                     android:textColor="#FFFFFF"
                     android:textSize="10sp"
-                    android:fontFamily="sans-serif-medium"
                     android:layout_marginStart="4dp"/>
             </LinearLayout>
-
             <LinearLayout
                 android:id="@+id/linkZF_induk"
                 android:layout_width="0dp"
@@ -169,12 +157,10 @@
                     android:text="Zuhri Formalism"
                     android:textColor="#FFFFFF"
                     android:textSize="10sp"
-                    android:fontFamily="sans-serif-medium"
                     android:layout_marginStart="4dp"/>
             </LinearLayout>
         </LinearLayout>
-
-        </LinearLayout>
+    </LinearLayout>
 
     <LinearLayout
         android:id="@+id/navViewCustom"
@@ -192,14 +178,12 @@
             android:background="#004D40"
             android:orientation="vertical"
             android:padding="20dp">
-            
             <ImageView
                 android:layout_width="70dp"
                 android:layout_height="70dp"
                 android:src="@drawable/profil_abah"
                 android:scaleType="centerCrop"
-                android:layout_marginTop="16dp"
-                android:contentDescription="Foto Profil Pusat Laci"/>
+                android:layout_marginTop="16dp"/>
             <TextView
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
@@ -208,7 +192,6 @@
                 android:textStyle="bold"
                 android:textSize="18sp"
                 android:layout_marginTop="12dp"/>
-                
             <TextView
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
@@ -221,20 +204,19 @@
             android:layout_width="match_parent"
             android:layout_height="match_parent"
             android:fillViewport="true">
-            
             <LinearLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:orientation="vertical"
                 android:paddingBottom="20dp">
-
+                
                 <TextView android:id="@+id/menuBiografi" android:layout_width="match_parent" android:layout_height="wrap_content" android:text="Biografi" android:drawableStart="@android:drawable/ic_menu_info_details" android:drawablePadding="12dp" android:textColor="#212121" android:textSize="14sp" android:padding="14dp" android:background="?android:attr/selectableItemBackground"/>
                 <TextView android:id="@+id/menuSosmed" android:layout_width="match_parent" android:layout_height="wrap_content" android:text="Sosial Media" android:drawableStart="@android:drawable/ic_menu_share" android:drawablePadding="12dp" android:textColor="#212121" android:textSize="14sp" android:padding="14dp" android:background="?android:attr/selectableItemBackground"/>
                 <TextView android:id="@+id/menuLetnan" android:layout_width="match_parent" android:layout_height="wrap_content" android:text="Letnan" android:drawableStart="@android:drawable/ic_menu_myplaces" android:drawablePadding="12dp" android:textColor="#212121" android:textSize="14sp" android:padding="14dp" android:background="?android:attr/selectableItemBackground"/>
                 <TextView android:id="@+id/menuYayasan" android:layout_width="match_parent" android:layout_height="wrap_content" android:text="Yayasan" android:drawableStart="@android:drawable/ic_menu_manage" android:drawablePadding="12dp" android:textColor="#212121" android:textSize="14sp" android:padding="14dp" android:background="?android:attr/selectableItemBackground"/>
 
                 <View android:layout_width="match_parent" android:layout_height="1dp" android:background="#E0E0E0" android:layout_marginVertical="8dp"/>
-
+                
                 <TextView
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
@@ -249,10 +231,10 @@
                     android:id="@+id/wadahKategoriDinamis"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:orientation="vertical"/>
-                    
+                    android:orientation="vertical"
+                    android:paddingTop="16dp"
+                    android:paddingBottom="16dp" />
             </LinearLayout>
         </ScrollView>
     </LinearLayout>
-
 </androidx.drawerlayout.widget.DrawerLayout>
