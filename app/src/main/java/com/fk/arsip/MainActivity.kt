@@ -117,6 +117,7 @@ class MainActivity : AppCompatActivity() {
             }
         })
 
+        InisialisasiTuasFooterStatis()
         inisialisasiSirkuitAppDrawer()
         aktifkanSirkuitPencarian()
         eksekusiPabrikData()
@@ -126,44 +127,156 @@ class MainActivity : AppCompatActivity() {
         super.onConfigurationChanged(newConfig)
         // Jalankan kalkulasi ulang pembagian kolom secara instan
         sesuaikanKompartemenGrid() 
-    }
+    }    
+    
     private fun inisialisasiSirkuitAppDrawer() {
         val tombolBiografi = findViewById<TextView>(R.id.menuBiografi)
         val tombolSosmed = findViewById<TextView>(R.id.menuSosmed)
         val tombolLetnan = findViewById<TextView>(R.id.menuLetnan)
         val tombolYayasan = findViewById<TextView>(R.id.menuYayasan)
 
-                val eksekusiSaringan = { kategori: String ->
-            // ====================================================
-            // GERBANG PEMBLOKIR ARUS
-            if (isMesinSibuk) {
-                Toast.makeText(this@MainActivity, "Sistem sedang merakit pangkalan data. Harap tunggu.", Toast.LENGTH_SHORT).show()
-            } else {
-                // Eksekusi normal jika mesin tidak sibuk
-                lifecycleScope.launch(Dispatchers.IO) {
-                    val lenganRobot = ArsipDatabase.operasikanMesin(this@MainActivity).arsipDao()
-                    val hasilSaringan = lenganRobot.saringArsip(kategori)
+        // Rute pemisah untuk halaman khusus di masa mendatang
+        tombolBiografi.setOnClickListener { eksekusiSaringanKategori("Biografi") }
+        tombolSosmed.setOnClickListener { eksekusiSaringanKategori("Sosial Media") }
+        tombolLetnan.setOnClickListener { eksekusiSaringanKategori("Letnan") }
+        tombolYayasan.setOnClickListener { eksekusiSaringanKategori("Yayasan") }
 
-                    withContext(Dispatchers.Main) {
-                        isSearchMode = false
-                        edtPencarian.text.clear()
-                        panelStatusPencarian.visibility = View.GONE
-                        wadahModeBuku.visibility = View.GONE
-                        recyclerGridMode.visibility = View.VISIBLE
-                        pompaDataKeLayar(hasilSaringan)
-                        drawerLayout.closeDrawers()
+        // Bangun sasis kategori bersarang secara dinamis
+        inisialisasiKategoriDrawer()
+    }
+
+    private fun inisialisasiKategoriDrawer() {
+        val wadah = findViewById<LinearLayout>(R.id.wadahKategoriDinamis)
+        wadah.removeAllViews()
+
+        // Matriks struktur kategori bersarang
+        val daftarKategori = listOf(
+            "Ijazah Khusus Murid" to listOf(),
+            "Ijazah Umum" to listOf(
+                "Adab / Minta Izin Ijazah",
+                "Wasilah (Kirim Al-Fatehah)",
+                "Pagar Gaib Fatwa Kehidupan (PGFK)",
+                "Angin Kencang",
+                "Hujan Lebat",
+                "Lempari Jin, yaa hayyu yaa matin",
+                "Energi Negatif",
+                "Melihat Makhluk Halus",
+                "Hajat",
+                "Ain / Sawan",
+                "Sastra Balik Bala'",
+                "Dzikir Fida'",
+                "Sholawat Nariyah Ba'da Shubuh",
+                "Hama Tikus ( Alkemi Mistik )",
+                "Putar Giling",
+                "Caroko Walik",
+                "Sembelih Hewan"
+            ),
+            "Program Social" to listOf(),
+            "Acara Kopdar" to listOf(),
+            "Produk FK" to listOf()
+        )
+
+        for (kategori in daftarKategori) {
+            val induk = kategori.first
+            val cabang = kategori.second
+
+            // Pemasangan Baris Induk Kategori
+            val barisInduk = TextView(this).apply {
+                layoutParams = LinearLayout.LayoutParams(
+                    LinearLayout.LayoutParams.MATCH_PARENT,
+                    LinearLayout.LayoutParams.WRAP_CONTENT
+                )
+                text = induk
+                textSize = 14sp
+                setTextColor(android.graphics.Color.parseColor("#1C1E21"))
+                setPadding(52, 36, 52, 36)
+                setBackgroundResource(android.R.drawable.list_selector_background)
+                isClickable = true
+                isFocusable = true
+                gravity = android.view.Gravity.CENTER_VERTICAL
+            }
+
+            if (cabang.isNotEmpty()) {
+                // Beri indikator panah bawah untuk kategori yang memiliki anak
+                barisInduk.setCompoundDrawablesWithIntrinsicBounds(0, 0, android.R.drawable.arrow_down_float, 0)
+                
+                val wadahAnak = LinearLayout(this).apply {
+                    layoutParams = LinearLayout.LayoutParams(
+                        LinearLayout.LayoutParams.MATCH_PARENT,
+                        LinearLayout.LayoutParams.WRAP_CONTENT
+                    )
+                    orientation = LinearLayout.VERTICAL
+                    visibility = View.GONE // Terlipat secara default
+                }
+
+                for (itemAnak in cabang) {
+                    val barisAnak = TextView(this).apply {
+                        layoutParams = LinearLayout.LayoutParams(
+                            LinearLayout.LayoutParams.MATCH_PARENT,
+                            LinearLayout.LayoutParams.WRAP_CONTENT
+                        ).apply {
+                            setMargins(72, 8, 32, 8)
+                        }
+                        text = "•  $itemAnak"
+                        textSize = 12sp
+                        setTextColor(android.graphics.Color.parseColor("#555555"))
+                        setPadding(24, 16, 24, 16)
+                        setBackgroundResource(android.R.drawable.list_selector_background)
+                        isClickable = true
+                        isFocusable = true
+                        
+                        setOnClickListener {
+                            eksekusiSaringanKategori(itemAnak)
+                        }
+                    }
+                    wadahAnak.addView(barisAnak)
+                }
+
+                // Mekanika buka-tutup (accordion)
+                barisInduk.setOnClickListener {
+                    if (wadahAnak.visibility == View.VISIBLE) {
+                        wadahAnak.visibility = View.GONE
+                        barisInduk.setCompoundDrawablesWithIntrinsicBounds(0, 0, android.R.drawable.arrow_down_float, 0)
+                    } else {
+                        wadahAnak.visibility = View.VISIBLE
+                        barisInduk.setCompoundDrawablesWithIntrinsicBounds(0, 0, android.R.drawable.arrow_up_float, 0)
                     }
                 }
+
+                wadah.addView(barisInduk)
+                wadah.addView(wadahAnak)
+            } else {
+                barisInduk.setOnClickListener {
+                    eksekusiSaringanKategori(induk)
+                }
+                wadah.addView(barisInduk)
             }
-            // ====================================================
         }
-
-
-        tombolBiografi.setOnClickListener { eksekusiSaringan("Biografi") }
-        tombolSosmed.setOnClickListener { eksekusiSaringan("Sosial Media") }
-        tombolLetnan.setOnClickListener { eksekusiSaringan("Letnan") }
-        tombolYayasan.setOnClickListener { eksekusiSaringan("Yayasan") }
     }
+
+    // Sirkuit Pintu Penyaringan Kategori Laci
+    private fun eksekusiSaringanKategori(kategori: String) {
+        if (isMesinSibuk) {
+            Toast.makeText(this, "Sistem sedang merakit pangkalan data. Harap tunggu.", Toast.LENGTH_SHORT).show()
+            return
+        }
+        lifecycleScope.launch(Dispatchers.IO) {
+            val database = ArsipDatabase.operasikanMesin(this@MainActivity)
+            val hasilSaringan = database.arsipDao().saringArsip(kategori)
+
+            withContext(Dispatchers.Main) {
+                isSearchMode = false
+                edtPencarian.text.clear()
+                panelStatusPencarian.visibility = View.GONE
+                wadahModeBuku.visibility = View.GONE
+                recyclerGridMode.visibility = View.VISIBLE
+                pompaDataKeLayar(hasilSaringan)
+                drawerLayout.closeDrawers()
+            }
+        }
+    }
+
+    
 
     // Sirkuit Pemicu Footer Statis
     private fun inisialisasiTuasFooterStatis() {
@@ -410,6 +523,7 @@ class MainActivity : AppCompatActivity() {
                 }
 
                 val kategori = mesinDeteksiKategori(kontenPenuh)
+               
                 val daftarFoto = mutableListOf<String>()
                 val mediaArray = obj.optJSONArray("media") ?: sharedObj?.optJSONArray("media")
                 if (mediaArray != null) {
@@ -417,13 +531,19 @@ class MainActivity : AppCompatActivity() {
                         val mediaObj = mediaArray.getJSONObject(m)
                         if (mediaObj.optString("__typename", "") == "Video") {
                             val uriThumb = mediaObj.optJSONObject("thumbnailImage")?.optString("uri", "") ?: mediaObj.optString("thumbnail", "")
-                            if (uriThumb.isNotEmpty()) daftarFoto.add(uriThumb)
+                            if (uriThumb.isNotEmpty()) {
+                                // Menyuntikkan indikator video untuk memotong beban database
+                                daftarFoto.add("video:$uriThumb") 
+                            }
                         } else {
                             val uriGbr = mediaObj.optJSONObject("image")?.optString("uri", "") ?: ""
-                            if (uriGbr.isNotEmpty()) daftarFoto.add(uriGbr)
+                            if (uriGbr.isNotEmpty()) {
+                                daftarFoto.add("image:$uriGbr")
+                            }
                         }
                     }
                 }
+
 
                 muatanSementara.add(ArsipEntity(idPosting, namaPenulis, urlProfilPic, waktuRilis, tanggalBaca, kontenPenuh, tautanAsli, daftarFoto.joinToString(","), kategori))
                 indeks++

@@ -89,13 +89,13 @@
             </RelativeLayout>
         </FrameLayout>
 
-        <LinearLayout
+                <LinearLayout
             android:layout_width="match_parent"
-            android:layout_height="56dp"
+            android:layout_height="44dp"
             android:orientation="horizontal"
             android:gravity="center_vertical"
-            android:background="#FFFFFF"
-            android:elevation="8dp"
+            android:background="#004D40"
+            android:elevation="6dp"
             android:baselineAligned="false">
             
             <LinearLayout
@@ -109,18 +109,18 @@
                 android:clickable="true"
                 android:focusable="true">
                 <ImageView
-                    android:layout_width="20dp"
-                    android:layout_height="20dp"
+                    android:layout_width="16dp"
+                    android:layout_height="16dp"
                     android:src="@android:drawable/ic_menu_mylocation"
-                    app:tint="#757575"/>
+                    app:tint="#FFFFFF"/>
                 <TextView
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:text="SanFK Kendal"
-                    android:textColor="#757575"
-                    android:textSize="11sp"
+                    android:textColor="#FFFFFF"
+                    android:textSize="10sp"
                     android:fontFamily="sans-serif-medium"
-                    android:layout_marginStart="6dp"/>
+                    android:layout_marginStart="4dp"/>
             </LinearLayout>
 
             <LinearLayout
@@ -134,18 +134,18 @@
                 android:clickable="true"
                 android:focusable="true">
                 <ImageView
-                    android:layout_width="20dp"
-                    android:layout_height="20dp"
+                    android:layout_width="16dp"
+                    android:layout_height="16dp"
                     app:srcCompat="@drawable/logo_saung"
-                    app:tint="#757575"/>
+                    app:tint="#FFFFFF"/>
                 <TextView
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:text="Saung JAWA"
-                    android:textColor="#757575"
-                    android:textSize="11sp"
+                    android:textColor="#FFFFFF"
+                    android:textSize="10sp"
                     android:fontFamily="sans-serif-medium"
-                    android:layout_marginStart="6dp"/>
+                    android:layout_marginStart="4dp"/>
             </LinearLayout>
 
             <LinearLayout
@@ -159,20 +159,21 @@
                 android:clickable="true"
                 android:focusable="true">
                 <ImageView
-                    android:layout_width="20dp"
-                    android:layout_height="20dp"
+                    android:layout_width="16dp"
+                    android:layout_height="16dp"
                     app:srcCompat="@drawable/ic_launcher_zf"
-                    app:tint="#757575"/>
+                    app:tint="#FFFFFF"/>
                 <TextView
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:text="Zuhri Formalism"
-                    android:textColor="#757575"
-                    android:textSize="11sp"
+                    android:textColor="#FFFFFF"
+                    android:textSize="10sp"
                     android:fontFamily="sans-serif-medium"
-                    android:layout_marginStart="6dp"/>
+                    android:layout_marginStart="4dp"/>
             </LinearLayout>
         </LinearLayout>
+
         </LinearLayout>
 
     <LinearLayout
