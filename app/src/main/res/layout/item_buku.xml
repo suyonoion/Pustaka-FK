@@ -107,39 +107,79 @@
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:orientation="vertical">
-            
-           <TextView
+ 
+            <TextView
                 android:id="@+id/txtKonten"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:textSize="14sp"
                 android:textColor="#212121"
                 android:lineSpacingExtra="5dp"
+                android:autoLink="web" 
+                android:linksClickable="true"
+                android:textColorLink="#00B0FF"
                 android:layout_marginBottom="12dp"/>
 
             <LinearLayout
-                android:id="@+id/linkSumberTautan"
-                android:layout_width="wrap_content"
+                android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:orientation="horizontal"
                 android:gravity="center_vertical"
-                android:background="?android:attr/selectableItemBackground"
-                android:clickable="true"
-                android:focusable="true"
-                android:layout_marginBottom="16dp"
-                android:padding="6dp">
-                <ImageView
-                    android:layout_width="16dp"
-                    android:layout_height="16dp"
-                    app:srcCompat="@drawable/logo_fb"/>
-                <TextView
+                android:layout_marginBottom="16dp">
+
+                <LinearLayout
+                    android:id="@+id/linkSumberTautan"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:text="Lihat Sumber Asli"
-                    android:textColor="#1976D2"
-                    android:textSize="12sp"
-                    android:textStyle="bold"
-                    android:layout_marginStart="8dp"/>
+                    android:orientation="horizontal"
+                    android:gravity="center_vertical"
+                    android:background="?android:attr/selectableItemBackground"
+                    android:clickable="true"
+                    android:focusable="true"
+                    android:padding="6dp">
+                    <ImageView
+                        android:layout_width="16dp"
+                        android:layout_height="16dp"
+                        app:srcCompat="@drawable/logo_fb"/>
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="Sumber Asli"
+                        android:textColor="#1976D2"
+                        android:textSize="12sp"
+                        android:textStyle="bold"
+                        android:layout_marginStart="8dp"/>
+                </LinearLayout>
+
+                <View
+                    android:layout_width="0dp"
+                    android:layout_height="0dp"
+                    android:layout_weight="1"/>
+
+                <LinearLayout
+                    android:id="@+id/btnBagikanKonten"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:orientation="horizontal"
+                    android:gravity="center_vertical"
+                    android:background="?android:attr/selectableItemBackground"
+                    android:clickable="true"
+                    android:focusable="true"
+                    android:padding="6dp">
+                    <ImageView
+                        android:layout_width="16dp"
+                        android:layout_height="16dp"
+                        android:src="@android:drawable/ic_menu_share"
+                        app:tint="#424242"/>
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="Bagikan"
+                        android:textColor="#424242"
+                        android:textSize="12sp"
+                        android:textStyle="bold"
+                        android:layout_marginStart="8dp"/>
+                </LinearLayout>
             </LinearLayout>
 
             <LinearLayout

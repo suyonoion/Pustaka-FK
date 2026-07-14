@@ -23,6 +23,8 @@ class BukuAdapter(private var daftarArsip: List<ArsipEntity>) : RecyclerView.Ada
         val txtKonten = view.findViewById<TextView>(R.id.txtKonten)
         val btnTautan = view.findViewById<LinearLayout>(R.id.linkSumberTautan)
         val wadahFoto = view.findViewById<LinearLayout>(R.id.wadahMultiFoto)
+        val btnBagikan = view.findViewById<LinearLayout>(R.id.btnBagikanKonten)
+
     }
 
     override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): BukuViewHolder {
@@ -64,6 +66,24 @@ class BukuAdapter(private var daftarArsip: List<ArsipEntity>) : RecyclerView.Ada
                 Toast.makeText(holder.itemView.context, "Tautan asli tidak tersedia.", Toast.LENGTH_SHORT).show()
             }
         }
+        
+                // Jalur transmisi pembagi kargo data (Share Intent)
+        holder.btnBagikan.setOnClickListener {
+            // Merakit kargo teks yang akan dilontarkan
+            val teksBagikan = "${arsip.kontenPenuh}\n\nSumber: ${arsip.tautanAsli}"
+            
+            val mesinPelontar = Intent(Intent.ACTION_SEND).apply {
+                type = "text/plain"
+                putExtra(Intent.EXTRA_SUBJECT, "Arsip Pustaka FK: ${arsip.namaPenulis}")
+                putExtra(Intent.EXTRA_TEXT, teksBagikan)
+            }
+            
+            // Mengeksekusi pelontaran ke layar pemilih aplikasi Android
+            holder.itemView.context.startActivity(
+                Intent.createChooser(mesinPelontar, "Transmisi arsip melalui...")
+            )
+        }
+
 
               // Mesin Proyektor Gambar dan Sampul Video Dinamis
         holder.wadahFoto.removeAllViews()

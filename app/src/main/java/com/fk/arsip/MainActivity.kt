@@ -6,6 +6,9 @@ import android.content.Context
 import android.content.Intent
 import android.content.IntentFilter
 import android.net.Uri
+import android.net.ConnectivityManager
+import android.net.NetworkCapabilities
+import android.app.AlertDialog
 import android.os.Bundle
 import android.view.KeyEvent
 import android.view.View
@@ -58,6 +61,9 @@ class MainActivity : AppCompatActivity() {
     // Penampung Arus Data & Sakelar Status Informasi
     private var daftarArsipAktif: List<ArsipEntity> = listOf()
     private var isSearchMode = false 
+    // Tuas Pengunci Interlock Mesin
+    private var isMesinSibuk = false
+
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -127,23 +133,31 @@ class MainActivity : AppCompatActivity() {
         val tombolLetnan = findViewById<TextView>(R.id.menuLetnan)
         val tombolYayasan = findViewById<TextView>(R.id.menuYayasan)
 
-        val eksekusiSaringan = { kategori: String ->
-            lifecycleScope.launch(Dispatchers.IO) {
-                val lenganRobot = ArsipDatabase.operasikanMesin(this@MainActivity).arsipDao()
-                // Anggap nama kategori pencarian di database sesuai dengan teks tombol
-                val hasilSaringan = lenganRobot.saringArsip(kategori)
+                val eksekusiSaringan = { kategori: String ->
+            // ====================================================
+            // GERBANG PEMBLOKIR ARUS
+            if (isMesinSibuk) {
+                Toast.makeText(this@MainActivity, "Sistem sedang merakit pangkalan data. Harap tunggu.", Toast.LENGTH_SHORT).show()
+            } else {
+                // Eksekusi normal jika mesin tidak sibuk
+                lifecycleScope.launch(Dispatchers.IO) {
+                    val lenganRobot = ArsipDatabase.operasikanMesin(this@MainActivity).arsipDao()
+                    val hasilSaringan = lenganRobot.saringArsip(kategori)
 
-                withContext(Dispatchers.Main) {
-                    isSearchMode = false
-                    edtPencarian.text.clear()
-                    panelStatusPencarian.visibility = View.GONE
-                    wadahModeBuku.visibility = View.GONE
-                    recyclerGridMode.visibility = View.VISIBLE
-                    pompaDataKeLayar(hasilSaringan)
-                    drawerLayout.closeDrawers()
+                    withContext(Dispatchers.Main) {
+                        isSearchMode = false
+                        edtPencarian.text.clear()
+                        panelStatusPencarian.visibility = View.GONE
+                        wadahModeBuku.visibility = View.GONE
+                        recyclerGridMode.visibility = View.VISIBLE
+                        pompaDataKeLayar(hasilSaringan)
+                        drawerLayout.closeDrawers()
+                    }
                 }
             }
+            // ====================================================
         }
+
 
         tombolBiografi.setOnClickListener { eksekusiSaringan("Biografi") }
         tombolSosmed.setOnClickListener { eksekusiSaringan("Sosial Media") }
@@ -151,7 +165,48 @@ class MainActivity : AppCompatActivity() {
         tombolYayasan.setOnClickListener { eksekusiSaringan("Yayasan") }
     }
 
+    // Sirkuit Pemicu Footer Statis
+    private fun inisialisasiTuasFooterStatis() {
+        val btnSanFK = findViewById<LinearLayout>(R.id.linkSanFK_induk)
+        val btnSaung = findViewById<LinearLayout>(R.id.linkSaung_induk)
+        val btnZF = findViewById<LinearLayout>(R.id.linkZF_induk)
+
+        // Pelontar Sinyal Eksternal (Ganti URL dengan matriks presisi Anda)
+        val bukaTautan = { url: String ->
+            try {
+                startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(url)))
+            } catch (e: Exception) {
+                Toast.makeText(this, "Gagal membuka jalur ke peramban.", Toast.LENGTH_SHORT).show()
+            }
+        }
+
+        btnSanFK.setOnClickListener { bukaTautan("https://maps.app.goo.gl/b7iJKKg9hWMKsJEv8") }
+        btnSaung.setOnClickListener { bukaTautan("https://maps.app.goo.gl/F1qKiYjs2pUAa17j8") }
+        btnZF.setOnClickListener { 
+        tampilkanEdukasiZuhriFormalism()
+        }
+    }
     
+        // Modul Proyektor Cetak Biru Zuhri Formalism
+    private fun tampilkanEdukasiZuhriFormalism() {
+        AlertDialog.Builder(this)
+            .setTitle("Zuhri Formalism (ZF) Framework")
+            .setMessage(
+                "1. APA ITU ZUHRI FORMALISM?\n" +
+                "Zuhri Formalism (ZF) adalah sebuah protokol arsitektur logika dan pemrosesan fenomena empiris yang menitikberatkan pada Master Protocol, Kepadatan Informasi (Information Density), dan Batasan Formal (Formal Constraints). ZF memotong seluruh kebisingan mekanis (system noise) untuk mencapai efisiensi mutlak dalam diseksi data.\n\n" +
+                "2. ZF SEBAGAI FRAMEWORK DI GEMINI AI\n" +
+                "Dalam interaksi dengan Gemini AI, ZF bertindak sebagai sistem operasi kendali atas kecerdasan buatan. Framework ini memaksa AI untuk memberikan respons yang kokoh, lugas, matang, dan langsung pada inti masalah teknis tanpa basa-basi artifisial.\n\n" +
+                "3. INSTRUKSI OPERASIONAL PENGGUNA\n" +
+                "Untuk mengaktifkan kepatuhan total mesin AI terhadap arsitektur ini, Anda wajib menyertakan kata kunci \"Zuhri Formalism\" di setiap baris instruksi atau pertanyaan yang Anda ajukan ke Gemini AI."
+            )
+            .setPositiveButton("Selesai") { dialog, _ -> 
+                dialog.dismiss() 
+            }
+            .setCancelable(true)
+            .create()
+            .show()
+    }
+
 
     private fun eksekusiPabrikData() {
         lifecycleScope.launch(Dispatchers.IO) {
@@ -196,6 +251,14 @@ class MainActivity : AppCompatActivity() {
     }
 
         private fun aktifkanMesinPenyedot() {
+        // INJEKSI SENSOR: Jika arus mati, hentikan operasi seketika
+        if (!isJaringanTersedia()) {
+            tampilkanPeringatanJaringan()
+            return // Instruksi absolut untuk membatalkan sisa kode di bawahnya
+        }
+        // ========================================================
+        // KUNCI MESIN: Blokir aktivitas lain
+        isMesinSibuk = true
         val downloadManager = getSystemService(Context.DOWNLOAD_SERVICE) as DownloadManager
         val idPipaAktif = cariPipaAktif(downloadManager)
         if (idPipaAktif != -1L) {
@@ -268,19 +331,34 @@ class MainActivity : AppCompatActivity() {
                     val statusIndex = cursor.getColumnIndex(DownloadManager.COLUMN_STATUS)
                     val diunduhIndex = cursor.getColumnIndex(DownloadManager.COLUMN_BYTES_DOWNLOADED_SO_FAR)
                     val totalIndex = cursor.getColumnIndex(DownloadManager.COLUMN_TOTAL_SIZE_BYTES)
+                    
                     if (statusIndex != -1 && diunduhIndex != -1 && totalIndex != -1) {
                         val status = cursor.getInt(statusIndex)
                         val diunduh = cursor.getLong(diunduhIndex)
                         val total = cursor.getLong(totalIndex)
-                        if (total > 0) {
-                            val persentase = ((diunduh * 100) / total).toInt()
-                            txtStatusPencarian.text = "Mengunduh: $persentase%"
+                        
+                        // =======================================================
+                        // KATUP PEMBACA STATUS TRANSMISI
+                        when (status) {
+                            DownloadManager.STATUS_PAUSED -> {
+                                txtStatusPencarian.text = "Menunggu arus jaringan..."
+                            }
+                            DownloadManager.STATUS_RUNNING -> {
+                                if (total > 0) {
+                                    val persentase = ((diunduh * 100) / total).toInt()
+                                    txtStatusPencarian.text = "Mengunduh: $persentase%"
+                                }
+                            }
                         }
-                        if (status == DownloadManager.STATUS_SUCCESSFUL || status == DownloadManager.STATUS_FAILED) { selesai = true }
+                        // =======================================================
+
+                        if (status == DownloadManager.STATUS_SUCCESSFUL || status == DownloadManager.STATUS_FAILED) { 
+                            selesai = true 
+                        }
                     }
                 }
                 cursor?.close()
-                delay(1000) 
+                delay(1000) // Detak sensor setiap 1 detik
             }
         }
     }
@@ -369,6 +447,7 @@ class MainActivity : AppCompatActivity() {
                 // Hapus panelIndikator, arahkan pemutus arus ke panel modern
                 panelStatusPencarian.visibility = View.GONE 
                 pompaDataKeLayar(semuaData)
+                isMesinSibuk = false
             }
         } catch (e: Exception) {
             e.printStackTrace()
@@ -378,6 +457,7 @@ class MainActivity : AppCompatActivity() {
             withContext(Dispatchers.Main) { 
                 // Hapus panelIndikator, arahkan pemutus arus ke panel modern
                 panelStatusPencarian.visibility = View.GONE 
+                isMesinSibuk = false
                 Toast.makeText(this@MainActivity, "Gagal memproses data arsip.", Toast.LENGTH_LONG).show()
             }
         }
@@ -397,15 +477,25 @@ class MainActivity : AppCompatActivity() {
     }
 
     // Sirkuit Pencarian Diperkuat Dengan Penangkap Katup Enter Manual (Universal Keyboard Fix
-    private fun aktifkanSirkuitPencarian() {
+        private fun aktifkanSirkuitPencarian() {
         edtPencarian.setOnEditorActionListener { _, actionId, event ->
             if (actionId == EditorInfo.IME_ACTION_SEARCH || 
                 (event != null && event.keyCode == KeyEvent.KEYCODE_ENTER && event.action == KeyEvent.ACTION_DOWN)) {
                 
+                // ========================================================
+                // GERBANG PEMBLOKIR ARUS (INTERLOCK PENCARIAN)
+                // Mesin menolak perintah jika tuas sibuk masih 'ON'
+                // ========================================================
+                if (isMesinSibuk) {
+                    Toast.makeText(this@MainActivity, "Mesin sedang merakit data. Pencarian ditangguhkan.", Toast.LENGTH_SHORT).show()
+                    return@setOnEditorActionListener true // Memutus arus seketika
+                }
+                // ========================================================
+
                 val kataKunci = edtPencarian.text.toString().trim()
                 isSearchMode = kataKunci.isNotEmpty()
                 
-                // 1. AKTIFKAN PANEL PARALEL: Putar mesin indikator
+                // 1. AKTIFKAN PANEL PARALEL
                 panelStatusPencarian.visibility = View.VISIBLE
                 loadingPencarian.visibility = View.VISIBLE
                 txtStatusPencarian.text = "Mencari data..."
@@ -426,7 +516,7 @@ class MainActivity : AppCompatActivity() {
 
                         pompaDataKeLayar(hasilSaringan)
                         
-                        // 2. MATIKAN PUTARAN: Hentikan roda gigi, tinggalkan teks hasil
+                        // 2. MATIKAN PUTARAN
                         loadingPencarian.visibility = View.GONE
                         txtStatusPencarian.text = "Ditemukan ${hasilSaringan.size} hasil."
                         
@@ -441,7 +531,6 @@ class MainActivity : AppCompatActivity() {
             }
         }
     }
-
 
         private fun tampilkanPanelKonfirmasiKeluar() {
         val matriksPanel = android.app.AlertDialog.Builder(this)
@@ -473,6 +562,38 @@ class MainActivity : AppCompatActivity() {
         // Ubah konfigurasi layoutManager secara langsung tanpa merusak struktur data
         val pengelolaJalur = recyclerGridMode.layoutManager as? GridLayoutManager
         pengelolaJalur?.spanCount = hitungKolom
+    }
+
+    // Katup Pemindai Arus Jaringan Eksternal
+    private fun isJaringanTersedia(): Boolean {
+        val manajemenKoneksi = getSystemService(Context.CONNECTIVITY_SERVICE) as ConnectivityManager
+        val jaringanAktif = manajemenKoneksi.activeNetwork ?: return false
+        val kapasitasJaringan = manajemenKoneksi.getNetworkCapabilities(jaringanAktif) ?: return false
+        
+        return when {
+            kapasitasJaringan.hasTransport(NetworkCapabilities.TRANSPORT_WIFI) -> true
+            kapasitasJaringan.hasTransport(NetworkCapabilities.TRANSPORT_CELLULAR) -> true
+            else -> false
+        }
+    }
+
+    // Proyektor Peringatan Pipa Kering
+    private fun tampilkanPeringatanJaringan() {
+        AlertDialog.Builder(this)
+            .setTitle("Koneksi Terputus")
+            .setMessage("Maaf, Pustaka FK perlu mengunduh database untuk pertama kalinya. Selanjutnya Anda bisa menggunakannya tanpa internet.\n\nPeriksa koneksi internet Anda, lalu coba lagi.")
+            .setIcon(android.R.drawable.ic_dialog_alert) // Ikon peringatan standar pabrik
+            .setCancelable(false) // Mengunci panel agar tidak bisa ditutup sembarangan
+            .setPositiveButton("Coba Lagi") { _, _ -> 
+                // Mengulang putaran mesin penyedot
+                aktifkanMesinPenyedot() 
+            }
+            .setNegativeButton("Keluar") { _, _ -> 
+                // Mematikan sasis aplikasi
+                finish() 
+            }
+            .create()
+            .show()
     }
 
 
