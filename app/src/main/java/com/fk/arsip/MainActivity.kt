@@ -117,7 +117,7 @@ class MainActivity : AppCompatActivity() {
             }
         })
 
-        InisialisasiTuasFooterStatis()
+        inisialisasiTuasFooterStatis()
         inisialisasiSirkuitAppDrawer()
         aktifkanSirkuitPencarian()
         eksekusiPabrikData()
@@ -187,7 +187,7 @@ class MainActivity : AppCompatActivity() {
                     LinearLayout.LayoutParams.WRAP_CONTENT
                 )
                 text = induk
-                textSize = 14sp
+                textSize = 14f
                 setTextColor(android.graphics.Color.parseColor("#1C1E21"))
                 setPadding(52, 36, 52, 36)
                 setBackgroundResource(android.R.drawable.list_selector_background)
@@ -218,7 +218,7 @@ class MainActivity : AppCompatActivity() {
                             setMargins(72, 8, 32, 8)
                         }
                         text = "•  $itemAnak"
-                        textSize = 12sp
+                        textSize = 12f
                         setTextColor(android.graphics.Color.parseColor("#555555"))
                         setPadding(24, 16, 24, 16)
                         setBackgroundResource(android.R.drawable.list_selector_background)

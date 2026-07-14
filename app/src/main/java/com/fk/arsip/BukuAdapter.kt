@@ -150,7 +150,7 @@ class BukuAdapter(private var daftarArsip: List<ArsipEntity>) : RecyclerView.Ada
                         }
                         text = "Klik untuk memutar di Facebook"
                         setTextColor(android.graphics.Color.WHITE)
-                        textSize = 10sp
+                        textSize = 10f
                         setBackgroundColor(android.graphics.Color.parseColor("#80000000"))
                         setPadding(12, 6, 12, 6)
                     }
