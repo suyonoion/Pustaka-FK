@@ -169,7 +169,6 @@ class MainActivity : AppCompatActivity() {
             } else {
                 val semuaData = lenganRobot.tarikSemuaArsip()
                 withContext(Dispatchers.Main) {
-                    panelIndikator.visibility = View.GONE
                     pompaDataKeLayar(semuaData)
                 }
             }
