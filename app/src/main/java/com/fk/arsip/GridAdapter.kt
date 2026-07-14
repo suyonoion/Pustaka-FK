@@ -3,19 +3,21 @@ package com.fk.arsip
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
+import android.widget.ImageView
 import android.widget.TextView
 import androidx.recyclerview.widget.RecyclerView
 import com.fk.arsip.database.ArsipEntity
 
 class GridAdapter(
     private var daftarArsip: List<ArsipEntity>,
-    private val pemicuBuku: (Int) -> Unit // Tuas pelontar ke mode buku
+    private val pemicuBuku: (Int) -> Unit 
 ) : RecyclerView.Adapter<GridAdapter.GridViewHolder>() {
 
     class GridViewHolder(view: View) : RecyclerView.ViewHolder(view) {
-        val txtGridKategori: TextView = view.findViewById(R.id.txtGridKategori)
-        val txtGridTanggal: TextView = view.findViewById(R.id.txtGridTanggal)
-        val txtGridCuplikan: TextView = view.findViewById(R.id.txtGridCuplikan)
+        val imgProfil = view.findViewById<ImageView>(R.id.imgGridProfil)
+        val txtTanggal = view.findViewById<TextView>(R.id.txtGridTanggal)
+        val txtKategori = view.findViewById<TextView>(R.id.txtGridKategori)
+        val txtCuplikan = view.findViewById<TextView>(R.id.txtGridCuplikan)
     }
 
     override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): GridViewHolder {
@@ -26,10 +28,10 @@ class GridAdapter(
     override fun onBindViewHolder(holder: GridViewHolder, position: Int) {
         val arsip = daftarArsip[position]
         
-        holder.txtGridKategori.text = arsip.kategori
-        // Memotong jam mutlak agar tata letak kotak tidak pecah
-        holder.txtGridTanggal.text = arsip.tanggalBaca.substringBefore(" ") 
-        holder.txtGridCuplikan.text = arsip.kontenPenuh
+        // Penyelarasan arus variabel ke soket penerima ViewHolder
+        holder.txtKategori.text = arsip.kategori
+        holder.txtTanggal.text = arsip.tanggalBaca.substringBefore(" ") 
+        holder.txtCuplikan.text = arsip.kontenPenuh
 
         holder.itemView.setOnClickListener {
             pemicuBuku(position)
@@ -38,7 +40,6 @@ class GridAdapter(
 
     override fun getItemCount(): Int = daftarArsip.size
 
-    // Katup pembaruan saat mesin pencari bekerja
     fun perbaruiData(dataBaru: List<ArsipEntity>) {
         this.daftarArsip = dataBaru
         notifyDataSetChanged()

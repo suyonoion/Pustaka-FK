@@ -42,7 +42,7 @@ class MainActivity : AppCompatActivity() {
     private val urlKargo = "https://github.com/suyonoion/Pustaka-FK/releases/download/v1.0.0/Master_Data_Arsip_FK_11_Juli_2026.json"
 
     private lateinit var drawerLayout: DrawerLayout
-    private lateinit var navView: NavigationView
+    private lateinit var navViewCustom: LinearLayout
     private lateinit var recyclerGridMode: RecyclerView
     private lateinit var wadahModeBuku: RelativeLayout
     private lateinit var proyektorBuku: ViewPager2
@@ -66,7 +66,7 @@ class MainActivity : AppCompatActivity() {
         setContentView(R.layout.activity_main)
 
         drawerLayout = findViewById(R.id.drawerLayout)
-        navView = findViewById(R.id.navView)
+        navViewCustom = findViewById(R.id.navViewCustom)
         recyclerGridMode = findViewById(R.id.recyclerGridMode)
         wadahModeBuku = findViewById(R.id.wadahModeBuku)
         proyektorBuku = findViewById(R.id.proyektorBuku)
@@ -125,24 +125,17 @@ class MainActivity : AppCompatActivity() {
         // Jalankan kalkulasi ulang pembagian kolom secara instan
         sesuaikanKompartemenGrid() 
     }
-
     private fun inisialisasiSirkuitAppDrawer() {
-        navView.setNavigationItemSelectedListener { menuItem ->
-            val kategoriSaringan = when (menuItem.itemId) {
-                R.id.nav_ekonomi -> "Ekonomi"
-                R.id.nav_politik -> "Politik & Negara"
-                R.id.nav_agama -> "Agama & Spiritualitas"
-                R.id.nav_pertanian -> "Pertanian"
-                else -> ""
-            }
+        val tombolBiografi = findViewById<TextView>(R.id.menuBiografi)
+        val tombolSosmed = findViewById<TextView>(R.id.menuSosmed)
+        val tombolLetnan = findViewById<TextView>(R.id.menuLetnan)
+        val tombolYayasan = findViewById<TextView>(R.id.menuYayasan)
 
+        val eksekusiSaringan = { kategori: String ->
             lifecycleScope.launch(Dispatchers.IO) {
                 val lenganRobot = ArsipDatabase.operasikanMesin(this@MainActivity).arsipDao()
-                val hasilSaringan = if (kategoriSaringan.isEmpty()) {
-                    lenganRobot.tarikSemuaArsip()
-                } else {
-                    lenganRobot.saringArsip(kategoriSaringan)
-                }
+                // Anggap nama kategori pencarian di database sesuai dengan teks tombol
+                val hasilSaringan = lenganRobot.saringArsip(kategori)
 
                 withContext(Dispatchers.Main) {
                     isSearchMode = false
@@ -154,9 +147,15 @@ class MainActivity : AppCompatActivity() {
                     drawerLayout.closeDrawers()
                 }
             }
-            true
         }
+
+        tombolBiografi.setOnClickListener { eksekusiSaringan("Biografi") }
+        tombolSosmed.setOnClickListener { eksekusiSaringan("Sosial Media") }
+        tombolLetnan.setOnClickListener { eksekusiSaringan("Letnan") }
+        tombolYayasan.setOnClickListener { eksekusiSaringan("Yayasan") }
     }
+
+    
 
     private fun eksekusiPabrikData() {
         lifecycleScope.launch(Dispatchers.IO) {
@@ -362,21 +361,33 @@ class MainActivity : AppCompatActivity() {
                 }
             }
 
+                        // ... (kode pembacaan reader JSON dan injeksi massal Anda di atas tetap dipertahankan) ...
+
             if (muatanSementara.isNotEmpty()) { lenganRobot.injeksiMassal(muatanSementara) }
             reader.endArray() 
             reader.close()
 
             val semuaData = lenganRobot.tarikSemuaArsip()
+            
+            // FASE PENDARATAN SUKSES
             withContext(Dispatchers.Main) {
-                panelIndikator.visibility = View.GONE
+                // Hapus panelIndikator, arahkan pemutus arus ke panel modern
+                panelStatusPencarian.visibility = View.GONE 
                 pompaDataKeLayar(semuaData)
             }
         } catch (e: Exception) {
             e.printStackTrace()
             fileTarget.delete()
-            withContext(Dispatchers.Main) { panelIndikator.visibility = View.GONE }
+            
+            // FASE PENDARATAN GAGAL (KORSLETING JSON)
+            withContext(Dispatchers.Main) { 
+                // Hapus panelIndikator, arahkan pemutus arus ke panel modern
+                panelStatusPencarian.visibility = View.GONE 
+                Toast.makeText(this@MainActivity, "Gagal memproses data arsip.", Toast.LENGTH_LONG).show()
+            }
         }
     }
+
 
     private fun pompaDataKeLayar(dataLayar: List<ArsipEntity>) {
         daftarArsipAktif = dataLayar

@@ -5,16 +5,17 @@
     android:id="@+id/drawerLayout"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:background="#F0F2F5">
+    android:fitsSystemWindows="true">
 
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="match_parent"
         android:orientation="vertical"
         android:focusable="true"
-        android:focusableInTouchMode="true">
+        android:focusableInTouchMode="true"
+        android:background="#EFEFEF">
 
-          <EditText
+        <EditText
             android:id="@+id/edtPencarian"
             android:layout_width="match_parent"
             android:layout_height="50dp"
@@ -60,12 +61,9 @@
                     android:layout_marginStart="10dp"
                     android:textColor="#1C1E21"
                     android:textSize="13sp"
-                    android:fontFamily="sans-serif-medium"
                     android:text="Memproses..." />
-
             </LinearLayout>
         </androidx.cardview.widget.CardView>
-
 
         <FrameLayout
             android:layout_width="match_parent"
@@ -76,44 +74,115 @@
                 android:id="@+id/recyclerGridMode"
                 android:layout_width="match_parent"
                 android:layout_height="match_parent"
-                android:padding="4dp" />
+                android:padding="4dp"
+                android:clipToPadding="false"/>
 
             <RelativeLayout
                 android:id="@+id/wadahModeBuku"
                 android:layout_width="match_parent"
                 android:layout_height="match_parent"
-                android:visibility="gone"
-                android:background="#F0F2F5">
-
+                android:visibility="gone">
                 <androidx.viewpager2.widget.ViewPager2
                     android:id="@+id/proyektorBuku"
                     android:layout_width="match_parent"
                     android:layout_height="match_parent" />
             </RelativeLayout>
         </FrameLayout>
-    </LinearLayout>
 
-    <com.google.android.material.navigation.NavigationView
-        android:id="@+id/navView"
-        android:layout_width="wrap_content"
-        android:layout_height="match_parent"
-        android:layout_gravity="start"
-        android:background="@android:color/white"
-        app:menu="@menu/drawer_menu" />
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:background="#004D40"
+            android:gravity="center"
+            android:paddingVertical="8dp">
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Pustaka Digital - Zuhri Formalism"
+                android:textColor="#FFFFFF"
+                android:textSize="10sp"
+                android:textStyle="bold"
+                android:letterSpacing="0.1"/>
+        </LinearLayout>
+        </LinearLayout>
 
     <LinearLayout
-        android:id="@+id/panelIndikator"
-        android:layout_width="match_parent"
+        android:id="@+id/navViewCustom"
+        android:layout_width="280dp"
         android:layout_height="match_parent"
+        android:layout_gravity="start"
+        android:background="#FAFAFA"
         android:orientation="vertical"
-        android:gravity="center"
-        android:background="#E6FFFFFF"
-        android:visibility="gone"
         android:clickable="true"
-        android:focusable="true"
-        android:elevation="15dp">
-        <ProgressBar android:layout_width="80dp" android:layout_height="80dp" />
-        <TextView android:id="@+id/txtIndikatorProses" android:layout_width="wrap_content" android:layout_height="wrap_content" android:layout_marginTop="16dp" android:text="Mengunci Koordinat..." android:textStyle="bold" android:textSize="18sp" android:textColor="#000000" />
+        android:focusable="true">
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:background="#004D40"
+            android:orientation="vertical"
+            android:padding="20dp">
+            
+            <ImageView
+                android:layout_width="70dp"
+                android:layout_height="70dp"
+                android:src="@drawable/profil_abah"
+                android:scaleType="centerCrop"
+                android:layout_marginTop="16dp"
+                android:contentDescription="Foto Profil Pusat Laci"/>
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Fatwa Kehidupan"
+                android:textColor="#FFFFFF"
+                android:textStyle="bold"
+                android:textSize="18sp"
+                android:layout_marginTop="12dp"/>
+                
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Arsip Status Digital"
+                android:textColor="#B2DFDB"
+                android:textSize="12sp"/>
+        </LinearLayout>
+
+        <ScrollView
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:fillViewport="true">
+            
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical"
+                android:paddingBottom="20dp">
+
+                <TextView android:id="@+id/menuBiografi" android:layout_width="match_parent" android:layout_height="wrap_content" android:text="Biografi" android:drawableStart="@android:drawable/ic_menu_info_details" android:drawablePadding="12dp" android:textColor="#212121" android:textSize="14sp" android:padding="14dp" android:background="?android:attr/selectableItemBackground"/>
+                <TextView android:id="@+id/menuSosmed" android:layout_width="match_parent" android:layout_height="wrap_content" android:text="Sosial Media" android:drawableStart="@android:drawable/ic_menu_share" android:drawablePadding="12dp" android:textColor="#212121" android:textSize="14sp" android:padding="14dp" android:background="?android:attr/selectableItemBackground"/>
+                <TextView android:id="@+id/menuLetnan" android:layout_width="match_parent" android:layout_height="wrap_content" android:text="Letnan" android:drawableStart="@android:drawable/ic_menu_myplaces" android:drawablePadding="12dp" android:textColor="#212121" android:textSize="14sp" android:padding="14dp" android:background="?android:attr/selectableItemBackground"/>
+                <TextView android:id="@+id/menuYayasan" android:layout_width="match_parent" android:layout_height="wrap_content" android:text="Yayasan" android:drawableStart="@android:drawable/ic_menu_manage" android:drawablePadding="12dp" android:textColor="#212121" android:textSize="14sp" android:padding="14dp" android:background="?android:attr/selectableItemBackground"/>
+
+                <View android:layout_width="match_parent" android:layout_height="1dp" android:background="#E0E0E0" android:layout_marginVertical="8dp"/>
+
+                <TextView
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:text="KATEGORI STATUS"
+                    android:textStyle="bold"
+                    android:textColor="#004D40"
+                    android:paddingHorizontal="14dp"
+                    android:paddingVertical="10dp"
+                    android:textSize="12sp"/>
+
+                <LinearLayout
+                    android:id="@+id/wadahKategoriDinamis"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="vertical"/>
+                    
+            </LinearLayout>
+        </ScrollView>
     </LinearLayout>
 
 </androidx.drawerlayout.widget.DrawerLayout>
