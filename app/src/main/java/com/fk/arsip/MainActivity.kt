@@ -51,9 +51,7 @@ class MainActivity : AppCompatActivity() {
 
     private lateinit var loadingPencarian: ProgressBar
     private lateinit var txtStatusPencarian: TextView
-    private lateinit var panelIndikator: LinearLayout
-    private lateinit var txtIndikatorProses: TextView
-
+    
     private lateinit var gridAdapter: GridAdapter
     private lateinit var bukuAdapter: BukuAdapter
     
@@ -75,8 +73,6 @@ class MainActivity : AppCompatActivity() {
         panelStatusPencarian = findViewById(R.id.panelStatusPencarian)
         loadingPencarian = findViewById(R.id.loadingPencarian)
         txtStatusPencarian = findViewById(R.id.txtStatusPencarian)
-        panelIndikator = findViewById(R.id.panelIndikator)
-        txtIndikatorProses = findViewById(R.id.txtIndikatorProses)
 
         recyclerGridMode.layoutManager = GridLayoutManager(this, 2)
         sesuaikanKompartemenGrid() // Pemicu kalkulasi saat mesin pertama kali menyala
