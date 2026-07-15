@@ -23,6 +23,7 @@
             android:hint="Cari Fatwa..."
             android:elevation="2dp"
             android:inputType="text"
+            android:imeOptions="actionSearch" 
             android:maxLines="1" />
 
         <androidx.cardview.widget.CardView

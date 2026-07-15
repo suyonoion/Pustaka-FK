@@ -310,27 +310,42 @@ class MainActivity : AppCompatActivity() {
     }
 
 
-    private fun eksekusiPabrikData() {
+        private fun eksekusiPabrikData() {
         lifecycleScope.launch(Dispatchers.IO) {
-            val mesinDb = ArsipDatabase.operasikanMesin(this@MainActivity)
-            val lenganRobot = mesinDb.arsipDao()
+            val database = ArsipDatabase.operasikanMesin(this@MainActivity)
+            val lenganRobot = database.arsipDao()
+            val semuaData = lenganRobot.tarikSemuaArsip()
 
-            if (lenganRobot.hitungTotalArsip() == 0) {
-                val fileTarget = File(getExternalFilesDir(null), namaFile)
-                if (!fileTarget.exists()) {
-                    withContext(Dispatchers.Main) { aktifkanMesinPenyedot() }
-                    return@launch 
-                } else {
-                    ekstrakDanInjeksiKeDb(fileTarget, lenganRobot)
-                }
-            } else {
-                val semuaData = lenganRobot.tarikSemuaArsip()
-                withContext(Dispatchers.Main) {
+            withContext(Dispatchers.Main) {
+                if (semuaData.isNotEmpty()) {
+                    // KONDISI A: Pangkalan data terisi, langsung proyeksikan ke layar
+                    isMesinSibuk = false
+                    panelStatusPencarian.visibility = View.GONE
                     pompaDataKeLayar(semuaData)
+                } else {
+                    // KONDISI B: Pangkalan data kosong, aktifkan sensor pemeriksaan berkas manual
+                    val berkasLokal = File(getExternalFilesDir(null), "Master_Data_Arsip_FK_11_Juli_2026.json")
+                    val bobotMinimum = 110 * 1024 * 1024 // Batasan formal 110 MB
+                    
+                    if (berkasLokal.exists() && berkasLokal.length() >= bobotMinimum) {
+                        // BYPASS BERHASIL: Berkas valid ditemukan di tangki lokal, langsung eksekusi injeksi
+                        isMesinSibuk = true
+                        panelStatusPencarian.visibility = View.VISIBLE
+                        loadingPencarian.visibility = View.VISIBLE
+                        txtStatusPencarian.text = "Berkas lokal terdeteksi. Menyuntikkan data ke database..."
+                        
+                        lifecycleScope.launch(Dispatchers.IO) {
+                            ekstrakDanInjeksiKeDb(berkasLokal, lenganRobot)
+                        }
+                    } else {
+                        // BYPASS GAGAL: Tangki kosong atau berkas korup, aktifkan pompa unduhan jaringan
+                        aktifkanMesinPenyedot()
+                    }
                 }
             }
         }
     }
+
 
     private fun cariPipaAktif(downloadManager: DownloadManager): Long {
         val query = DownloadManager.Query().setFilterByStatus(
@@ -545,15 +560,23 @@ class MainActivity : AppCompatActivity() {
             reader.endArray() 
             reader.close()
 
+                        // FASE PENDARATAN SUKSES
             val semuaData = lenganRobot.tarikSemuaArsip()
             
-            // FASE PENDARATAN SUKSES
+            // ==========================================
+            // INJEKSI MESIN PENGHANCUR KARGO
+            // Hapus file JSON mentah untuk membebaskan ruang memori
+            if (fileTarget.exists()) {
+                fileTarget.delete()
+            }
+            // ==========================================
+            
             withContext(Dispatchers.Main) {
-                // Hapus panelIndikator, arahkan pemutus arus ke panel modern
                 panelStatusPencarian.visibility = View.GONE 
                 pompaDataKeLayar(semuaData)
-                isMesinSibuk = false
+                isMesinSibuk = false 
             }
+
         } catch (e: Exception) {
             e.printStackTrace()
             fileTarget.delete()
