@@ -64,7 +64,6 @@ class MainActivity : AppCompatActivity() {
     // Tuas Pengunci Interlock Mesin
     private var isMesinSibuk = false
 
-
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
@@ -138,30 +137,16 @@ class MainActivity : AppCompatActivity() {
         inisialisasiKategoriDrawer()
     }
 
-    private fun inisialisasiKategoriDrawer() {
+        private fun inisialisasiKategoriDrawer() {
         val wadah = findViewById<LinearLayout>(R.id.wadahKategoriDinamis)
         wadah.removeAllViews()
 
-        val daftarKategori = listOf(
-            "Ijazah Khusus Murid" to listOf(),
-            "Ijazah Umum" to listOf(
-                "Adab / Minta Izin Ijazah", "Wasilah (Kirim Al-Fatehah)", "Pagar Gaib Fatwa Kehidupan (PGFK)",
-                "Angin Kencang", "Hujan Lebat", "Lempari Jin, yaa hayyu yaa matin",
-                "Energi Negatif", "Melihat Makhluk Halus", "Hajat", "Ain / Sawan",
-                "Sastra Balik Bala'", "Dzikir Fida'", "Sholawat Nariyah Ba'da Shubuh",
-                "Hama Tikus ( Alkemi Mistik )", "Putar Giling", "Caroko Walik", "Sembelih Hewan"
-            ),
-            "Program Social" to listOf(),
-            "Acara Kopdar" to listOf(),
-            "Produk FK" to listOf()
-        )
-
-        for (kategori in daftarKategori) {
-            val induk = kategori.first
-            val cabang = kategori.second
+        for (kategori in CetakBiruKategori.MATRIKS_UTAMA) {
+            val namaInduk = kategori.first
+            val daftarCabang = kategori.second
 
             val barisInduk = TextView(this).apply {
-                text = induk
+                text = namaInduk
                 textSize = 14f
                 setTextColor(android.graphics.Color.parseColor("#1C1E21"))
                 setPadding(52, 36, 52, 36)
@@ -171,23 +156,29 @@ class MainActivity : AppCompatActivity() {
                 gravity = android.view.Gravity.CENTER_VERTICAL
             }
 
-            if (cabang.isNotEmpty()) {
+            // Sensor Pemisah: Jika isi anak sama dengan nama induk, tampilkan sebagai tombol tunggal
+            if (daftarCabang.size == 1 && daftarCabang[0].first == namaInduk) {
+                barisInduk.setOnClickListener { eksekusiSaringanKategori(namaInduk) }
+                wadah.addView(barisInduk)
+            } else {
+                // Sensor Pemisah: Jika isi anak berbeda/banyak, jadikan menu bersarang (Dropdown)
                 barisInduk.setCompoundDrawablesWithIntrinsicBounds(0, 0, android.R.drawable.arrow_down_float, 0)
                 val wadahAnak = LinearLayout(this).apply {
                     orientation = LinearLayout.VERTICAL
                     visibility = View.GONE
                 }
 
-                for (itemAnak in cabang) {
+                for (cabang in daftarCabang) {
+                    val namaAnak = cabang.first
                     val barisAnak = TextView(this).apply {
-                        text = "•  $itemAnak"
+                        text = "•  $namaAnak"
                         textSize = 12f
                         setTextColor(android.graphics.Color.parseColor("#555555"))
                         setPadding(72, 24, 52, 24)
                         setBackgroundResource(android.R.drawable.list_selector_background)
                         isClickable = true
                         isFocusable = true
-                        setOnClickListener { eksekusiSaringanKategori(itemAnak) }
+                        setOnClickListener { eksekusiSaringanKategori(namaAnak) }
                     }
                     wadahAnak.addView(barisAnak)
                 }
@@ -203,9 +194,6 @@ class MainActivity : AppCompatActivity() {
                 }
                 wadah.addView(barisInduk)
                 wadah.addView(wadahAnak)
-            } else {
-                barisInduk.setOnClickListener { eksekusiSaringanKategori(induk) }
-                wadah.addView(barisInduk)
             }
         }
     }
@@ -213,28 +201,21 @@ class MainActivity : AppCompatActivity() {
 
     // Sirkuit Pintu Penyaringan Kategori Laci
   
-    private fun eksekusiSaringanKategori(labelKategori: String) {
+          private fun eksekusiSaringanKategori(labelKategori: String) {
         if (isMesinSibuk) {
-            Toast.makeText(this, "Sistem sedang merakit pangkalan data. Harap tunggu.", Toast.LENGTH_SHORT).show()
+            Toast.makeText(this, "Sistem sedang merakit data. Harap tunggu.", Toast.LENGTH_SHORT).show()
             return
         }
 
-        val matriksKataKunci: List<String> = when (labelKategori) {
-            "Biografi" -> listOf("biografi", "sejarah abah")
-            "Ekonomi" -> listOf("uang", "ekonomi", "bisnis") 
-            "Politik & Negara" -> listOf("politik", "pemerintah", "negara")
-            "Agama" -> listOf("agama", "syariat", "fiqih")
-            "Pertanian" -> listOf("tani", "sawah", "pupuk")
-            
-            // Konfigurasi Pipa Manifold PGFK Multi-Kata Kunci
-            "Pagar Gaib Fatwa Kehidupan (PGFK)" -> listOf("pagar gaib", "PG", "PGFK")
-            "Adab / Minta Izin Ijazah" -> listOf("izin ijazah", "qobiltu", "adab")
-            "Wasilah (Kirim Al-Fatehah)" -> listOf("wasilah", "al-fatehah", "alfatehah")
-            "Lempari Jin, yaa hayyu yaa matin" -> listOf("yaa hayyu yaa matin", "jin")
-            "Sastra Balik Bala'" -> listOf("balik bala", "tolak bala")
-            "Sembelih Hewan" -> listOf("bawang putih", "sembelih")
-            
-            else -> listOf(labelKategori) 
+        // Papan Relai Otomatis: Menyedot kata kunci pencarian langsung dari Memori Sentral
+        var matriksKataKunci = listOf(labelKategori)
+        for (induk in CetakBiruKategori.MATRIKS_UTAMA) {
+            for (cabang in induk.second) {
+                if (cabang.first == labelKategori) {
+                    matriksKataKunci = cabang.second
+                    break
+                }
+            }
         }
 
         tampilkanIndikator("Menyaring kargo: $labelKategori...", true)
@@ -244,8 +225,7 @@ class MainActivity : AppCompatActivity() {
             val tangkiGabungan = mutableSetOf<ArsipEntity>() 
 
             for (kunci in matriksKataKunci) {
-                val hasilSedotan = database.saringArsip(kunci)
-                tangkiGabungan.addAll(hasilSedotan)
+                tangkiGabungan.addAll(database.saringArsip(kunci))
             }
 
             val hasilSaringanAkhir = tangkiGabungan.toList().sortedByDescending { it.waktuRilis }
@@ -255,12 +235,12 @@ class MainActivity : AppCompatActivity() {
                 edtPencarian.text.clear()
                 
                 tampilkanIndikator("Ditemukan ${hasilSaringanAkhir.size} arsip.", false)
-                panelStatusPencarian.visibility = View.VISIBLE // Menampilkan hasil laporan pencarian
-                
+                panelStatusPencarian.visibility = View.VISIBLE 
                 wadahModeBuku.visibility = View.GONE
                 recyclerGridMode.visibility = View.VISIBLE
                 
-                pompaDataKeLayar(hasilSaringanAkhir)
+                // Kargo data dipompa polos, karena stempel di SQLite sudah 100% presisi
+                pompaDataKeLayar(hasilSaringanAkhir) 
                 drawerLayout.closeDrawers()
             }
         }
@@ -395,7 +375,7 @@ class MainActivity : AppCompatActivity() {
 
         val request = DownloadManager.Request(Uri.parse(urlKargo))
             .setTitle("Arsip Fatwa Kehidupan")
-            .setDescription("Mengunduh file data (115MB)...")
+            .setDescription("Mengunduh file data (115MB) untuk pertama kali saja.")
             .setNotificationVisibility(DownloadManager.Request.VISIBILITY_VISIBLE_NOTIFY_COMPLETED)
             .setDestinationInExternalFilesDir(this, null, namaFileTemp)
             .setAllowedOverMetered(true)
@@ -543,8 +523,6 @@ class MainActivity : AppCompatActivity() {
                     }
                 }
 
-
-
                 muatanSementara.add(ArsipEntity(idPosting, namaPenulis, urlProfilPic, waktuRilis, tanggalBaca, kontenPenuh, tautanAsli, daftarFoto.joinToString(","), kategori))
                 indeks++
 
@@ -628,7 +606,7 @@ class MainActivity : AppCompatActivity() {
                 loadingPencarian.visibility = View.VISIBLE
                 txtStatusPencarian.text = "Mencari data..."
                 
-                lifecycleScope.launch(Dispatchers.IO) {
+                                lifecycleScope.launch(Dispatchers.IO) {
                     val lenganRobot = ArsipDatabase.operasikanMesin(this@MainActivity).arsipDao()
                     val hasilSaringan = if (kataKunci.isEmpty()) {
                         lenganRobot.tarikSemuaArsip()
@@ -636,23 +614,34 @@ class MainActivity : AppCompatActivity() {
                         lenganRobot.saringArsip(kataKunci)
                     }
                     
+                    // ========================================================
+                    // INJEKSI SENSOR PARALEL: PEMBIAS KATEGORI DINAMIS
+                    // Memaksa hasil pencarian global memindai teks secara runtime
+                    // menggunakan mesinDeteksiKategori versi baru Anda
+                    // ========================================================
+                    val hasilSaringanDinamis = hasilSaringan.map { arsip ->
+                        arsip.copy(kategori = mesinDeteksiKategori(arsip.kontenPenuh))
+                    }
+                    // ========================================================
+                    
                     withContext(Dispatchers.Main) {
                         if (wadahModeBuku.visibility == View.VISIBLE) {
                             wadahModeBuku.visibility = View.GONE
                             recyclerGridMode.visibility = View.VISIBLE
                         }
 
-                        pompaDataKeLayar(hasilSaringan)
+                        // Memompa kargo data yang kategorinya sudah diselaraskan secara dinamis
+                        pompaDataKeLayar(hasilSaringanDinamis)
                         
-                        // 2. MATIKAN PUTARAN
                         loadingPencarian.visibility = View.GONE
-                        txtStatusPencarian.text = "Ditemukan ${hasilSaringan.size} hasil."
+                        txtStatusPencarian.text = "Ditemukan ${hasilSaringanDinamis.size} arsip."
                         
                         edtPencarian.clearFocus()
                         val imm = getSystemService(Context.INPUT_METHOD_SERVICE) as InputMethodManager
                         imm.hideSoftInputFromWindow(edtPencarian.windowToken, 0)
                     }
                 }
+
                 true
             } else {
                 false
@@ -725,16 +714,27 @@ class MainActivity : AppCompatActivity() {
     }
 
 
+        // Mesin Pencetak Stempel Permanen SQLite
     private fun mesinDeteksiKategori(teksKonten: String): String {
-        val matriksTeks = teksKonten.lowercase()
-        return when {
-            matriksTeks.contains("rupiah") || matriksTeks.contains("dollar") || matriksTeks.contains("emas") || matriksTeks.contains("pajak") -> "Ekonomi"
-            matriksTeks.contains("pemerintah") || matriksTeks.contains("pejabat") || matriksTeks.contains("polisi") || matriksTeks.contains("korupsi") -> "Politik & Negara"
-            matriksTeks.contains("kiamat") || matriksTeks.contains("syahid") || matriksTeks.contains("hadist") || matriksTeks.contains("agama") -> "Agama & Spiritualitas"
-            matriksTeks.contains("tani") || matriksTeks.contains("sawah") || matriksTeks.contains("kopi") -> "Pertanian"
-            else -> "Umum"
+        val teksMesin = teksKonten.lowercase()
+        
+        // Mesin menyapu Blok Memori Sentral dari atas ke bawah
+        for (induk in CetakBiruKategori.MATRIKS_UTAMA) {
+            for (cabang in induk.second) {
+                val namaKategori = cabang.first
+                val daftarKataKunci = cabang.second
+                
+                for (kunci in daftarKataKunci) {
+                    if (teksMesin.contains(kunci)) {
+                        return namaKategori // Stempel langsung dicap jika cocok
+                    }
+                }
+            }
         }
+        return "Belum di kategorikan" // Pembuangan akhir jika tidak terdeteksi satupun
     }
+
+    
     private fun tampilkanIndikator(pesan: String, aktif: Boolean) {
         panelStatusPencarian.visibility = if (aktif) View.VISIBLE else View.GONE
         loadingPencarian.visibility = if (aktif) View.VISIBLE else View.GONE

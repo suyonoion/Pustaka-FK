@@ -21,15 +21,16 @@ class BukuAdapter(private var daftarArsip: List<ArsipEntity>) : RecyclerView.Ada
         val txtTanggal = view.findViewById<TextView>(R.id.txtTanggal)
         val txtKategori = view.findViewById<TextView>(R.id.txtKategori)
         val txtNomorHalaman = view.findViewById<TextView>(R.id.txtNomorHalaman)
-        val txtKonten = view.findViewById<TextView>(R.id.txtKonten)
+            
+        val txtKontenUtama = view.findViewById<TextView>(R.id.txtKontenUtama)
+        val wadahDinamisKonten = view.findViewById<LinearLayout>(R.id.wadahDinamisKonten)
+        val wadahHeaderShared = view.findViewById<LinearLayout>(R.id.wadahHeaderShared)
+        val txtNamaPemilikShared = view.findViewById<TextView>(R.id.txtNamaPemilikShared)
+        val txtKontenShared = view.findViewById<TextView>(R.id.txtKontenShared)
+        val wadahFoto = view.findViewById<LinearLayout>(R.id.wadahMultiFoto)
         
-        val wadahSharedPost = view.findViewById<LinearLayout>(R.id.wadahSharedPost)
-        val txtSharedAuthor = view.findViewById<TextView>(R.id.txtSharedAuthor)
-        val txtSharedKonten = view.findViewById<TextView>(R.id.txtSharedKonten)
-
         val btnTautan = view.findViewById<LinearLayout>(R.id.linkSumberTautan)
         val btnBagikan = view.findViewById<LinearLayout>(R.id.btnBagikanKonten)
-        val wadahFoto = view.findViewById<LinearLayout>(R.id.wadahMultiFoto)
     }
 
     override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): BukuViewHolder {
@@ -40,26 +41,61 @@ class BukuAdapter(private var daftarArsip: List<ArsipEntity>) : RecyclerView.Ada
     override fun onBindViewHolder(holder: BukuViewHolder, position: Int) {
         val arsip = daftarArsip[position]
 
-        val kontenBersih = arsip.kontenPenuh
+          val kontenBersih = arsip.kontenPenuh
         if (kontenBersih.contains("--- Membagikan Status:")) {
+            // ========================================================
+            // MODE SHARED POST: Mengaktifkan Bingkai Pengunci
+            // ========================================================
             val bagianSaringan = kontenBersih.split("\n\n--- Membagikan Status: ")
-            holder.txtKonten.text = bagianSaringan[0].trim()
+            
+            // 1. Teks Asli Pemosting ("Mantap... DJ nya...")
+            val teksAsli = bagianSaringan[0].trim()
+            if (teksAsli.isNotEmpty()) {
+                holder.txtKontenUtama.text = teksAsli
+                holder.txtKontenUtama.visibility = View.VISIBLE
+            } else {
+                holder.txtKontenUtama.visibility = View.GONE
+            }
+
+            // 2. Modifikasi Bumper (Bingkai Abu-abu + Bantalan Dalam)
+            holder.wadahDinamisKonten.setBackgroundResource(R.drawable.bg_border_sharedpost)
+            val bantalanPx = (12 * holder.itemView.context.resources.displayMetrics.density).toInt()
+            holder.wadahDinamisKonten.setPadding(bantalanPx, bantalanPx, bantalanPx, bantalanPx)
+
+            // 3. Merakit Teks & Header Shared
             if (bagianSaringan.size > 1) {
                 val detailShared = bagianSaringan[1].split(" ---\n", limit = 2)
+                holder.wadahHeaderShared.visibility = View.VISIBLE
+                holder.txtKontenShared.visibility = View.VISIBLE
+                
+                // Jika Pipa JSON gagal menyedot nama grup, mesin ini hanya menampilkan nama penulis
+                holder.txtNamaPemilikShared.text = detailShared[0].trim() 
+                
                 if (detailShared.size > 1) {
-                    holder.wadahSharedPost.visibility = View.VISIBLE
-                    holder.txtSharedAuthor.text = "Membagikan Status: ${detailShared[0].trim()}"
-                    holder.txtSharedKonten.text = detailShared[1].trim()
-                } else { holder.wadahSharedPost.visibility = View.GONE }
+                    holder.txtKontenShared.text = detailShared[1].trim()
+                } else {
+                    holder.txtKontenShared.visibility = View.GONE
+                }
             }
         } else {
-            holder.txtKonten.text = kontenBersih
-            holder.wadahSharedPost.visibility = View.GONE
+            // ========================================================
+            // MODE POST NORMAL: Menghancurkan Bingkai Pengunci
+            // ========================================================
+            holder.txtKontenUtama.text = kontenBersih
+            holder.txtKontenUtama.visibility = View.VISIBLE
+            
+            // Cabut bingkai abu-abu dan hapus bantalan
+            holder.wadahDinamisKonten.setBackgroundResource(0)
+            holder.wadahDinamisKonten.setPadding(0, 0, 0, 0)
+            
+            holder.wadahHeaderShared.visibility = View.GONE
+            holder.txtKontenShared.visibility = View.GONE
         }
+
 
         holder.txtTanggal.text = arsip.tanggalBaca
         holder.txtKategori.text = arsip.kategori
-        holder.txtNomorHalaman.text = "Hal: ${position + 1}/${daftarArsip.size}"
+        holder.txtNomorHalaman.text = "Halaman : ${position + 1}/${daftarArsip.size}"
         holder.imgProfil.setImageResource(R.drawable.profil_abah)
 
         holder.btnTautan.setOnClickListener {

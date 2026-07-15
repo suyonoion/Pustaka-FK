@@ -32,6 +32,12 @@
                 android:textColor="#004D40"
                 android:textSize="15sp"
                 android:textStyle="bold" />
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Fatwa Kehidupan"
+                android:textColor="#00B0FF"
+                android:textSize="12sp" />
             <LinearLayout
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
@@ -84,8 +90,9 @@
             android:layout_height="wrap_content"
             android:orientation="vertical">
             
+            <!-- TEKS ASLI PEMOSTING UTAMA ("Mantap... DJ nya...") -->
             <TextView
-                android:id="@+id/txtKonten"
+                android:id="@+id/txtKontenUtama"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:textSize="14sp"
@@ -94,35 +101,72 @@
                 android:autoLink="web"
                 android:linksClickable="true"
                 android:textColorLink="#00B0FF"
-                android:layout_marginBottom="12dp"/>
+                android:layout_marginBottom="10dp"/>
 
+            <!-- WADAH DINAMIS (Merangkum Teks Shared + Foto/Video) -->
             <LinearLayout
-                android:id="@+id/wadahSharedPost"
+                android:id="@+id/wadahDinamisKonten"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:orientation="vertical"
-                android:background="@drawable/bg_border_sharedpost"
-                android:padding="12dp"
-                android:layout_marginBottom="12dp"
-                android:visibility="gone">
-                <TextView
-                    android:id="@+id/txtSharedAuthor"
-                    android:layout_width="wrap_content"
+                android:layout_marginBottom="12dp">
+                
+                <!-- HEADER SHARED POST (Logo & Nama) -->
+                <LinearLayout
+                    android:id="@+id/wadahHeaderShared"
+                    android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:textColor="#004D40"
-                    android:textSize="12sp"
-                    android:textStyle="bold"/>
+                    android:orientation="horizontal"
+                    android:gravity="center_vertical"
+                    android:layout_marginBottom="10dp"
+                    android:visibility="gone">
+                    <ImageView
+                        android:layout_width="38dp"
+                        android:layout_height="38dp"
+                        android:src="@drawable/profil_abah"
+                        android:scaleType="centerCrop"/>
+                    <LinearLayout
+                        android:layout_width="0dp"
+                        android:layout_weight="1"
+                        android:layout_height="wrap_content"
+                        android:orientation="vertical"
+                        android:layout_marginStart="10dp">
+                        <TextView
+                            android:id="@+id/txtNamaPemilikShared"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:textColor="#1C1E21"
+                            android:textSize="14sp"
+                            android:textStyle="bold"/>
+                        <TextView
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:text="Status Dibagikan"
+                            android:textColor="#65676B"
+                            android:textSize="11sp"/>
+                    </LinearLayout>
+                </LinearLayout>
+
+                <!-- TEKS SHARED POST ("Assalamu'alaikum...") -->
                 <TextView
-                    android:id="@+id/txtSharedKonten"
+                    android:id="@+id/txtKontenShared"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:textSize="13sp"
-                    android:textColor="#424242"
-                    android:lineSpacingExtra="3dp"
+                    android:textColor="#1C1E21"
+                    android:lineSpacingExtra="4dp"
                     android:autoLink="web"
                     android:linksClickable="true"
                     android:textColorLink="#00B0FF"
-                    android:layout_marginTop="6dp"/>
+                    android:layout_marginBottom="8dp"
+                    android:visibility="gone"/>
+
+                <!-- PROYEKTOR MEDIA (Selalu berada di bagian paling bawah teks) -->
+                <LinearLayout
+                    android:id="@+id/wadahMultiFoto"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="vertical"/>
             </LinearLayout>
 
             <LinearLayout
@@ -154,13 +198,6 @@
                     <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Bagikan" android:textColor="#424242" android:textSize="12sp" android:textStyle="bold" android:layout_marginStart="8dp"/>
                 </LinearLayout>
             </LinearLayout>
-
-            <LinearLayout
-                android:id="@+id/wadahMultiFoto"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:orientation="vertical"
-                android:visibility="gone"/>
         </LinearLayout>
     </ScrollView>
 </LinearLayout>
