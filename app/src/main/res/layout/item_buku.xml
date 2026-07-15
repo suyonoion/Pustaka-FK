@@ -120,11 +120,14 @@
                     android:gravity="center_vertical"
                     android:layout_marginBottom="10dp"
                     android:visibility="gone">
-                    <ImageView
+                                        <ImageView
                         android:layout_width="38dp"
                         android:layout_height="38dp"
-                        android:src="@drawable/profil_abah"
-                        android:scaleType="centerCrop"/>
+                        android:src="@android:drawable/ic_menu_myplaces"
+                        app:tint="#9E9E9E"
+                        android:scaleType="centerInside"
+                        android:background="#EAEAEA"
+                        android:padding="6dp"/>
                     <LinearLayout
                         android:layout_width="0dp"
                         android:layout_weight="1"

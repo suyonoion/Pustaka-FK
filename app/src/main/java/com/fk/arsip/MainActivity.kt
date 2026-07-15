@@ -63,6 +63,7 @@ class MainActivity : AppCompatActivity() {
     private var isSearchMode = false 
     // Tuas Pengunci Interlock Mesin
     private var isMesinSibuk = false
+    private var modeKategoriAktif = false
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -99,22 +100,37 @@ class MainActivity : AppCompatActivity() {
                     wadahModeBuku.visibility = View.GONE
                     recyclerGridMode.visibility = View.VISIBLE
                 } 
-                // Jika sedang dalam mode pencarian, reset total ke struktur awal (Semua Daftar Grid)
-                else if (isSearchMode || edtPencarian.text.toString().isNotEmpty()) {
+                // JARING PENANGKAP GANDA: Sensor Kolom Pencarian & Sensor Kategori Laci
+                else if (isSearchMode || edtPencarian.text.toString().isNotEmpty() || modeKategoriAktif) {
+                    
+                    // 1. Matikan seluruh sakelar mode khusus
                     isSearchMode = false
+                    modeKategoriAktif = false 
+                    
+                    // 2. Bersihkan indikator visual
                     edtPencarian.text.clear()
                     edtPencarian.clearFocus()
-                    panelStatusPencarian.visibility = View.GONE
                     val imm = getSystemService(Context.INPUT_METHOD_SERVICE) as InputMethodManager
                     imm.hideSoftInputFromWindow(edtPencarian.windowToken, 0)
                     
-                    eksekusiPabrikData() // Tarik ulang seluruh muatan awal
+                    // 3. Tarik paksa seluruh muatan awal dari brankas
+                    tampilkanIndikator("Memuat ulang semua status...", true)
+                    lifecycleScope.launch(Dispatchers.IO) {
+                        val database = ArsipDatabase.operasikanMesin(this@MainActivity).arsipDao()
+                        val semuaData = database.tarikSemuaArsip()
+                        
+                        withContext(Dispatchers.Main) {
+                            pompaDataKeLayar(semuaData)
+                            panelStatusPencarian.visibility = View.GONE
+                        }
+                    }
                 } 
                 else {
                     tampilkanPanelKonfirmasiKeluar()
                 }
             }
         })
+
 
         inisialisasiTuasFooterStatis()
         inisialisasiSirkuitAppDrawer()
@@ -232,6 +248,7 @@ class MainActivity : AppCompatActivity() {
 
             withContext(Dispatchers.Main) {
                 isSearchMode = false
+                modeKategoriAktif = true
                 edtPencarian.text.clear()
                 
                 tampilkanIndikator("Ditemukan ${hasilSaringanAkhir.size} arsip.", false)

@@ -135,7 +135,9 @@ class BukuAdapter(private var daftarArsip: List<ArsipEntity>) : RecyclerView.Ada
                     layoutParams = FrameLayout.LayoutParams(FrameLayout.LayoutParams.MATCH_PARENT, 700)
                     scaleType = ImageView.ScaleType.CENTER_CROP
                 }
-                Glide.with(konteks).load(urlBersih).into(proyektorGambar)
+                Glide.with(konteks).load(urlBersih)
+                error(android.R.drawable.ic_menu_report_image)
+                .into(proyektorGambar)
                 sasisBingkai.addView(proyektorGambar)
 
                 if (isVideo) {
@@ -178,7 +180,9 @@ class BukuAdapter(private var daftarArsip: List<ArsipEntity>) : RecyclerView.Ada
                         layoutParams = FrameLayout.LayoutParams(FrameLayout.LayoutParams.MATCH_PARENT, FrameLayout.LayoutParams.MATCH_PARENT)
                         scaleType = ImageView.ScaleType.CENTER_CROP
                     }
-                    Glide.with(konteks).load(urlBersih).into(proyektorGrid)
+                    Glide.with(konteks).load(urlBersih)
+                    error(android.R.drawable.ic_menu_report_image)
+                    .into(proyektorGrid)
                     sasisGrid.addView(proyektorGrid)
 
                     if (isVideo) {
