@@ -23,8 +23,8 @@ object CetakBiruKategori {
             "Gangguan Melihat Makhluk Halus" to listOf("mahluk halus"),
             "Melepas Energi Negatif" to listOf("gedruk bumi"),
             "Angin/Hujan Kencang" to listOf("jopo montro","angin ribut","angin lebat","angin kencang"),
-            "Caroko Walik" to listOf("caroko walik","honocoroko","carokowalik","aksara jawa")
-            "Puter Giling Orang Hilang" to listOf("puter giling")
+            "Caroko Walik" to listOf("caroko walik","honocoroko","carokowalik","aksara jawa"),
+            "Puter Giling Orang Hilang" to listOf("puter giling"),
             "Usir Tikus" to listOf("alkemi mistik","alkemi","hama tikus","dancok","rajah tikus"),
             "Sholawat Nariyah" to listOf("sholawat nariyah","ba'da subuh 12x","shalawat nariyah","nariyah"),
             "Dzikir Fida'" to listOf("dzikir fida'","7000x","70.000x","fida'","fida","fidda"),
