@@ -8,7 +8,7 @@ object CetakBiruKategori {
     // ========================================================
     val MATRIKS_UTAMA = listOf(
         "Ijazah Khusus Murid" to listOf(
-            "Ijazah Khusus Murid" to listOf("ijazah khusus")
+            "Dzikir Jahar" to listOf("DJ")
         ),
         "Ijazah Umum" to listOf(
             "Adab / Minta Izin Ijazah" to listOf("izin ijazah", "qobiltu", "adab"),
@@ -39,7 +39,11 @@ object CetakBiruKategori {
         ),
         "Pertanian" to listOf(
             "Pertanian" to listOf("tani", "sawah", "pupuk", "kopi")
+        ),
+        "Umum" to listOf(
+            "Umum" to listOf("umum_fallback_signal")
         )
+
     )
     // ========================================================
 }

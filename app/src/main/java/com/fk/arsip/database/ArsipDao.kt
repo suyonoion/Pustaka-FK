@@ -22,4 +22,9 @@ interface ArsipDao {
     // Sensor Kapasitas Tangki
     @Query("SELECT COUNT(*) FROM tabel_arsip")
     fun hitungTotalArsip(): Int
+    
+        // Pipa khusus untuk menyedot data berdasarkan stempel kolom kategori murni
+    @Query("SELECT * FROM tabel_arsip WHERE kategori = :namaKategori ORDER BY waktuRilis DESC")
+    fun saringBerdasarkanKolomKategori(namaKategori: String): List<ArsipEntity>
+
 }

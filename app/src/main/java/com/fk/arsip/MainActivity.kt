@@ -217,34 +217,24 @@ class MainActivity : AppCompatActivity() {
 
     // Sirkuit Pintu Penyaringan Kategori Laci
   
-          private fun eksekusiSaringanKategori(labelKategori: String) {
+    private fun eksekusiSaringanKategori(labelKategori: String) {
         if (isMesinSibuk) {
             Toast.makeText(this, "Sistem sedang merakit data. Harap tunggu.", Toast.LENGTH_SHORT).show()
             return
         }
 
-        // Papan Relai Otomatis: Menyedot kata kunci pencarian langsung dari Memori Sentral
-        var matriksKataKunci = listOf(labelKategori)
-        for (induk in CetakBiruKategori.MATRIKS_UTAMA) {
-            for (cabang in induk.second) {
-                if (cabang.first == labelKategori) {
-                    matriksKataKunci = cabang.second
-                    break
-                }
-            }
-        }
-
-        tampilkanIndikator("Menyaring kargo: $labelKategori...", true)
+        tampilkanIndikator("Menarik kargo: $labelKategori...", true)
 
         lifecycleScope.launch(Dispatchers.IO) {
             val database = ArsipDatabase.operasikanMesin(this@MainActivity).arsipDao()
-            val tangkiGabungan = mutableSetOf<ArsipEntity>() 
-
-            for (kunci in matriksKataKunci) {
-                tangkiGabungan.addAll(database.saringArsip(kunci))
-            }
-
-            val hasilSaringanAkhir = tangkiGabungan.toList().sortedByDescending { it.waktuRilis }
+            
+            // ========================================================
+            // SEDOTAN BYPASS MUTLAK (SINGLE SOURCE OF TRUTH)
+            // Lengan robot langsung menarik kargo berdasarkan stempel 
+            // di kolom kategori tanpa menyisir isi teks lagi.
+            // (Pastikan fungsi saringBerdasarkanKolomKategori sudah ada di ArsipDao.kt)
+            // ========================================================
+            val hasilSaringanAkhir = database.saringBerdasarkanKolomKategori(labelKategori)
 
             withContext(Dispatchers.Main) {
                 isSearchMode = false
@@ -256,12 +246,12 @@ class MainActivity : AppCompatActivity() {
                 wadahModeBuku.visibility = View.GONE
                 recyclerGridMode.visibility = View.VISIBLE
                 
-                // Kargo data dipompa polos, karena stempel di SQLite sudah 100% presisi
                 pompaDataKeLayar(hasilSaringanAkhir) 
                 drawerLayout.closeDrawers()
             }
         }
     }
+
 
 
     // Sirkuit Pemicu Footer Statis
@@ -732,24 +722,30 @@ class MainActivity : AppCompatActivity() {
 
 
         // Mesin Pencetak Stempel Permanen SQLite
+        // Mesin Pencetak Stempel Permanen SQLite (Versi Presisi Batas Kata)
     private fun mesinDeteksiKategori(teksKonten: String): String {
         val teksMesin = teksKonten.lowercase()
         
-        // Mesin menyapu Blok Memori Sentral dari atas ke bawah
         for (induk in CetakBiruKategori.MATRIKS_UTAMA) {
             for (cabang in induk.second) {
                 val namaKategori = cabang.first
                 val daftarKataKunci = cabang.second
                 
                 for (kunci in daftarKataKunci) {
-                    if (teksMesin.contains(kunci)) {
-                        return namaKategori // Stempel langsung dicap jika cocok
+                    // ========================================================
+                    // SENSOR PRESISI REGEX (Regular Expression)
+                    // \b memaksa mesin mencari batas kata (spasi/tanda baca)
+                    // ========================================================
+                    val sensorBatasKata = Regex("\\b$kunci\\b")
+                    if (sensorBatasKata.containsMatchIn(teksMesin)) {
+                        return namaKategori 
                     }
                 }
             }
         }
-        return "Belum di kategorikan" // Pembuangan akhir jika tidak terdeteksi satupun
+        return "Belum di Kategorikan" 
     }
+
 
     
     private fun tampilkanIndikator(pesan: String, aktif: Boolean) {
