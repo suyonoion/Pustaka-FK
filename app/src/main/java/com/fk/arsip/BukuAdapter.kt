@@ -77,21 +77,20 @@ class BukuAdapter(private var daftarArsip: List<ArsipEntity>) : RecyclerView.Ada
                     holder.txtKontenShared.visibility = View.GONE
                 }
             }
-        } else {
-            // ========================================================
-            // MODE POST NORMAL: Menghancurkan Bingkai Pengunci
-            // ========================================================
-            holder.txtKontenUtama.text = kontenBersih
-            holder.txtKontenUtama.visibility = View.VISIBLE
-            
-            // Cabut bingkai abu-abu dan hapus bantalan
-            holder.wadahDinamisKonten.setBackgroundResource(0)
-            holder.wadahDinamisKonten.setPadding(0, 0, 0, 0)
-            
-            holder.wadahHeaderShared.visibility = View.GONE
-            holder.txtKontenShared.visibility = View.GONE
-        }
-
+} else {
+    // ========================================================
+    // MODE POST NORMAL: Menerapkan Warna Sanad
+    // ========================================================
+    // GANTI BARIS LAMA DENGAN INI:
+    holder.txtKontenUtama.text = terapkanWarna(kontenBersih)
+    holder.txtKontenUtama.visibility = View.VISIBLE
+    
+    holder.wadahDinamisKonten.setBackgroundResource(0)
+    holder.wadahDinamisKonten.setPadding(0, 0, 0, 0)
+    
+    holder.wadahHeaderShared.visibility = View.GONE
+    holder.txtKontenShared.visibility = View.GONE
+}
 
         holder.txtTanggal.text = arsip.tanggalBaca
         holder.txtKategori.text = arsip.kategori
@@ -205,6 +204,32 @@ class BukuAdapter(private var daftarArsip: List<ArsipEntity>) : RecyclerView.Ada
             }
         } else { holder.wadahFoto.visibility = View.GONE }
     }
+
+private fun terapkanWarna(teksLengkap: String): android.text.SpannableString {
+    val spannable = android.text.SpannableString(teksLengkap)
+    val pembatasIndex = teksLengkap.indexOf("=====")
+    
+    if (pembatasIndex != -1) {
+        // Pertanyaan (Biru) - Sebelum pembatas
+        spannable.setSpan(
+            android.text.style.ForegroundColorSpan(android.graphics.Color.parseColor("#0000FF")), 
+            0, pembatasIndex, android.text.Spannable.SPAN_EXCLUSIVE_EXCLUSIVE
+        )
+        // Jawaban (Hijau) - Setelah pembatas
+        spannable.setSpan(
+            android.text.style.ForegroundColorSpan(android.graphics.Color.parseColor("#008000")), 
+            pembatasIndex, teksLengkap.length, android.text.Spannable.SPAN_EXCLUSIVE_EXCLUSIVE
+        )
+    } else {
+        // Jika tidak ada pembatas, warnai semua biru sebagai default status jamaah
+        spannable.setSpan(
+            android.text.style.ForegroundColorSpan(android.graphics.Color.parseColor("#0000FF")), 
+            0, teksLengkap.length, android.text.Spannable.SPAN_EXCLUSIVE_EXCLUSIVE
+        )
+    }
+    return spannable
+}
+
 
     private fun contextStart(context: android.content.Context, url: String) {
         if (url.isNotBlank()) {
