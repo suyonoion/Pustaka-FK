@@ -613,41 +613,45 @@ class MainActivity : AppCompatActivity() {
                 loadingPencarian.visibility = View.VISIBLE
                 txtStatusPencarian.text = "Mencari data..."
                 
-                                lifecycleScope.launch(Dispatchers.IO) {
+                lifecycleScope.launch(Dispatchers.IO) {
                     val lenganRobot = ArsipDatabase.operasikanMesin(this@MainActivity).arsipDao()
-                    val hasilSaringan = if (kataKunci.isEmpty()) {
+                    
+                    // 1. Tarik kargo kasar menggunakan pemindai buta SQLite
+                    val kargoKasar = if (kataKunci.isEmpty()) {
                         lenganRobot.tarikSemuaArsip()
                     } else {
                         lenganRobot.saringArsip(kataKunci)
                     }
                     
-                    // ========================================================
-                    // INJEKSI SENSOR PARALEL: PEMBIAS KATEGORI DINAMIS
-                    // Memaksa hasil pencarian global memindai teks secara runtime
-                    // menggunakan mesinDeteksiKategori versi baru Anda
-                    // ========================================================
-                    val hasilSaringanDinamis = hasilSaringan.map { arsip ->
-                        arsip.copy(kategori = mesinDeteksiKategori(arsip.kontenPenuh))
+                    // 2. INJEKSI FILTER PRESISI BATAS KATA (RAM LEVEL)
+                    val hasilSaringanPresisi = if (kataKunci.isNotEmpty()) {
+                        // Memaksa mesin mencari batas kata persis seperti di pencetak stempel
+                        val sensorBatasKata = Regex("\\b$kataKunci\\b", RegexOption.IGNORE_CASE)
+                        kargoKasar.filter { arsip ->
+                            sensorBatasKata.containsMatchIn(arsip.kontenPenuh)
+                        }
+                    } else {
+                        kargoKasar
                     }
-                    // ========================================================
-                    
+
                     withContext(Dispatchers.Main) {
                         if (wadahModeBuku.visibility == View.VISIBLE) {
                             wadahModeBuku.visibility = View.GONE
                             recyclerGridMode.visibility = View.VISIBLE
                         }
 
-                        // Memompa kargo data yang kategorinya sudah diselaraskan secara dinamis
-                        pompaDataKeLayar(hasilSaringanDinamis)
+                        // Pompa kargo yang sudah tersaring murni ke layar
+                        pompaDataKeLayar(hasilSaringanPresisi)
                         
                         loadingPencarian.visibility = View.GONE
-                        txtStatusPencarian.text = "Ditemukan ${hasilSaringanDinamis.size} arsip."
+                        txtStatusPencarian.text = "Ditemukan ${hasilSaringanPresisi.size} arsip."
                         
                         edtPencarian.clearFocus()
                         val imm = getSystemService(Context.INPUT_METHOD_SERVICE) as InputMethodManager
                         imm.hideSoftInputFromWindow(edtPencarian.windowToken, 0)
                     }
                 }
+
 
                 true
             } else {
