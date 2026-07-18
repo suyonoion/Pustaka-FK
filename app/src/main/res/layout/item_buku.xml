@@ -198,8 +198,9 @@
                     android:background="?android:attr/selectableItemBackground"
                     android:padding="6dp">
                     <ImageView android:layout_width="16dp" android:layout_height="16dp" android:src="@android:drawable/ic_menu_share" app:tint="#424242"/>
-                </LinearLayout>
                     <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Bagikan" android:textColor="#424242" android:textSize="12sp" android:textStyle="bold" android:layout_marginStart="8dp"/>
+                </LinearLayout>
+                    
             </LinearLayout>
         </LinearLayout>
     </ScrollView>

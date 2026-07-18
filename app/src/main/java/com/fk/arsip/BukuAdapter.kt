@@ -223,7 +223,7 @@ private fun terapkanWarna(teksLengkap: String): android.text.SpannableString {
     } else {
         // Jika tidak ada pembatas, warnai semua biru sebagai default status jamaah
         spannable.setSpan(
-            android.text.style.ForegroundColorSpan(android.graphics.Color.parseColor("#0000FF")), 
+            android.text.style.ForegroundColorSpan(android.graphics.Color.parseColor("#212121")), 
             0, teksLengkap.length, android.text.Spannable.SPAN_EXCLUSIVE_EXCLUSIVE
         )
     }

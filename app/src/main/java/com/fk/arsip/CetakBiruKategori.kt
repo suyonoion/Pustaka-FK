@@ -37,60 +37,53 @@ object CetakBiruKategori {
         "Rule of Third" to listOf(
         "Rule of Third" to listOf("rule of third","intuisi")
         ),
-        "Iqro' Kitabaka" to listOf(
-        "Iqro' Kitabaka" to listOf("kitabaka")
+        "Rahasia Waktu" to listOf(
+        "Rahasia Waktu" to listOf("rahasia waktu")
         ),
-        "Ora Ono Opo Opo" to listOf(
-        "Ora Ono Opo Opo" to listOf("ora ono opo opo")
+        "Semboyan" to listOf(
+        "Iqro' Kitabaka" to listOf("kitabaka"),
+        "Ora Ono Opo Opo" to listOf("ora ono opo opo"),
+        "Kebodohan" to listOf("belajar bodoh"),
+        "Barisan Ningrat(Ning Akherat)" to listOf("ningrat")
         ),
-        "Kebodohan" to listOf(
-        "Kebodohan" to listOf("belajar bodoh")
+        
+        "Tingkat" to listOf(
+          "Langit" to listOf("langit ke"),
+          "Tingkatan" to listOf("tingkatan"),
+          "Lapisan Cahaya" to listOf("lapisan cahaya")
         ),
-        "Langit" to listOf(
-        "Langit" to listOf("langit ke")
-        ),
-        "Tingkatan" to listOf(
-        "Tingkatan" to listOf("tingkatan")
-        ),
-        "Lapisan Cahaya" to listOf(
-        "Lapisan Cahaya" to listOf("lapisan cahaya")
-        ),
-        "Barisan Ningrat(Ning Akherat)" to listOf(
-        "Barisan Ningrat(Ning Akherat" to listOf("ningrat")
-        ),
+       
         "GENUS (Jin)" to listOf(
         "GENUS (Jin)" to listOf("GENUS")
         ),
+        
         "Tentang Sholat" to listOf(
-        "Sholat" to listOf("TENTANG SHOLAT"),
-        "Sholat Tasbih" to listOf("sholat tasbih")
+           "Sholat" to listOf("TENTANG SHOLAT"),
+           "Sholat Tasbih" to listOf("sholat tasbih")
         ),
-        "Takdir" to listOf(
-        "Takdir" to listOf("takdir")
+        "Takdir/Rejeki/Maut" to listOf(
+          "Takdir" to listOf("takdir"),
+          "Rejeki" to listOf("rejeki","rizki"),
+          "Maut" to listOf("maut","kematian","wafat","meninggal","ajal","alam kubur","alam kematian","barzah")
         ),
-        "Kholwat" to listOf(
-        "kholwat" to listOf("kholwat")
-        ),
-        "Lelaku" to listOf(
-        "Lelaku" to listOf("lelaku")
-        ),
-        "Salik" to listOf(
-        "Salik" to listOf("salik")
-        ),
-        "Suluk" to listOf(
-        "Suluk" to listOf("suluk")
-        ),
-        "Tirakat" to listOf(
-        "Tirakat" to listOf("tirakat2","tirakat")
-        ),
-        "Kultivasi" to listOf(
-        "Kultivasi" to listOf("kultivasi")
-        ),
+    "Tasawuf dan Laku Batin" to listOf(
+        "Kholwat" to listOf("kholwat"),
+        "Lelaku" to listOf("lelaku"),
+        "Salik" to listOf("salik"),
+        "Suluk" to listOf("suluk"),
+        "Tirakat" to listOf("tirakat2","tirakat"),
+        "Kultivasi" to listOf("kultivasi"),
+        "Meditasi" to listOf("meditasi"),
+        "Wening" to listOf("wening"),
+        "Semedi" to listOf("semedi")
+     ),
         "Program Social" to listOf(
-            "Program Sosial" to listOf("program social", "baksos", "sosial")
+            "Program Sosial" to listOf("program social", "baksos", "sosial"),
+            "Baksos Palestina" to listOf("baksos fk gaza"),
+            "Santunan" to listOf("santunan","yayasan","anak yatim")
         ),
         "Acara Kopdar" to listOf(
-            "Acara Kopdar" to listOf("kopdar", "kumpul","jamaah","kopdar akbar")
+            "Acara Kopdar" to listOf("kopdar","kopdar akbar")
         ),
         "Produk FK" to listOf(
             "Produk FK" to listOf("produk fk", "madu fk", "kopi fk","minyak fk","oli fk","teh celup herbal fk","biofk","pupuk fk")
@@ -101,11 +94,11 @@ object CetakBiruKategori {
         ),
         "Politik & Negara" to listOf(
             "Politik & Pemerintahan" to listOf("politik", "pemerintah", "negara", "pejabat","dpr","mbg","rakyat"),
-            "Hukum & Institusi" to listOf("korupsi", "jampidsus", "kasus bgn", "hukuman", "pangkat", "jabatan", "kolonel", "bintang", "polisi", "kejaksaan")
+            "Hukum & Institusi" to listOf("korupsi", "jampidsus", "kasus bgn", "penjara","hukum negara","pangkat", "jabatan", "kolonel", "polisi", "kejaksaan")
         ),
         "Pertanian" to listOf(
             "Teknis & Irigasi" to listOf("tani", "sawah", "irigasi", "springkler", "pipa", "galvanis", "nepel", "tekanan tinggi", "karet ban"),
-            "Produksi & Tanaman" to listOf("pupuk", "tikus", "alkemi", "padi", "jagung", "bajak", "buah", "tanah", "kebun", "ladang", "daun", "batang", "drip", "tanam", "tanaman", "emisi karbon")
+            "Produksi & Tanaman" to listOf("pupuk", "usir tikus", "alkemi", "padi", "jagung", "bajak", "tanam buah", "olah tanah", "kebun", "ladang", "daun", "batang", "drip", "tanam", "tanaman", "emisi karbon")
         ),
         "Belum di Kategorikan" to listOf(
             "Belum di Kategorikan" to listOf("umum_fallback_signal")

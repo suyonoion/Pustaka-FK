@@ -745,11 +745,11 @@ if (kalkulasiPersen > persentaseLayarTerakhir) {
             .show()
     }
 
-
-        // Mesin Pencetak Stempel Permanen SQLite
-        // Mesin Pencetak Stempel Permanen SQLite (Versi Presisi Batas Kata)
+    // Mesin Pencetak Stempel Paralel (Multi-Kategori)
     private fun mesinDeteksiKategori(teksKonten: String): String {
         val teksMesin = teksKonten.lowercase()
+        // Tangki penampung stempel, menggunakan Set untuk memblokir duplikasi
+        val tangkiStempel = mutableSetOf<String>() 
         
         for (induk in CetakBiruKategori.MATRIKS_UTAMA) {
             for (cabang in induk.second) {
@@ -757,22 +757,27 @@ if (kalkulasiPersen > persentaseLayarTerakhir) {
                 val daftarKataKunci = cabang.second
                 
                 for (kunci in daftarKataKunci) {
-                    // ========================================================
-                    // SENSOR PRESISI REGEX (Regular Expression)
-                    // \b memaksa mesin mencari batas kata (spasi/tanda baca)
-                    // ========================================================
                     val sensorBatasKata = Regex("\\b$kunci\\b")
                     if (sensorBatasKata.containsMatchIn(teksMesin)) {
-                        return namaKategori 
+                        // Injeksi stempel ke tangki
+                        tangkiStempel.add(namaKategori) 
+                        // Putus putaran untuk kata kunci ini, langsung lompat ke kategori berikutnya
+                        break 
                     }
                 }
             }
         }
-        return "Belum di Kategorikan" 
+        
+        // Pipa Pembuangan Hasil
+        return if (tangkiStempel.isNotEmpty()) {
+            // Jika ada stempel, gabungkan dengan pembatas koma
+            tangkiStempel.joinToString(", ") 
+        } else {
+            "Belum di Kategorikan" 
+        }
     }
 
 
-    
     private fun tampilkanIndikator(pesan: String, aktif: Boolean) {
         panelStatusPencarian.visibility = if (aktif) View.VISIBLE else View.GONE
         loadingPencarian.visibility = if (aktif) View.VISIBLE else View.GONE

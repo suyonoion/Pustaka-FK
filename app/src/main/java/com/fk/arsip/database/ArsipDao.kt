@@ -23,8 +23,11 @@ interface ArsipDao {
     @Query("SELECT COUNT(*) FROM tabel_arsip")
     fun hitungTotalArsip(): Int
     
-        // Pipa khusus untuk menyedot data berdasarkan stempel kolom kategori murni
-    @Query("SELECT * FROM tabel_arsip WHERE kategori = :namaKategori ORDER BY waktuRilis DESC")
+    // ========================================================
+    // MODIFIKASI: Pipa Penyedot Stempel Jamak (Multi-Kategori)
+    // Sensor LIKE '%' memungkinkan mesin mengekstrak status 
+    // meskipun stempel target berada di antara stempel lainnya
+    // ========================================================
+    @Query("SELECT * FROM tabel_arsip WHERE kategori LIKE '%' || :namaKategori || '%' ORDER BY waktuRilis DESC")
     fun saringBerdasarkanKolomKategori(namaKategori: String): List<ArsipEntity>
-
 }
