@@ -212,12 +212,12 @@ private fun terapkanWarna(teksLengkap: String): android.text.SpannableString {
     if (pembatasIndex != -1) {
         // Pertanyaan (Biru) - Sebelum pembatas
         spannable.setSpan(
-            android.text.style.ForegroundColorSpan(android.graphics.Color.parseColor("#0000FF")), 
+            android.text.style.ForegroundColorSpan(android.graphics.Color.parseColor("#004D40")), 
             0, pembatasIndex, android.text.Spannable.SPAN_EXCLUSIVE_EXCLUSIVE
         )
         // Jawaban (Hijau) - Setelah pembatas
         spannable.setSpan(
-            android.text.style.ForegroundColorSpan(android.graphics.Color.parseColor("#008000")), 
+            android.text.style.ForegroundColorSpan(android.graphics.Color.parseColor("#212121")), 
             pembatasIndex, teksLengkap.length, android.text.Spannable.SPAN_EXCLUSIVE_EXCLUSIVE
         )
     } else {

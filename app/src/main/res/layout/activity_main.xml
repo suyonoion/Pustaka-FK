@@ -26,7 +26,7 @@
             android:imeOptions="actionSearch" 
             android:maxLines="1" />
 
-        <androidx.cardview.widget.CardView
+         <androidx.cardview.widget.CardView
             android:id="@+id/panelStatusPencarian"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
@@ -36,31 +36,65 @@
             app:cardElevation="2dp"
             android:visibility="gone">
 
+            <!-- WADAH UTAMA CARDVIEW (UBAH MENJADI VERTICAL) -->
             <LinearLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:orientation="horizontal"
-                android:gravity="center_vertical"
+                android:orientation="vertical"
                 android:padding="12dp">
 
-                <ProgressBar
-                    android:id="@+id/loadingPencarian"
-                    style="?android:attr/progressBarStyleSmall"
-                    android:layout_width="20dp"
-                    android:layout_height="20dp"
-                    android:indeterminateTint="#004D40" />
-
-                <TextView
-                    android:id="@+id/txtStatusPencarian"
-                    android:layout_width="0dp"
+                <!-- BARIS 1: INDIKATOR PUTARAN & STATUS UTAMA -->
+                <LinearLayout
+                    android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:layout_weight="1"
-                    android:layout_marginStart="10dp"
-                    android:textColor="#1C1E21"
-                    android:textSize="13sp"
-                    android:text="Memproses data..." />
+                    android:orientation="horizontal"
+                    android:gravity="center_vertical">
+
+                    <ProgressBar
+                        android:id="@+id/loadingPencarian"
+                        style="?android:attr/progressBarStyleSmall"
+                        android:layout_width="20dp"
+                        android:layout_height="20dp"
+                        android:indeterminateTint="#004D40" />
+
+                    <TextView
+                        android:id="@+id/txtStatusPencarian"
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1"
+                        android:layout_marginStart="10dp"
+                        android:textColor="#1C1E21"
+                        android:textSize="13sp"
+                        android:text="Memproses data..." />
+                </LinearLayout>
+
+                <!-- BARIS 2: SIRKUIT TELEMETRI HORIZONTAL (TAMBAHAN BARU) -->
+                <ProgressBar
+                    android:id="@+id/pipaVolumeData"
+                    style="?android:attr/progressBarStyleHorizontal"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="12dp"
+                    android:max="100"
+                    android:progress="0"
+                    android:progressTint="#004D40"
+                    android:visibility="gone" />
+
+                <!-- BARIS 3: TERMINAL OUTPUT DETAIL -->
+                <TextView
+                    android:id="@+id/txtDetailSubProses"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="4dp"
+                    android:text="Menunggu instruksi masuk..."
+                    android:textColor="#666666"
+                    android:textSize="11sp"
+                    android:textAlignment="viewEnd"
+                    android:visibility="gone" />
+
             </LinearLayout>
         </androidx.cardview.widget.CardView>
+
 
         <FrameLayout
             android:layout_width="match_parent"

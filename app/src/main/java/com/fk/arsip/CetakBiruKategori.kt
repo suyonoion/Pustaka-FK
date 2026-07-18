@@ -4,14 +4,17 @@ package com.fk.arsip
 object CetakBiruKategori {
 
     val MATRIKS_UTAMA = listOf(
+        "Ilmu Ladunni" to listOf(
+        "Ilmu Ladunni" to listOf("ladunni","laduni")
+        ),
         "Ijazah Khusus Murid" to listOf(
             "Dzikir Jahar" to listOf("dj", "dzikir jahar", "jaharan","dj jamaah"),
             "Dzikir Sirri" to listOf("dzikir sirri","dzikir sirr"),
             "Olah Roso" to listOf("olah roso")
         ),
         "Ijazah Umum" to listOf(
-            "Adab Minta Izin Ijazah" to listOf("minta izin", "dimintakan izin", "adab ngelmu","ijazah"),
-            "Pagar Gaib Fatwa Kehidupan (PGFK)" to listOf("pagar gaib", "pg", "pgfk","pagar"),
+            "Adab Minta Izin Ijazah" to listOf("minta izin", "dimintakan izin", "adab ngelmu"),
+            "Pagar Gaib Fatwa Kehidupan (PGFK)" to listOf("pagar gaib", "pg", "pgfk"),
             "Wasilah (Kirim Al-Fatehah)" to listOf("wasilah", "al-fatehah", "alfatehah","fatehah","ijazah wasilah"),
             "Mengusir Jin" to listOf("yaa hayyu yaa matin","ya hayyu ya Matin"),
             "Sembelih Hewan" to listOf("bawang putih", "sembelih"),
@@ -28,9 +31,60 @@ object CetakBiruKategori {
             "Sakaratul Maut/Peluruh Ilmu" to listOf("sakaratul maut","peluruh ilmu","laqod","sekaratul")
         ),
         "Zuhri Formalism & Tasawuf" to listOf(
-            "Zuhri Formalism" to listOf("zuhri formalism", "bit-massa", "bit-mass", "fraktal", "dimensi", "master protocol", "formal constraints"),
-            "Gamma Locking" to listOf("gamma locking", "kunci gamma", "locking"),
-            "Terminologi Tasawuf" to listOf("tasawuf", "makrifat", "tariqah", "syeikh", "adab", "madad", "fatehah", "dzikir", "olah roso")
+            "Zuhri Formalism" to listOf("zuhri formalism", "bit-massa", "bit-mass", "fraktal", "master protocol", "formal constraints","frekuensi","ZF","fisika","kuantum","Gemini","fisikawan","air jabung"),
+            "Gamma Locking" to listOf("gamma locking", "kunci gamma", "locking")
+        ),
+        "Rule of Third" to listOf(
+        "Rule of Third" to listOf("rule of third","intuisi")
+        ),
+        "Iqro' Kitabaka" to listOf(
+        "Iqro' Kitabaka" to listOf("kitabaka")
+        ),
+        "Ora Ono Opo Opo" to listOf(
+        "Ora Ono Opo Opo" to listOf("ora ono opo opo")
+        ),
+        "Kebodohan" to listOf(
+        "Kebodohan" to listOf("belajar bodoh")
+        ),
+        "Langit" to listOf(
+        "Langit" to listOf("langit ke")
+        ),
+        "Tingkatan" to listOf(
+        "Tingkatan" to listOf("tingkatan")
+        ),
+        "Lapisan Cahaya" to listOf(
+        "Lapisan Cahaya" to listOf("lapisan cahaya")
+        ),
+        "Barisan Ningrat(Ning Akherat)" to listOf(
+        "Barisan Ningrat(Ning Akherat" to listOf("ningrat")
+        ),
+        "GENUS (Jin)" to listOf(
+        "GENUS (Jin)" to listOf("GENUS")
+        ),
+        "Tentang Sholat" to listOf(
+        "Sholat" to listOf("TENTANG SHOLAT"),
+        "Sholat Tasbih" to listOf("sholat tasbih")
+        ),
+        "Takdir" to listOf(
+        "Takdir" to listOf("takdir")
+        ),
+        "Kholwat" to listOf(
+        "kholwat" to listOf("kholwat")
+        ),
+        "Lelaku" to listOf(
+        "Lelaku" to listOf("lelaku")
+        ),
+        "Salik" to listOf(
+        "Salik" to listOf("salik")
+        ),
+        "Suluk" to listOf(
+        "Suluk" to listOf("suluk")
+        ),
+        "Tirakat" to listOf(
+        "Tirakat" to listOf("tirakat2","tirakat")
+        ),
+        "Kultivasi" to listOf(
+        "Kultivasi" to listOf("kultivasi")
         ),
         "Program Social" to listOf(
             "Program Sosial" to listOf("program social", "baksos", "sosial")
@@ -43,7 +97,7 @@ object CetakBiruKategori {
         ),
         "Ekonomi & Trading" to listOf(
             "Ekonomi Makro" to listOf("uang", "ekonomi", "bisnis", "rupiah","jual beli", "fiskal", "pajak"),
-            "Trading" to listOf("trading", "forex", "market", "candlestick", "chart", "buy", "sell", "liquidity", "profit","bot","termux")
+            "Trading" to listOf("trading", "forex", "market", "candlestick", "chart", "buy", "sell", "liquidity", "profit","bot","termux","script")
         ),
         "Politik & Negara" to listOf(
             "Politik & Pemerintahan" to listOf("politik", "pemerintah", "negara", "pejabat","dpr","mbg","rakyat"),
@@ -53,12 +107,8 @@ object CetakBiruKategori {
             "Teknis & Irigasi" to listOf("tani", "sawah", "irigasi", "springkler", "pipa", "galvanis", "nepel", "tekanan tinggi", "karet ban"),
             "Produksi & Tanaman" to listOf("pupuk", "tikus", "alkemi", "padi", "jagung", "bajak", "buah", "tanah", "kebun", "ladang", "daun", "batang", "drip", "tanam", "tanaman", "emisi karbon")
         ),
-        "Media Sosial & Interaksi" to listOf(
-            "Telemetri Publik" to listOf("likes", "komentar", "reaksi massa", "engagement", "metrik", "volume"),
-            "Loyalitas Komunitas" to listOf("abah guru", "abah cinta", "syeikh", "ndherek nyimak", "salam ta'dim", "madad", "fk", "fatwa kehidupan")
-        ),
         "Belum di Kategorikan" to listOf(
-            "Residu" to listOf("umum_fallback_signal")
+            "Belum di Kategorikan" to listOf("umum_fallback_signal")
         )
     )
 }

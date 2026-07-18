@@ -28,14 +28,12 @@ import androidx.recyclerview.widget.GridLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import androidx.cardview.widget.CardView
 import androidx.viewpager2.widget.ViewPager2
-import com.google.android.material.navigation.NavigationView
 import com.fk.arsip.database.ArsipDatabase
 import com.fk.arsip.database.ArsipEntity
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
-import org.json.JSONArray
 import java.io.File
 import java.io.FileReader
 
@@ -57,6 +55,14 @@ class MainActivity : AppCompatActivity() {
     
     private lateinit var gridAdapter: GridAdapter
     private lateinit var bukuAdapter: BukuAdapter
+        private lateinit var panelStatusPencarian: CardView
+    private lateinit var loadingPencarian: ProgressBar
+    private lateinit var txtStatusPencarian: TextView
+    
+    // TAMBAHKAN 2 KOMPONEN INI UNTUK TELEMETRI HORIZONTAL
+    private lateinit var pipaVolumeData: ProgressBar
+    private lateinit var txtDetailSubProses: TextView
+
     
     // Penampung Arus Data & Sakelar Status Informasi
     private var daftarArsipAktif: List<ArsipEntity> = listOf()
@@ -79,6 +85,14 @@ class MainActivity : AppCompatActivity() {
         panelStatusPencarian = findViewById(R.id.panelStatusPencarian)
         loadingPencarian = findViewById(R.id.loadingPencarian)
         txtStatusPencarian = findViewById(R.id.txtStatusPencarian)
+                panelStatusPencarian = findViewById(R.id.panelStatusPencarian)
+        loadingPencarian = findViewById(R.id.loadingPencarian)
+        txtStatusPencarian = findViewById(R.id.txtStatusPencarian)
+        
+        // IKAT KOMPONEN BARU
+        pipaVolumeData = findViewById(R.id.pipaVolumeData)
+        txtDetailSubProses = findViewById(R.id.txtDetailSubProses)
+
 
         recyclerGridMode.layoutManager = GridLayoutManager(this, 2)
         sesuaikanKompartemenGrid() // Pemicu kalkulasi saat mesin pertama kali menyala
@@ -425,7 +439,7 @@ class MainActivity : AppCompatActivity() {
     }
 
 
-        private fun pantauTekananUnduhan(idUnduhan: Long, downloadManager: DownloadManager) {
+    private fun pantauTekananUnduhan(idUnduhan: Long, downloadManager: DownloadManager) {
         lifecycleScope.launch(Dispatchers.Main) {
             var selesai = false
             while (!selesai) {
@@ -441,20 +455,19 @@ class MainActivity : AppCompatActivity() {
                         val diunduh = cursor.getLong(diunduhIndex)
                         val total = cursor.getLong(totalIndex)
                         
-                        // =======================================================
-                        // KATUP PEMBACA STATUS TRANSMISI
                         when (status) {
                             DownloadManager.STATUS_PAUSED -> {
-                                txtStatusPencarian.text = "Menunggu arus jaringan..."
+                                perbaruiStatusMesin(1, 0, "Menunggu arus jaringan...")
                             }
                             DownloadManager.STATUS_RUNNING -> {
                                 if (total > 0) {
                                     val persentase = ((diunduh * 100) / total).toInt()
-                                    txtStatusPencarian.text = "Mengunduh: $persentase%"
+                                    val mbDiunduh = diunduh / (1024 * 1024)
+                                    val mbTotal = total / (1024 * 1024)
+                                    perbaruiStatusMesin(1, persentase, "Kecepatan stabil: $mbDiunduh MB / $mbTotal MB ($persentase%)")
                                 }
                             }
                         }
-                        // =======================================================
 
                         if (status == DownloadManager.STATUS_SUCCESSFUL || status == DownloadManager.STATUS_FAILED) { 
                             selesai = true 
@@ -462,15 +475,17 @@ class MainActivity : AppCompatActivity() {
                     }
                 }
                 cursor?.close()
-                delay(1000) // Detak sensor setiap 1 detik
+                delay(1000)
             }
         }
     }
 
 
-    private suspend fun ekstrakDanInjeksiKeDb(fileTarget: File, lenganRobot: com.fk.arsip.database.ArsipDao) {
+        private suspend fun ekstrakDanInjeksiKeDb(fileTarget: File, lenganRobot: com.fk.arsip.database.ArsipDao) {
         val bobotMinimum = 110 * 1024 * 1024
-        if (fileTarget.length() < bobotMinimum) {
+        val totalBobotFile = fileTarget.length() // Digunakan sebagai proksi perhitungan progres
+
+        if (totalBobotFile < bobotMinimum) {
             withContext(Dispatchers.Main) {
                 fileTarget.delete()
                 aktifkanMesinPenyedot()
@@ -478,21 +493,23 @@ class MainActivity : AppCompatActivity() {
             return
         }
 
-            // Ganti fragmen teks indikator di dalam fungsi ekstrakDanInjeksiKeDb pada thread utama (Main Context)
-    withContext(Dispatchers.Main) {
-        panelStatusPencarian.visibility = View.VISIBLE
-        loadingPencarian.visibility = View.VISIBLE
-        txtStatusPencarian.text = "Menyimpan data ke database..."
-    }
-
+        withContext(Dispatchers.Main) {
+            perbaruiStatusMesin(2, 0, "Memulai pemanasan silinder database...")
+        }
 
         try {
             val reader = com.google.gson.stream.JsonReader(FileReader(fileTarget))
             reader.beginArray() 
             val muatanSementara = mutableListOf<ArsipEntity>()
             var indeks = 0
+            
+            // Estimasi batas untuk persentase (asumsi 1 item ~ 5120 bytes)
+            val estimasiTotalItem = (totalBobotFile / 5120).toInt()
+var persentaseLayarTerakhir = -1 // Letakkan sebelum while (reader.hasNext())
 
             while (reader.hasNext()) {
+                // ... (Biarkan logika ekstraksi Gson, JSONObject, pengaturan user, waktuRilis, dan media array Anda tetap utuh di sini) ...
+                
                 val elemenGson = com.google.gson.JsonParser.parseReader(reader)
                 val obj = org.json.JSONObject(elemenGson.toString())
 
@@ -533,31 +550,43 @@ class MainActivity : AppCompatActivity() {
                 muatanSementara.add(ArsipEntity(idPosting, namaPenulis, urlProfilPic, waktuRilis, tanggalBaca, kontenPenuh, tautanAsli, daftarFoto.joinToString(","), kategori))
                 indeks++
 
-                if (muatanSementara.size >= 500) {
+                // Injeksi setiap 500 baris data (Batch Processing)
+                if (muatanSementara.size >= 3000) {
                     lenganRobot.injeksiMassal(muatanSementara)
                     muatanSementara.clear()
+                    
+                    // Transmisikan kemajuan ke panel UI di Main Thread
+                    withContext(Dispatchers.Main) {
+                        val kalkulasiPersen = ((indeks.toDouble() / estimasiTotalItem.toDouble()) * 100).toInt().coerceAtMost(99)
+// Hanya transmisikan ke UI jika angka persentase berubah, memotong kebisingan sinyal
+if (kalkulasiPersen > persentaseLayarTerakhir) {
+    persentaseLayarTerakhir = kalkulasiPersen
+    withContext(Dispatchers.Main) {
+        perbaruiStatusMesin(2, kalkulasiPersen, "Injeksi baris data ke SQLite... $kalkulasiPersen% ($indeks arsip)")
+    }
+}
+
+                    }
                 }
             }
-
-                        // ... (kode pembacaan reader JSON dan injeksi massal Anda di atas tetap dipertahankan) ...
 
             if (muatanSementara.isNotEmpty()) { lenganRobot.injeksiMassal(muatanSementara) }
             reader.endArray() 
             reader.close()
 
-                        // FASE PENDARATAN SUKSES
+            // FASE PENDARATAN SUKSES
+            withContext(Dispatchers.Main) {
+                perbaruiStatusMesin(2, 100, "Merakit matriks komponen visual... 100%")
+            }
+            
             val semuaData = lenganRobot.tarikSemuaArsip()
             
-            // ==========================================
-            // INJEKSI MESIN PENGHANCUR KARGO
-            // Hapus file JSON mentah untuk membebaskan ruang memori
             if (fileTarget.exists()) {
                 fileTarget.delete()
             }
-            // ==========================================
             
             withContext(Dispatchers.Main) {
-                panelStatusPencarian.visibility = View.GONE 
+                perbaruiStatusMesin(3) // Matikan panel
                 pompaDataKeLayar(semuaData)
                 isMesinSibuk = false 
             }
@@ -566,10 +595,8 @@ class MainActivity : AppCompatActivity() {
             e.printStackTrace()
             fileTarget.delete()
             
-            // FASE PENDARATAN GAGAL (KORSLETING JSON)
             withContext(Dispatchers.Main) { 
-                // Hapus panelIndikator, arahkan pemutus arus ke panel modern
-                panelStatusPencarian.visibility = View.GONE 
+                perbaruiStatusMesin(3) // Matikan panel
                 isMesinSibuk = false
                 Toast.makeText(this@MainActivity, "Gagal memproses data arsip.", Toast.LENGTH_LONG).show()
             }
@@ -757,5 +784,39 @@ class MainActivity : AppCompatActivity() {
         loadingPencarian.visibility = if (aktif) View.VISIBLE else View.GONE
         txtStatusPencarian.text = pesan
     }
+    
+        private fun perbaruiStatusMesin(tahap: Int, progres: Int = 0, pesanDetail: String = "") {
+        panelStatusPencarian.visibility = View.VISIBLE
+        
+        when (tahap) {
+            1 -> {
+                // FASE 1: Mengunduh Data
+                txtStatusPencarian.text = "Menarik Material Baku (Unduh)"
+                txtDetailSubProses.text = pesanDetail
+                txtDetailSubProses.visibility = View.VISIBLE
+                pipaVolumeData.visibility = View.VISIBLE
+                pipaVolumeData.isIndeterminate = false
+                pipaVolumeData.progress = progres
+                loadingPencarian.visibility = View.VISIBLE
+            }
+            2 -> {
+                // FASE 2: Injeksi Database (Mengelas Data)
+                txtStatusPencarian.text = "Mengelas Data ke Blok Memori"
+                txtDetailSubProses.text = pesanDetail
+                txtDetailSubProses.visibility = View.VISIBLE
+                pipaVolumeData.visibility = View.VISIBLE
+                pipaVolumeData.isIndeterminate = false
+                pipaVolumeData.progress = progres
+                loadingPencarian.visibility = View.VISIBLE
+            }
+            3 -> {
+                // FASE 3: Mode Standby / Selesai
+                panelStatusPencarian.visibility = View.GONE
+                txtDetailSubProses.visibility = View.GONE
+                pipaVolumeData.visibility = View.GONE
+            }
+        }
+    }
+
 
 }
