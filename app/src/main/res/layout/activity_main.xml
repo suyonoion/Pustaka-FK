@@ -140,14 +140,15 @@
                 
         </LinearLayout>
 
-        <LinearLayout
+                <LinearLayout
             android:layout_width="match_parent"
-            android:layout_height="44dp"
+            android:layout_height="35dp"
             android:orientation="horizontal"
             android:gravity="center_vertical"
             android:background="#004D40"
             android:elevation="6dp"
             android:baselineAligned="false">
+            
             <LinearLayout
                 android:id="@+id/linkSanFK_induk"
                 android:layout_width="0dp"
@@ -166,11 +167,12 @@
                 <TextView
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:text="SanFK Kendal"
+                    android:text="SanFK"
                     android:textColor="#FFFFFF"
                     android:textSize="10sp"
                     android:layout_marginStart="4dp"/>
             </LinearLayout>
+
             <LinearLayout
                 android:id="@+id/linkSaung_induk"
                 android:layout_width="0dp"
@@ -189,11 +191,12 @@
                 <TextView
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:text="Saung JAWA"
+                    android:text="Saung"
                     android:textColor="#FFFFFF"
                     android:textSize="10sp"
                     android:layout_marginStart="4dp"/>
             </LinearLayout>
+
             <LinearLayout
                 android:id="@+id/linkZF_induk"
                 android:layout_width="0dp"
@@ -212,12 +215,38 @@
                 <TextView
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:text="Zuhri Formalism"
+                    android:text="ZF"
+                    android:textColor="#FFFFFF"
+                    android:textSize="10sp"
+                    android:layout_marginStart="4dp"/>
+            </LinearLayout>
+
+            <!-- INJEKSI TERMINAL BARU: ABOUT -->
+            <LinearLayout
+                android:id="@+id/menuAbout"
+                android:layout_width="0dp"
+                android:layout_weight="1"
+                android:layout_height="match_parent"
+                android:orientation="horizontal"
+                android:gravity="center"
+                android:background="?android:attr/selectableItemBackground"
+                android:clickable="true"
+                android:focusable="true">
+                <ImageView
+                    android:layout_width="16dp"
+                    android:layout_height="16dp"
+                    android:src="@android:drawable/ic_menu_info_details"
+                    app:tint="#FFFFFF"/>
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="About"
                     android:textColor="#FFFFFF"
                     android:textSize="10sp"
                     android:layout_marginStart="4dp"/>
             </LinearLayout>
         </LinearLayout>
+
     </LinearLayout>
 
     <LinearLayout
