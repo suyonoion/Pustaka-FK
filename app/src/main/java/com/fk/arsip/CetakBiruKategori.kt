@@ -54,11 +54,11 @@ object CetakBiruKategori {
         ),
        
         "GENUS (Jin)" to listOf(
-        "GENUS (Jin)" to listOf("GENUS")
+        "GENUS (Jin)" to listOf("genus")
         ),
         
         "Tentang Sholat" to listOf(
-           "Sholat" to listOf("TENTANG SHOLAT"),
+           "Sholat" to listOf("tentang sholat","sholat"),
            "Sholat Tasbih" to listOf("sholat tasbih")
         ),
         "Takdir/Rejeki/Maut" to listOf(

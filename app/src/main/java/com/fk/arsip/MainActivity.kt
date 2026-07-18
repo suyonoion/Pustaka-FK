@@ -59,8 +59,8 @@ class MainActivity : AppCompatActivity() {
     // TAMBAHKAN 2 KOMPONEN INI UNTUK TELEMETRI HORIZONTAL
     private lateinit var pipaVolumeData: ProgressBar
     private lateinit var txtDetailSubProses: TextView
-
-    
+    // Tambahkan komponen ini di area deklarasi variabel
+    private lateinit var recyclerTimeline: RecyclerView
     // Penampung Arus Data & Sakelar Status Informasi
     private var daftarArsipAktif: List<ArsipEntity> = listOf()
     private var isSearchMode = false 
@@ -82,21 +82,33 @@ class MainActivity : AppCompatActivity() {
         panelStatusPencarian = findViewById(R.id.panelStatusPencarian)
         loadingPencarian = findViewById(R.id.loadingPencarian)
         txtStatusPencarian = findViewById(R.id.txtStatusPencarian)
-        
+
         // IKAT KOMPONEN BARU
         pipaVolumeData = findViewById(R.id.pipaVolumeData)
         txtDetailSubProses = findViewById(R.id.txtDetailSubProses)
-
+        recyclerTimeline = findViewById(R.id.recyclerTimeline)
 
         recyclerGridMode.layoutManager = GridLayoutManager(this, 2)
         sesuaikanKompartemenGrid() // Pemicu kalkulasi saat mesin pertama kali menyala
         proyektorBuku.setPageTransformer(null)
 
-        // Inisialisasi awal kompartemen transmisi (Adapter Kosong) untuk mencegah malfungsi layout
-        gridAdapter = GridAdapter(daftarArsipAktif) { posisi -> bukaModeBuku(posisi) }
+        // Inisialisasi awal kompartemen transmisi (Adapter Kosong)
+        gridAdapter = GridAdapter(emptyList()) { posisi -> bukaModeBuku(posisi) }
+        
+        // KALIBRASI GRID (Pembagian Lajur)
+        val layoutManagerGrid = GridLayoutManager(this, 2)
+        layoutManagerGrid.spanSizeLookup = object : GridLayoutManager.SpanSizeLookup() {
+            override fun getSpanSize(position: Int): Int {
+                // Tipe Pembatas (Tahun|Bulan) makan 2 kolom, Tipe Konten makan 1 kolom
+                return if (gridAdapter.getItemViewType(position) == GridAdapter.TIPE_PEMBATAS) 2 else 1
+            }
+        }
+        recyclerGridMode.layoutManager = layoutManagerGrid
         recyclerGridMode.adapter = gridAdapter
+
         bukuAdapter = BukuAdapter(daftarArsipAktif)
         proyektorBuku.adapter = bukuAdapter
+        
 
         // PENGELASAN UTAMA: Sirkuit Pengereman Berjenjang Mutlak (Hardware Back Button)
         onBackPressedDispatcher.addCallback(this, object : OnBackPressedCallback(true) {
@@ -267,6 +279,7 @@ class MainActivity : AppCompatActivity() {
         val btnSanFK = findViewById<LinearLayout>(R.id.linkSanFK_induk)
         val btnSaung = findViewById<LinearLayout>(R.id.linkSaung_induk)
         val btnZF = findViewById<LinearLayout>(R.id.linkZF_induk)
+        val menuAbout = findViewById<TextView>(R.id.menuAbout) // Pastikan ID ini ada di menu footer Anda
 
         // Pelontar Sinyal Eksternal (Ganti URL dengan matriks presisi Anda)
         val bukaTautan = { url: String ->
@@ -281,6 +294,10 @@ class MainActivity : AppCompatActivity() {
         btnSaung.setOnClickListener { bukaTautan("https://maps.app.goo.gl/F1qKiYjs2pUAa17j8") }
         btnZF.setOnClickListener { 
         tampilkanEdukasiZuhriFormalism()
+        }
+        menuAbout.setOnClickListener {
+        val intent = Intent(this, AboutActivity::class.java)
+        startActivity(intent)
         }
     }
     
@@ -598,11 +615,68 @@ if (kalkulasiPersen > persentaseLayarTerakhir) {
     }
 
 
-    private fun pompaDataKeLayar(dataLayar: List<ArsipEntity>) {
-        daftarArsipAktif = dataLayar
-        gridAdapter.perbaruiData(dataLayar)
-        bukuAdapter.perbaruiData(dataLayar)
+        // GANTI FUNGSI LAMA DENGAN BLOK KODE INI
+    private fun pompaDataKeLayar(kargoMentah: List<ArsipEntity>) {
+        daftarArsipAktif = kargoMentah
+        
+        val kargoSiapRakit = mutableListOf<KargoCampuran>()
+        val titikNavigasi = mutableListOf<TitikNavigasi>()
+        var pembatasAktif = ""
+        var indeksMurni = 0 // Digunakan untuk mensinkronkan posisi dengan ViewPager (Buku)
+
+        // Asumsi format waktuRilis (Long) atau tanggalBaca (String). 
+        // Anda menggunakan tanggalBaca format "2025-01-20"
+        for (arsip in kargoMentah) {
+            val tanggalStr = arsip.tanggalBaca // Format: YYYY-MM-DD
+            val tahun = if (tanggalStr.length >= 4) tanggalStr.substring(0, 4) else "Tahun"
+            val bulanAngka = if (tanggalStr.length >= 7) tanggalStr.substring(5, 7) else "00"
+            
+            // Konverter Mekanis Bulan
+            val namaBulan = when (bulanAngka) {
+                "01" -> "Januari"; "02" -> "Februari"; "03" -> "Maret"
+                "04" -> "April"; "05" -> "Mei"; "06" -> "Juni"
+                "07" -> "Juli"; "08" -> "Agustus"; "09" -> "September"
+                "10" -> "Oktober"; "11" -> "November"; "12" -> "Desember"
+                else -> "Bulan"
+            }
+            val namaSingkat = when (bulanAngka) {
+                "01" -> "Jan"; "02" -> "Feb"; "03" -> "Mar"
+                "04" -> "Apr"; "05" -> "Mei"; "06" -> "Jun"
+                "07" -> "Jul"; "08" -> "Agu"; "09" -> "Sep"
+                "10" -> "Okt"; "11" -> "Nov"; "12" -> "Des"
+                else -> "Bln"
+            }
+
+            val headerBulanTahun = "$tahun | $namaBulan"
+
+            // Jika masuk blok waktu baru, cetak pembatas
+            if (headerBulanTahun != pembatasAktif) {
+                kargoSiapRakit.add(KargoCampuran.PembatasWaktu(headerBulanTahun))
+                // Daftarkan koordinat ini ke rel timeline kanan
+                titikNavigasi.add(TitikNavigasi(namaSingkat, kargoSiapRakit.size - 1))
+                pembatasAktif = headerBulanTahun
+            }
+            
+            // Masukkan data konten status dan posisi aslinya
+            kargoSiapRakit.add(KargoCampuran.StatusKonten(arsip, indeksMurni))
+            indeksMurni++
+        }
+
+        // Tembakkan kargo campuran ke layar Grid
+        gridAdapter.perbaruiData(kargoSiapRakit)
+        
+        // Tembakkan kargo mentah murni ke mode Buku
+        bukuAdapter.perbaruiData(kargoMentah)
+
+        // Rakit dan pasang pelontar rel Timeline (Kanan)
+        val adapterTimeline = TimelineAdapter(titikNavigasi) { indeksTujuan ->
+            (recyclerGridMode.layoutManager as androidx.recyclerview.widget.GridLayoutManager)
+                .scrollToPositionWithOffset(indeksTujuan, 0)
+        }
+        recyclerTimeline.layoutManager = androidx.recyclerview.widget.LinearLayoutManager(this)
+        recyclerTimeline.adapter = adapterTimeline
     }
+
 
     private fun bukaModeBuku(posisi: Int) {
         recyclerGridMode.visibility = View.GONE
@@ -696,22 +770,33 @@ if (kalkulasiPersen > persentaseLayarTerakhir) {
         // Tuas Penyesuai Kompartemen Dinamis
     private fun sesuaikanKompartemenGrid() {
         val metrikLayar = resources.displayMetrics
-        // Mengonversi piksel mentah menjadi satuan ruang standar (DP)
         val lebarLayarDp = metrikLayar.widthPixels / metrikLayar.density
-        
-        // Tentukan spesifikasi lebar ideal satu kotak kargo (180 DP)
         val lebarIdealKotak = 180 
-        
-        // Hitung berapa banyak kotak yang muat di dalam lantai layar
         var hitungKolom = (lebarLayarDp / lebarIdealKotak).toInt()
         
-        // Kunci batas minimum agar tidak kurang dari 2 kolom
         if (hitungKolom < 2) hitungKolom = 2 
 
-        // Ubah konfigurasi layoutManager secara langsung tanpa merusak struktur data
         val pengelolaJalur = recyclerGridMode.layoutManager as? GridLayoutManager
-        pengelolaJalur?.spanCount = hitungKolom
+        pengelolaJalur?.let {
+            it.spanCount = hitungKolom
+            
+            // Kunci mekanis: Memaksa Header memakan seluruh kolom (span = hitungKolom)
+            // sedangkan Konten Status tetap memakan 1 kolom.
+            it.spanSizeLookup = object : GridLayoutManager.SpanSizeLookup() {
+                override fun getSpanSize(position: Int): Int {
+                    // Pastikan variabel gridAdapter sudah diinisialisasi sebelum ini dipanggil
+                    if (!::gridAdapter.isInitialized) return 1 
+                    
+                    return if (gridAdapter.getItemViewType(position) == GridAdapter.TIPE_PEMBATAS) {
+                        hitungKolom 
+                    } else {
+                        1
+                    }
+                }
+            }
+        }
     }
+
 
     // Katup Pemindai Arus Jaringan Eksternal
     private fun isJaringanTersedia(): Boolean {
