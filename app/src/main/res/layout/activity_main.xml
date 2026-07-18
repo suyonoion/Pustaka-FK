@@ -13,80 +13,107 @@
         android:orientation="vertical"
         android:background="#EFEFEF">
 
-            <!-- PANEL INSTRUMEN PENCARIAN & TUAS LACI -->
-        <LinearLayout
+        <EditText
+            android:id="@+id/edtPencarian"
             android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:orientation="horizontal"
+            android:layout_height="50dp"
             android:layout_margin="10dp"
+            android:padding="10dp"
             android:background="@android:color/white"
+            android:hint="Cari Fatwa..."
             android:elevation="2dp"
-            android:gravity="center_vertical">
+            android:inputType="text"
+            android:imeOptions="actionSearch" 
+            android:maxLines="1" />
 
-            <ImageView
-                android:id="@+id/btnTuasLaci"
-                android:layout_width="48dp"
-                android:layout_height="48dp"
-                android:padding="12dp"
-                android:src="@android:drawable/ic_menu_sort_by_size" 
-                android:background="?android:attr/selectableItemBackground"
-                android:contentDescription="Buka Laci Navigasi" />
-
-            <EditText
-                android:id="@+id/edtPencarian"
-                android:layout_width="0dp"
-                android:layout_weight="1"
-                android:layout_height="50dp"
-                android:padding="10dp"
-                android:background="@null"
-                android:hint="Cari Fatwa..."
-                android:inputType="text"
-                android:imeOptions="actionSearch" 
-                android:maxLines="1" />
-        </LinearLayout>
-
-        <!-- PANEL STATUS KATEGORI (Dimodifikasi sesuai Poin 4) -->
-        <androidx.cardview.widget.CardView
+         <androidx.cardview.widget.CardView
             android:id="@+id/panelStatusPencarian"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_marginHorizontal="12dp"
             android:layout_marginBottom="10dp"
-            app:cardCornerRadius="4dp"
+            app:cardCornerRadius="8dp"
             app:cardElevation="2dp"
-            app:cardBackgroundColor="#E0F2F1" 
             android:visibility="gone">
-            <!-- Background meniru warna nomor halaman (hijau pudar) -->
 
-            <TextView
-                android:id="@+id/txtStatusPencarian"
+            <!-- WADAH UTAMA CARDVIEW (UBAH MENJADI VERTICAL) -->
+            <LinearLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:padding="8dp"
-                android:gravity="center"
-                android:textColor="#004D40"
-                android:textSize="16sp"
-                android:textStyle="bold"
-                android:text="Nama Kategori (0 arsip)" />
+                android:orientation="vertical"
+                android:padding="12dp">
+
+                <!-- BARIS 1: INDIKATOR PUTARAN & STATUS UTAMA -->
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="horizontal"
+                    android:gravity="center_vertical">
+
+                    <ProgressBar
+                        android:id="@+id/loadingPencarian"
+                        style="?android:attr/progressBarStyleSmall"
+                        android:layout_width="20dp"
+                        android:layout_height="20dp"
+                        android:indeterminateTint="#004D40" />
+
+                    <TextView
+                        android:id="@+id/txtStatusPencarian"
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1"
+                        android:layout_marginStart="10dp"
+                        android:textColor="#1C1E21"
+                        android:textSize="13sp"
+                        android:text="Memproses data..." />
+                </LinearLayout>
+
+                <!-- BARIS 2: SIRKUIT TELEMETRI HORIZONTAL (TAMBAHAN BARU) -->
+                <ProgressBar
+                    android:id="@+id/pipaVolumeData"
+                    style="?android:attr/progressBarStyleHorizontal"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="12dp"
+                    android:max="100"
+                    android:progress="0"
+                    android:progressTint="#004D40"
+                    android:visibility="gone" />
+
+                <!-- BARIS 3: TERMINAL OUTPUT DETAIL -->
+                <TextView
+                    android:id="@+id/txtDetailSubProses"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="4dp"
+                    android:text="Menunggu instruksi masuk..."
+                    android:textColor="#666666"
+                    android:textSize="11sp"
+                    android:textAlignment="viewEnd"
+                    android:visibility="gone" />
+
+            </LinearLayout>
         </androidx.cardview.widget.CardView>
 
-        <!-- KOMPARTEMEN UTAMA & REL TIMELINE -->
+        <!-- WADAH MULTI-JALUR UNTUK GRID DAN TIMELINE -->
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="0dp"
             android:layout_weight="1"
             android:orientation="horizontal">
-            
-            <!-- Area Grid/Buku Utama -->
+
+            <!-- JALUR KIRI: PUSAT PROYEKSI (GRID / BUKU) -->
             <FrameLayout
                 android:layout_width="0dp"
                 android:layout_height="match_parent"
                 android:layout_weight="1">
+                
                 <androidx.recyclerview.widget.RecyclerView
                     android:id="@+id/recyclerGridMode"
                     android:layout_width="match_parent"
                     android:layout_height="match_parent"
                     android:padding="4dp" />
+                    
                 <RelativeLayout
                     android:id="@+id/wadahModeBuku"
                     android:layout_width="match_parent"
@@ -99,16 +126,19 @@
                 </RelativeLayout>
             </FrameLayout>
 
-            <!-- Rel Panduan Vertikal (Timeline) -->
+            <!-- JALUR KANAN: REL NAVIGASI TIMELINE -->
             <androidx.recyclerview.widget.RecyclerView
                 android:id="@+id/recyclerTimeline"
                 android:layout_width="45dp"
                 android:layout_height="match_parent"
-                android:background="#D6D6D6"
-                android:elevation="4dp"
-                android:scrollbars="none"/>
+                android:background="#EFEFEF"
+                android:scrollbars="none"
+                android:paddingTop="8dp"
+                android:paddingBottom="8dp"
+                android:clipToPadding="false"
+                android:elevation="1dp" />
+                
         </LinearLayout>
-
 
         <LinearLayout
             android:layout_width="match_parent"
