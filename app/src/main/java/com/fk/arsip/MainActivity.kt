@@ -55,9 +55,6 @@ class MainActivity : AppCompatActivity() {
     
     private lateinit var gridAdapter: GridAdapter
     private lateinit var bukuAdapter: BukuAdapter
-        private lateinit var panelStatusPencarian: CardView
-    private lateinit var loadingPencarian: ProgressBar
-    private lateinit var txtStatusPencarian: TextView
     
     // TAMBAHKAN 2 KOMPONEN INI UNTUK TELEMETRI HORIZONTAL
     private lateinit var pipaVolumeData: ProgressBar
@@ -83,9 +80,6 @@ class MainActivity : AppCompatActivity() {
         edtPencarian = findViewById(R.id.edtPencarian)
         // Tambahkan 3 baris ini:
         panelStatusPencarian = findViewById(R.id.panelStatusPencarian)
-        loadingPencarian = findViewById(R.id.loadingPencarian)
-        txtStatusPencarian = findViewById(R.id.txtStatusPencarian)
-                panelStatusPencarian = findViewById(R.id.panelStatusPencarian)
         loadingPencarian = findViewById(R.id.loadingPencarian)
         txtStatusPencarian = findViewById(R.id.txtStatusPencarian)
         
