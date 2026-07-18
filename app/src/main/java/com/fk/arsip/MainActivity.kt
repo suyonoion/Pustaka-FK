@@ -279,7 +279,7 @@ class MainActivity : AppCompatActivity() {
         val btnSanFK = findViewById<LinearLayout>(R.id.linkSanFK_induk)
         val btnSaung = findViewById<LinearLayout>(R.id.linkSaung_induk)
         val btnZF = findViewById<LinearLayout>(R.id.linkZF_induk)
-        val menuAbout = findViewById<TextView>(R.id.menuAbout) // Pastikan ID ini ada di menu footer Anda
+        val menuAbout = findViewById<LinearLayout>(R.id.menuAbout) // Pastikan ID ini ada di menu footer Anda
 
         // Pelontar Sinyal Eksternal (Ganti URL dengan matriks presisi Anda)
         val bukaTautan = { url: String ->
