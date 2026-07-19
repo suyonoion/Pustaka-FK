@@ -79,10 +79,25 @@
                     android:textAlignment="center"
                     android:text="Kategori (0 arsip)" />
 
-                <!-- Sirkuit telemetri lama disembunyikan total agar MainActivity tidak korsleting -->
-                <ProgressBar android:id="@+id/loadingPencarian" layout_width="0dp" layout_height="0dp" visibility="gone"/>
-                <ProgressBar android:id="@+id/pipaVolumeData" layout_width="0dp" layout_height="0dp" visibility="gone" />
-                <TextView android:id="@+id/txtDetailSubProses" layout_width="0dp" layout_height="0dp" visibility="gone" />
+                <!-- Sirkuit telemetri lama disembunyikan total dengan atribut yang terdefinisi secara formal -->
+<ProgressBar 
+    android:id="@+id/loadingPencarian" 
+    android:layout_width="0dp" 
+    android:layout_height="0dp" 
+    android:visibility="gone"/>
+
+<ProgressBar 
+    android:id="@+id/pipaVolumeData" 
+    android:layout_width="0dp" 
+    android:layout_height="0dp" 
+    android:visibility="gone" />
+
+<TextView 
+    android:id="@+id/txtDetailSubProses" 
+    android:layout_width="0dp" 
+    android:layout_height="0dp" 
+    android:visibility="gone" />
+
 
             </LinearLayout>
         </androidx.cardview.widget.CardView>
