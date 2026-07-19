@@ -30,4 +30,8 @@ interface ArsipDao {
     // ========================================================
     @Query("SELECT * FROM tabel_arsip WHERE kategori LIKE '%' || :namaKategori || '%' ORDER BY waktuRilis DESC")
     fun saringBerdasarkanKolomKategori(namaKategori: String): List<ArsipEntity>
+    
+    @Query("DELETE FROM tabel_arsip")
+    suspend fun kurasTangkiKotor()
+
 }

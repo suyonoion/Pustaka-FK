@@ -374,43 +374,51 @@ class MainActivity : AppCompatActivity() {
     }
 
 
-        private fun eksekusiPabrikData() {
+            private fun eksekusiPabrikData() {
         lifecycleScope.launch(Dispatchers.IO) {
+            // KATUP PENAHAN FASE 1: Menahan sirkuit selama 1.5 detik agar panel inisialisasi awal terlihat jelas
+            delay(1500)
+
             val database = ArsipDatabase.operasikanMesin(this@MainActivity)
             val lenganRobot = database.arsipDao()
+            
+            val berkasLokal = File(getExternalFilesDir(null), "Master_Data_Arsip_FK_11_Juli_2026.json")
+            // Sensor disetel ke 1MB (bukan 110MB) agar jika unduhan gagal di tengah jalan (misal 40MB), 
+            // mesin tetap mendeteksinya sebagai sampah yang harus diproses/dihapus oleh Protokol Fail-Safe.
+            val bobotMinimum = 1 * 1024 * 1024 
+
+            // PRIORITAS MUTLAK (PROTOKOL FAIL-SAFE): Cek sisa kargo fisik terlebih dahulu
+            if (berkasLokal.exists() && berkasLokal.length() >= bobotMinimum) {
+                withContext(Dispatchers.Main) {
+                    isMesinSibuk = true
+                    val panelUtama = findViewById<ConstraintLayout>(R.id.panelInisialisasiUtama)
+                    panelUtama.visibility = View.VISIBLE
+                    perbaruiPanelTelemetri(FaseInjeksi.FASE_5, 0, 0, 0)
+                }
+                
+                // Mesin akan mengeksekusi kurasTangkiKotor() di dalam fungsi ini sebelum injeksi ulang
+                ekstrakDanInjeksiKeDb(berkasLokal, lenganRobot)
+                return@launch
+            }
+
+            // KONDISI NORMAL: Tidak ada kargo nyasar, periksa isi tangki SQLite
             val semuaData = lenganRobot.tarikSemuaArsip()
 
             withContext(Dispatchers.Main) {
                 if (semuaData.isNotEmpty()) {
-                    // KONDISI A: Pangkalan data terisi, langsung proyeksikan ke layar
+                    // KONDISI A: Pangkalan data terisi (Operasi standar)
+                    findViewById<ConstraintLayout>(R.id.panelInisialisasiUtama).visibility = View.GONE
                     isMesinSibuk = false
                     panelStatusPencarian.visibility = View.GONE
                     pompaDataKeLayar(semuaData)
                 } else {
-                    // KONDISI B: Pangkalan data kosong, aktifkan sensor pemeriksaan berkas manual
-                    val berkasLokal = File(getExternalFilesDir(null), "Master_Data_Arsip_FK_11_Juli_2026.json")
-                    val bobotMinimum = 110 * 1024 * 1024 // Batasan formal 110 MB
-                    
-                                        if (berkasLokal.exists() && berkasLokal.length() >= bobotMinimum) {
-                        // BYPASS BERHASIL: Berkas valid ditemukan di tangki lokal, langsung eksekusi injeksi
-                        isMesinSibuk = true
-                        
-                        // HIDUPKAN PANEL 7 FASE, MATIKAN PANEL USANG
-                        val panelUtama = findViewById<ConstraintLayout>(R.id.panelInisialisasiUtama)
-                        panelUtama.visibility = View.VISIBLE
-                        perbaruiPanelTelemetri(FaseInjeksi.FASE_5, 0, 0, 0)
-                        
-                        lifecycleScope.launch(Dispatchers.IO) {
-                            ekstrakDanInjeksiKeDb(berkasLokal, lenganRobot)
-                        }
-                    } else {
-                        // BYPASS GAGAL: Tangki kosong atau berkas korup, aktifkan pompa unduhan jaringan
-                        aktifkanMesinPenyedot()
-                    }
+                    // KONDISI B: Pangkalan data kosong total, aktifkan sedotan jaringan
+                    aktifkanMesinPenyedot()
                 }
             }
         }
     }
+
 
 
     private fun cariPipaAktif(downloadManager: DownloadManager): Long {
@@ -524,46 +532,56 @@ class MainActivity : AppCompatActivity() {
     }
 
 
-        private fun pantauTekananUnduhan(idUnduhan: Long, downloadManager: DownloadManager) {
-        lifecycleScope.launch(Dispatchers.Main) {
-            var selesai = false
-            while (!selesai) {
+            private fun pantauTekananUnduhan(idUnduhan: Long, downloadManager: DownloadManager) {
+        lifecycleScope.launch(Dispatchers.IO) {
+            var isMengunduh = true
+            while (isMengunduh) {
                 val query = DownloadManager.Query().setFilterById(idUnduhan)
                 val cursor = downloadManager.query(query)
+                
                 if (cursor != null && cursor.moveToFirst()) {
                     val statusIndex = cursor.getColumnIndex(DownloadManager.COLUMN_STATUS)
-                    val diunduhIndex = cursor.getColumnIndex(DownloadManager.COLUMN_BYTES_DOWNLOADED_SO_FAR)
-                    val totalIndex = cursor.getColumnIndex(DownloadManager.COLUMN_TOTAL_SIZE_BYTES)
+                    val status = cursor.getInt(statusIndex)
                     
-                    if (statusIndex != -1 && diunduhIndex != -1 && totalIndex != -1) {
-                        val status = cursor.getInt(statusIndex)
-                        val diunduh = cursor.getLong(diunduhIndex)
-                        val total = cursor.getLong(totalIndex)
-                        
-                        when (status) {
-                            DownloadManager.STATUS_PAUSED -> {
-                                perbaruiPanelTelemetri(FaseInjeksi.FASE_4, 0, 0, 100)
-                            }
-                            DownloadManager.STATUS_RUNNING -> {
-                                if (total > 0) {
-                                    val persentase = ((diunduh * 100) / total).toInt()
-                                    val mbDiunduh = (diunduh / (1024 * 1024)).toInt()
-                                    val mbTotal = (total / (1024 * 1024)).toInt()
-                                    perbaruiPanelTelemetri(FaseInjeksi.FASE_3, persentase, mbDiunduh, mbTotal)
+                    if (status == DownloadManager.STATUS_SUCCESSFUL) {
+                        isMengunduh = false // Dioper ke pasangSensorPendaratan
+                    } else if (status == DownloadManager.STATUS_FAILED) {
+                        // KABEL PENGAMAN: Jika pipa putus/gagal
+                        isMengunduh = false
+                        withContext(Dispatchers.Main) {
+                            findViewById<ConstraintLayout>(R.id.panelInisialisasiUtama).visibility = View.GONE
+                            isMesinSibuk = false
+                            Toast.makeText(this@MainActivity, "Sedotan terputus. Silakan mulai ulang aplikasi.", Toast.LENGTH_LONG).show()
+                        }
+                    } else {
+                        // Mengalirkan persentase Fase 3 / 4
+                        val bytesDownloadedIndex = cursor.getColumnIndex(DownloadManager.COLUMN_BYTES_DOWNLOADED_SO_FAR)
+                        val bytesTotalIndex = cursor.getColumnIndex(DownloadManager.COLUMN_TOTAL_SIZE_BYTES)
+                        if (bytesDownloadedIndex != -1 && bytesTotalIndex != -1) {
+                            val downloaded = cursor.getLong(bytesDownloadedIndex)
+                            val total = cursor.getLong(bytesTotalIndex)
+                            if (total > 0) {
+                                val persentase = ((downloaded * 100L) / total).toInt()
+                                withContext(Dispatchers.Main) {
+                                    perbaruiPanelTelemetri(FaseInjeksi.FASE_3, persentase, 0, 0)
                                 }
                             }
                         }
-
-                        if (status == DownloadManager.STATUS_SUCCESSFUL || status == DownloadManager.STATUS_FAILED) { 
-                            selesai = true 
-                        }
+                    }
+                } else {
+                    // KABEL PENGAMAN: Pipa hilang dari radar
+                    isMengunduh = false
+                    withContext(Dispatchers.Main) {
+                        findViewById<ConstraintLayout>(R.id.panelInisialisasiUtama).visibility = View.GONE
+                        isMesinSibuk = false
                     }
                 }
                 cursor?.close()
-                delay(1000)
+                delay(500)
             }
         }
     }
+
 
     private suspend fun ekstrakDanInjeksiKeDb(fileTarget: File, lenganRobot: com.fk.arsip.database.ArsipDao) {
         val bobotMinimum = 110 * 1024 * 1024
@@ -585,6 +603,14 @@ class MainActivity : AppCompatActivity() {
 
         try {
             val reader = com.google.gson.stream.JsonReader(FileReader(fileTarget))
+              if (reader.peek() != com.google.gson.stream.JsonToken.BEGIN_ARRAY) {
+                throw Exception("Struktur berkas tidak valid.")
+              }
+            
+            // =========================================
+            // AKTIFKAN KATUP KURAS SEBELUM INJEKSI ULANG DIMULAI
+            lenganRobot.kurasTangkiKotor()
+            // ========================================
             reader.beginArray() 
             val muatanSementara = mutableListOf<ArsipEntity>()
             var indeks = 0
@@ -658,6 +684,8 @@ class MainActivity : AppCompatActivity() {
             withContext(Dispatchers.Main) {
                 // FASE 7: Operasi Selesai (Panel akan hancur sendiri dalam 1.5 detik)
                 perbaruiPanelTelemetri(FaseInjeksi.FASE_7, 100, indeks, indeks)
+                // KATUP PENAHAN FASE 7: Mengunci layar pada Fase 7 selama 1.5 detik
+                    delay(1500)
                 pompaDataKeLayar(semuaData)
                 isMesinSibuk = false 
             }
@@ -737,9 +765,17 @@ class MainActivity : AppCompatActivity() {
            bukuAdapter.perbaruiData(kargoMentah)
            }
         val adapterTimeline = TimelineAdapter(titikNavigasi) { indeksTujuan ->
-            (recyclerGridMode.layoutManager as androidx.recyclerview.widget.GridLayoutManager)
-                .scrollToPositionWithOffset(indeksTujuan, 0)
+    
+         // Gunakan 'post' untuk mengantrekan aksi di akhir antrean utama (Main Thread Queue)
+          recyclerGridMode.post {
+          val manager = recyclerGridMode.layoutManager as? GridLayoutManager
+         // Pastikan indeksTujuan adalah posisi valid dalam daftarKargo
+              if (indeksTujuan in 0 until itemCount) {
+                  manager?.scrollToPositionWithOffset(indeksTujuan, 0)
+              }
+          }
         }
+
         recyclerTimeline.layoutManager = androidx.recyclerview.widget.LinearLayoutManager(this)
         recyclerTimeline.adapter = adapterTimeline
     }
@@ -869,17 +905,21 @@ class MainActivity : AppCompatActivity() {
             // Kunci mekanis: Memaksa Header memakan seluruh kolom (span = hitungKolom)
             // sedangkan Konten Status tetap memakan 1 kolom.
             it.spanSizeLookup = object : GridLayoutManager.SpanSizeLookup() {
-                override fun getSpanSize(position: Int): Int {
-                    // Pastikan variabel gridAdapter sudah diinisialisasi sebelum ini dipanggil
-                    if (!::gridAdapter.isInitialized) return 1 
-                    
-                    return if (gridAdapter.getItemViewType(position) == GridAdapter.TIPE_PEMBATAS) {
-                        hitungKolom 
-                    } else {
-                        1
-                    }
-                }
-            }
+    // Kunci mekanis: Simpan hasil kalkulasi agar tidak dipanggil berulang kali saat scroll/jump
+    init { isSpanIndexCacheEnabled = true }
+
+    override fun getSpanSize(position: Int): Int {
+        // PERBAIKAN: Gunakan akses langsung ke data list di adapter, 
+        // JANGAN panggil getItemViewType jika tidak diperlukan.
+        // Panggil tipe data dari list sumber (data list) secara langsung.
+        return if (gridAdapter.isHeader(position)) {
+            hitungKolom 
+        } else {
+            1
+        }
+    }
+}
+
         }
     }
 

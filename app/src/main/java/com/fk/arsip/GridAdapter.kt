@@ -26,12 +26,14 @@ class GridAdapter(
         const val TIPE_KONTEN = 1
     }
 
-    override fun getItemViewType(position: Int): Int {
+        override fun getItemViewType(position: Int): Int {
+        // Akses langsung list via index tanpa logika bercabang yang rumit
         return when (daftarKargo[position]) {
             is KargoCampuran.PembatasWaktu -> TIPE_PEMBATAS
-            is KargoCampuran.StatusKonten -> TIPE_KONTEN
+            else -> TIPE_KONTEN // TIPE_KONTEN adalah default, memangkas pengecekan tipe
         }
     }
+
 
     override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): RecyclerView.ViewHolder {
         return if (viewType == TIPE_PEMBATAS) {
@@ -49,20 +51,30 @@ class GridAdapter(
         if (holder is HeaderViewHolder && material is KargoCampuran.PembatasWaktu) {
             holder.txtHeader.text = material.label
         } 
-        else if (holder is KontenViewHolder && material is KargoCampuran.StatusKonten) {
+                else if (holder is KontenViewHolder && material is KargoCampuran.StatusKonten) {
             val arsip = material.data
             holder.txtKategori.text = arsip.kategori
             holder.txtTanggal.text = arsip.tanggalBaca.substringBefore(" ")
-            holder.txtCuplikan.text = arsip.kontenPenuh
             
-            // INJEKSI MESIN PENCETAK INDEKS
-            val nomorUrut = material.posisiAsli + 1 // Ditambah 1 untuk bahasa natural (mulai dari 1)
+            // PENGELASAN: Potong string agar tidak membebani layout
+            val cuplikan = if (arsip.kontenPenuh.length > 100) {
+                arsip.kontenPenuh.substring(0, 100) + "..."
+            } else {
+                arsip.kontenPenuh
+            }
+            // HANYA PASANG SATU KALI:
+            holder.txtCuplikan.text = cuplikan 
+            
+            // HAPUS: holder.txtCuplikan.text = arsip.kontenPenuh  <-- INI PENYEBAB FREEZE
+            
+            val nomorUrut = material.posisiAsli + 1 
             holder.txtIndeksGrid.text = "#$nomorUrut"
 
             holder.itemView.setOnClickListener {
                 pemicuBuku(material.posisiAsli) 
             }
         }
+
     }
 
     override fun getItemCount(): Int = daftarKargo.size
