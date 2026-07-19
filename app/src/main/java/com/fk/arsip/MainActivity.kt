@@ -433,7 +433,7 @@ class MainActivity : AppCompatActivity() {
         return -1L
     }
 
-            private fun aktifkanMesinPenyedot() {
+        private fun aktifkanMesinPenyedot() {
         // INJEKSI SENSOR: Jika arus mati, hentikan operasi seketika
         if (!isJaringanTersedia()) {
             tampilkanPeringatanJaringan()
@@ -445,12 +445,15 @@ class MainActivity : AppCompatActivity() {
         val downloadManager = getSystemService(Context.DOWNLOAD_SERVICE) as DownloadManager
         val idPipaAktif = cariPipaAktif(downloadManager)
         
-        // Buka paksa kompartemen fase 7 (Sirkuit Baru)
+        // Buka paksa kompartemen inisialisasi utama (Sirkuit Baru)
         val panelUtama = findViewById<ConstraintLayout>(R.id.panelInisialisasiUtama)
         panelUtama.visibility = View.VISIBLE
         
         // Jika Pipa Unduhan sudah ada (Aplikasi dibuka dari latar belakang)
         if (idPipaAktif != -1L) {
+            // KALIBRASI UI: Setel visual ke FASE 3 secara instan agar mesin tidak blank
+            perbaruiPanelTelemetri(FaseInjeksi.FASE_3, 0, 0, 100)
+            
             // Langsung sambungkan ulang sensor telemetri tanpa memicu unduhan baru
             pantauTekananUnduhan(idPipaAktif, downloadManager)
             pasangSensorPendaratan(idPipaAktif, downloadManager)
@@ -479,8 +482,7 @@ class MainActivity : AppCompatActivity() {
         pasangSensorPendaratan(idUnduhan, downloadManager)
     }
 
-
-
+    
         private fun pasangSensorPendaratan(idUnduhan: Long, downloadManager: DownloadManager) {
         val sensorSelesai = object : BroadcastReceiver() {
             override fun onReceive(context: Context?, intent: Intent?) {
@@ -491,22 +493,28 @@ class MainActivity : AppCompatActivity() {
                     val cursor = downloadManager.query(query)
                     if (cursor != null && cursor.moveToFirst()) {
                         val statusIndex = cursor.getColumnIndex(DownloadManager.COLUMN_STATUS)
-                        
-                                               if (statusIndex != -1 && cursor.getInt(statusIndex) == DownloadManager.STATUS_SUCCESSFUL) {
+                        if (statusIndex != -1 && cursor.getInt(statusIndex) == DownloadManager.STATUS_SUCCESSFUL) {
                             val namaFileTemp = "$namaFile.temp"
                             val fileTempSelesai = File(getExternalFilesDir(null), namaFileTemp)
                             val fileAsli = File(getExternalFilesDir(null), namaFile)
+                            
                             if (fileTempSelesai.renameTo(fileAsli)) {
-                                // GANTI ARUS KE PANEL TELEMETRI 7 FASE
-                                perbaruiPanelTelemetri(FaseInjeksi.FASE_5, 0, 0, 0)
-                                eksekusiPabrikData() 
+                                // PENGALIRAN LANGSUNG KE REAKTOR FASE 5
+                                isMesinSibuk = true
+                                val database = ArsipDatabase.operasikanMesin(this@MainActivity)
+                                
+                                lifecycleScope.launch(Dispatchers.IO) {
+                                    ekstrakDanInjeksiKeDb(fileAsli, database.arsipDao())
+                                }
+                            } else {
+                                // Gagal ganti nama, coba paksa baca berkas asli jika sudah ada
+                                eksekusiPabrikData()
                             }
                         } else {
-                            // MATIKAN PANEL 7 FASE JIKA UNDUHAN GAGAL
                             findViewById<ConstraintLayout>(R.id.panelInisialisasiUtama).visibility = View.GONE
+                            isMesinSibuk = false
                             Toast.makeText(this@MainActivity, "Pengunduhan gagal.", Toast.LENGTH_LONG).show()
                         }
-
                     }
                     cursor?.close()
                 }
