@@ -209,7 +209,7 @@ class MainActivity : AppCompatActivity() {
         teksPersen.text = "$persentase%"
 
         if (fase != FaseInjeksi.FASE_7) {
-            teksTelemetri.text = "Arsip Status Digital Facebook: $volumeSelesai / $volumeTotal baris\nSistem sedang bekerja..."
+            teksTelemetri.text = "Arsip Status Digital Fatwa Kehidupan: $volumeSelesai / $volumeTotal baris\nSistem sedang bekerja..."
         } else {
             teksTelemetri.text = "Seluruh blok data berhasil dilas ke dalam memori SQLite."
             Handler(Looper.getMainLooper()).postDelayed({
@@ -303,18 +303,10 @@ class MainActivity : AppCompatActivity() {
             Toast.makeText(this, "Sistem sedang merakit data. Harap tunggu.", Toast.LENGTH_SHORT).show()
             return
         }
-
         tampilkanIndikator("Menarik kargo: $labelKategori...", true)
 
         lifecycleScope.launch(Dispatchers.IO) {
             val database = ArsipDatabase.operasikanMesin(this@MainActivity).arsipDao()
-            
-            // ========================================================
-            // SEDOTAN BYPASS MUTLAK (SINGLE SOURCE OF TRUTH)
-            // Lengan robot langsung menarik kargo berdasarkan stempel 
-            // di kolom kategori tanpa menyisir isi teks lagi.
-            // (Pastikan fungsi saringBerdasarkanKolomKategori sudah ada di ArsipDao.kt)
-            // ========================================================
             val hasilSaringanAkhir = database.saringBerdasarkanKolomKategori(labelKategori)
 
             withContext(Dispatchers.Main) {
@@ -346,9 +338,7 @@ class MainActivity : AppCompatActivity() {
         val btnSanFK = findViewById<LinearLayout>(R.id.linkSanFK_induk)
         val btnSaung = findViewById<LinearLayout>(R.id.linkSaung_induk)
         val btnZF = findViewById<LinearLayout>(R.id.linkZF_induk)
-        val menuAbout = findViewById<LinearLayout>(R.id.menuAbout) // Pastikan ID ini ada di menu footer Anda
-
-        // Pelontar Sinyal Eksternal (Ganti URL dengan matriks presisi Anda)
+        val menuAbout = findViewById<LinearLayout>(R.id.menuAbout)
         val bukaTautan = { url: String ->
             try {
                 startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(url)))
@@ -434,7 +424,7 @@ class MainActivity : AppCompatActivity() {
         if (cursor != null) {
             while (cursor.moveToNext()) {
                 val titleIndex = cursor.getColumnIndex(DownloadManager.COLUMN_TITLE)
-                if (titleIndex != -1 && cursor.getString(titleIndex) == "Arsip Fatwa Kehidupan") {
+                if (titleIndex != -1 && cursor.getString(titleIndex) == "Arsip Status FK") {
                     val idIndex = cursor.getColumnIndex(DownloadManager.COLUMN_ID)
                     val id = cursor.getLong(idIndex)
                     cursor.close()
@@ -714,15 +704,10 @@ class MainActivity : AppCompatActivity() {
             if (actionId == EditorInfo.IME_ACTION_SEARCH || 
                 (event != null && event.keyCode == KeyEvent.KEYCODE_ENTER && event.action == KeyEvent.ACTION_DOWN)) {
                 
-                // ========================================================
-                // GERBANG PEMBLOKIR ARUS (INTERLOCK PENCARIAN)
-                // Mesin menolak perintah jika tuas sibuk masih 'ON'
-                // ========================================================
                 if (isMesinSibuk) {
                     Toast.makeText(this@MainActivity, "Mesin sedang merakit data. Pencarian ditangguhkan.", Toast.LENGTH_SHORT).show()
                     return@setOnEditorActionListener true // Memutus arus seketika
                 }
-                // ========================================================
 
                 val kataKunci = edtPencarian.text.toString().trim()
                 isSearchMode = kataKunci.isNotEmpty()
@@ -776,8 +761,6 @@ class MainActivity : AppCompatActivity() {
                         imm.hideSoftInputFromWindow(edtPencarian.windowToken, 0)
                     }
                 }
-
-
                 true
             } else {
                 false

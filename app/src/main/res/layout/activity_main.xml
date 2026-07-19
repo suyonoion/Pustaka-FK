@@ -6,7 +6,8 @@
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     android:fitsSystemWindows="true">
-
+      <!-- PIPA PENYAMBUNG ANTARMUKA 7 FASE -->
+    <include layout="@layout/layout_inisialisasi_mesin" />
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="match_parent"
@@ -341,6 +342,4 @@
 
         </ScrollView>
     </LinearLayout>
-    <!-- PIPA PENYAMBUNG ANTARMUKA 7 FASE -->
-    <include layout="@layout/layout_inisialisasi_mesin" />
 </androidx.drawerlayout.widget.DrawerLayout>
