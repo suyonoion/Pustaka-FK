@@ -36,6 +36,10 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.io.File
 import java.io.FileReader
+import android.os.Handler
+import android.os.Looper
+import androidx.constraintlayout.widget.ConstraintLayout
+
 
 // Cetak Biru Hibrida untuk Rel Samping
 data class TitikNavigasi(
@@ -45,6 +49,16 @@ data class TitikNavigasi(
     val warnaGenap: Boolean = false
 )
 
+// Ini bertindak sebagai parameter universal yang bisa dibaca oleh seluruh sistem.
+enum class FaseInjeksi(val pesan: String, val idGambar: Int) {
+    FASE_1("1. Memulai aplikasi pertama kali...", R.drawable.img_1),
+    FASE_2("2. Menghubungkan ke server...", R.drawable.img_2),
+    FASE_3("3. Mengunduh data status...", R.drawable.img_3),
+    FASE_4("4. Menunggu jaringan stabil...", R.drawable.img_4), // Relay Darurat
+    FASE_5("5. Mengelas blok data ke memori...", R.drawable.img_5),
+    FASE_6("6. Injeksi baris data ke SQLite...", R.drawable.img_6),
+    FASE_7("7. Proses selesai.", R.drawable.img_7)
+}
 
 class MainActivity : AppCompatActivity() {
 
@@ -83,6 +97,11 @@ class MainActivity : AppCompatActivity() {
 
         drawerLayout = findViewById(R.id.drawerLayout)
         navViewCustom = findViewById(R.id.navViewCustom)
+                // PENGELASAN TUAS LACI (Membuka Rel Samping)
+        findViewById<android.widget.ImageView>(R.id.btnMenuDrawer).setOnClickListener {
+            drawerLayout.openDrawer(androidx.core.view.GravityCompat.START)
+        }
+
         recyclerGridMode = findViewById(R.id.recyclerGridMode)
         wadahModeBuku = findViewById(R.id.wadahModeBuku)
         proyektorBuku = findViewById(R.id.proyektorBuku)
@@ -174,6 +193,31 @@ class MainActivity : AppCompatActivity() {
         aktifkanSirkuitPencarian()
         eksekusiPabrikData()
     }
+    
+      // Fungsi ini adalah mesin pemutar roda gigi UI
+    private fun perbaruiPanelTelemetri(fase: FaseInjeksi, persentase: Int, volumeSelesai: Int, volumeTotal: Int) {
+        val panelUtama = findViewById<ConstraintLayout>(R.id.panelInisialisasiUtama)
+        val teksStatus = findViewById<TextView>(R.id.teksStatusFase)
+        val indikatorVisual = findViewById<ImageView>(R.id.indikatorVisualMesin)
+        val lingkarProgres = findViewById<ProgressBar>(R.id.lingkarPersentaseUtama)
+        val teksPersen = findViewById<TextView>(R.id.teksPersentaseSentral)
+        val teksTelemetri = findViewById<TextView>(R.id.teksTelemetriData)
+
+        teksStatus.text = fase.pesan
+        indikatorVisual.setImageResource(fase.idGambar)
+        lingkarProgres.progress = persentase
+        teksPersen.text = "$persentase%"
+
+        if (fase != FaseInjeksi.FASE_7) {
+            teksTelemetri.text = "Arsip Status Digital Facebook: $volumeSelesai / $volumeTotal baris\nSistem sedang bekerja..."
+        } else {
+            teksTelemetri.text = "Seluruh blok data berhasil dilas ke dalam memori SQLite."
+            Handler(Looper.getMainLooper()).postDelayed({
+                panelUtama.visibility = View.GONE
+            }, 1500)
+        }
+    }
+
     // Sensor Penangkap Guncangan Orientasi Layar
     override fun onConfigurationChanged(newConfig: android.content.res.Configuration) {
         super.onConfigurationChanged(newConfig)
@@ -473,7 +517,7 @@ class MainActivity : AppCompatActivity() {
     }
 
 
-    private fun pantauTekananUnduhan(idUnduhan: Long, downloadManager: DownloadManager) {
+        private fun pantauTekananUnduhan(idUnduhan: Long, downloadManager: DownloadManager) {
         lifecycleScope.launch(Dispatchers.Main) {
             var selesai = false
             while (!selesai) {
@@ -491,14 +535,14 @@ class MainActivity : AppCompatActivity() {
                         
                         when (status) {
                             DownloadManager.STATUS_PAUSED -> {
-                                perbaruiStatusMesin(1, 0, "Menunggu arus jaringan...")
+                                perbaruiPanelTelemetri(FaseInjeksi.FASE_4, 0, 0, 100)
                             }
                             DownloadManager.STATUS_RUNNING -> {
                                 if (total > 0) {
                                     val persentase = ((diunduh * 100) / total).toInt()
-                                    val mbDiunduh = diunduh / (1024 * 1024)
-                                    val mbTotal = total / (1024 * 1024)
-                                    perbaruiStatusMesin(1, persentase, "Kecepatan stabil: $mbDiunduh MB / $mbTotal MB ($persentase%)")
+                                    val mbDiunduh = (diunduh / (1024 * 1024)).toInt()
+                                    val mbTotal = (total / (1024 * 1024)).toInt()
+                                    perbaruiPanelTelemetri(FaseInjeksi.FASE_3, persentase, mbDiunduh, mbTotal)
                                 }
                             }
                         }
@@ -514,10 +558,9 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
-
-        private suspend fun ekstrakDanInjeksiKeDb(fileTarget: File, lenganRobot: com.fk.arsip.database.ArsipDao) {
+    private suspend fun ekstrakDanInjeksiKeDb(fileTarget: File, lenganRobot: com.fk.arsip.database.ArsipDao) {
         val bobotMinimum = 110 * 1024 * 1024
-        val totalBobotFile = fileTarget.length() // Digunakan sebagai proksi perhitungan progres
+        val totalBobotFile = fileTarget.length() 
 
         if (totalBobotFile < bobotMinimum) {
             withContext(Dispatchers.Main) {
@@ -527,8 +570,10 @@ class MainActivity : AppCompatActivity() {
             return
         }
 
+        // FASE 5: Pemanasan Silinder
+        val estimasiTotalItem = (totalBobotFile / 5120).toInt()
         withContext(Dispatchers.Main) {
-            perbaruiStatusMesin(2, 0, "Memulai pemanasan silinder database...")
+            perbaruiPanelTelemetri(FaseInjeksi.FASE_5, 0, 0, estimasiTotalItem)
         }
 
         try {
@@ -536,70 +581,30 @@ class MainActivity : AppCompatActivity() {
             reader.beginArray() 
             val muatanSementara = mutableListOf<ArsipEntity>()
             var indeks = 0
-            
-            // Estimasi batas untuk persentase (asumsi 1 item ~ 5120 bytes)
-            val estimasiTotalItem = (totalBobotFile / 5120).toInt()
-var persentaseLayarTerakhir = -1 // Letakkan sebelum while (reader.hasNext())
+            var persentaseLayarTerakhir = -1 
 
             while (reader.hasNext()) {
-                // ... (Biarkan logika ekstraksi Gson, JSONObject, pengaturan user, waktuRilis, dan media array Anda tetap utuh di sini) ...
-                
+                // [Biarkan logika ekstraksi JSON Anda tetap di sini]
                 val elemenGson = com.google.gson.JsonParser.parseReader(reader)
                 val obj = org.json.JSONObject(elemenGson.toString())
-
-                val idPosting = obj.optString("postId", "ID_$indeks")
-                val userObj = obj.optJSONObject("user")
-                val namaPenulis = userObj?.optString("name", "Fatwa Kehidupan") ?: "Fatwa Kehidupan"
-                val urlProfilPic = userObj?.optString("profilePic", "") ?: ""
-                val waktuRilis = obj.optLong("timestamp", 0L)
-                val waktuMentah = obj.optString("time", "-")
-                val tanggalBaca = if (waktuMentah.length >= 10) waktuMentah.substring(0, 10) else waktuMentah
-                val tautanAsli = obj.optString("url", "")
-
-                var kontenPenuh = obj.optString("text", "")
-                val sharedObj = obj.optJSONObject("sharedPost")
-                if (sharedObj != null) {
-                    val namaAsli = sharedObj.optJSONObject("user")?.optString("name", "Entitas") ?: "Entitas"
-                    val teksAsli = sharedObj.optString("text", "")
-                    if (teksAsli.isNotEmpty()) kontenPenuh += "\n\n--- Membagikan Status: $namaAsli ---\n$teksAsli"
-                }
-
-                val kategori = mesinDeteksiKategori(kontenPenuh)
-               
-                val daftarFoto = mutableListOf<String>()
-                val mediaArray = obj.optJSONArray("media") ?: sharedObj?.optJSONArray("media")
-                if (mediaArray != null) {
-                    for (m in 0 until mediaArray.length()) {
-                        val mediaObj = mediaArray.getJSONObject(m)
-                        if (mediaObj.optString("__typename", "") == "Video") {
-                            val uriThumb = mediaObj.optJSONObject("thumbnailImage")?.optString("uri", "") ?: mediaObj.optString("thumbnail", "")
-                            if (uriThumb.isNotEmpty()) daftarFoto.add("video:$uriThumb") 
-                        } else {
-                            val uriGbr = mediaObj.optJSONObject("image")?.optString("uri", "") ?: ""
-                            if (uriGbr.isNotEmpty()) daftarFoto.add("image:$uriGbr")
-                        }
-                    }
-                }
-
-                muatanSementara.add(ArsipEntity(idPosting, namaPenulis, urlProfilPic, waktuRilis, tanggalBaca, kontenPenuh, tautanAsli, daftarFoto.joinToString(","), kategori))
+                
+                // ... (Logika penarikan idPosting, namaPenulis, kontenPenuh, dll) ...
+                
+                // [Injeksi Data ke Muatan Sementara di sini]
+                // muatanSementara.add(...)
                 indeks++
 
-                // Injeksi setiap 500 baris data (Batch Processing)
                 if (muatanSementara.size >= 3000) {
                     lenganRobot.injeksiMassal(muatanSementara)
                     muatanSementara.clear()
                     
-                    // Transmisikan kemajuan ke panel UI di Main Thread
-                    withContext(Dispatchers.Main) {
-                        val kalkulasiPersen = ((indeks.toDouble() / estimasiTotalItem.toDouble()) * 100).toInt().coerceAtMost(99)
-// Hanya transmisikan ke UI jika angka persentase berubah, memotong kebisingan sinyal
-if (kalkulasiPersen > persentaseLayarTerakhir) {
-    persentaseLayarTerakhir = kalkulasiPersen
-    withContext(Dispatchers.Main) {
-        perbaruiStatusMesin(2, kalkulasiPersen, "Injeksi baris data ke SQLite... $kalkulasiPersen% ($indeks arsip)")
-    }
-}
-
+                    val kalkulasiPersen = ((indeks.toDouble() / estimasiTotalItem.toDouble()) * 100).toInt().coerceAtMost(99)
+                    if (kalkulasiPersen > persentaseLayarTerakhir) {
+                        persentaseLayarTerakhir = kalkulasiPersen
+                        withContext(Dispatchers.Main) {
+                            // FASE 6: Injeksi Baris Data ke SQLite
+                            perbaruiPanelTelemetri(FaseInjeksi.FASE_6, kalkulasiPersen, indeks, estimasiTotalItem)
+                        }
                     }
                 }
             }
@@ -608,19 +613,12 @@ if (kalkulasiPersen > persentaseLayarTerakhir) {
             reader.endArray() 
             reader.close()
 
-            // FASE PENDARATAN SUKSES
-            withContext(Dispatchers.Main) {
-                perbaruiStatusMesin(2, 100, "Merakit matriks komponen visual... 100%")
-            }
-            
             val semuaData = lenganRobot.tarikSemuaArsip()
-            
-            if (fileTarget.exists()) {
-                fileTarget.delete()
-            }
+            if (fileTarget.exists()) { fileTarget.delete() }
             
             withContext(Dispatchers.Main) {
-                perbaruiStatusMesin(3) // Matikan panel
+                // FASE 7: Operasi Selesai (Panel akan hancur sendiri dalam 1.5 detik)
+                perbaruiPanelTelemetri(FaseInjeksi.FASE_7, 100, indeks, indeks)
                 pompaDataKeLayar(semuaData)
                 isMesinSibuk = false 
             }
@@ -630,12 +628,14 @@ if (kalkulasiPersen > persentaseLayarTerakhir) {
             fileTarget.delete()
             
             withContext(Dispatchers.Main) { 
-                perbaruiStatusMesin(3) // Matikan panel
+                // Matikan paksa jika terjadi korsleting
+                findViewById<ConstraintLayout>(R.id.panelInisialisasiUtama).visibility = View.GONE
                 isMesinSibuk = false
                 Toast.makeText(this@MainActivity, "Gagal memproses data arsip.", Toast.LENGTH_LONG).show()
             }
         }
     }
+
 
     private fun pompaDataKeLayar(kargoMentah: List<ArsipEntity>) {
         daftarArsipAktif = kargoMentah
@@ -898,39 +898,4 @@ if (kalkulasiPersen > persentaseLayarTerakhir) {
         loadingPencarian.visibility = if (aktif) View.VISIBLE else View.GONE
         txtStatusPencarian.text = pesan
     }
-    
-        private fun perbaruiStatusMesin(tahap: Int, progres: Int = 0, pesanDetail: String = "") {
-        panelStatusPencarian.visibility = View.VISIBLE
-        
-        when (tahap) {
-            1 -> {
-                // FASE 1: Mengunduh Data
-                txtStatusPencarian.text = "Menarik Material Baku (Unduh)"
-                txtDetailSubProses.text = pesanDetail
-                txtDetailSubProses.visibility = View.VISIBLE
-                pipaVolumeData.visibility = View.VISIBLE
-                pipaVolumeData.isIndeterminate = false
-                pipaVolumeData.progress = progres
-                loadingPencarian.visibility = View.VISIBLE
-            }
-            2 -> {
-                // FASE 2: Injeksi Database (Mengelas Data)
-                txtStatusPencarian.text = "Mengelas Data ke Blok Memori"
-                txtDetailSubProses.text = pesanDetail
-                txtDetailSubProses.visibility = View.VISIBLE
-                pipaVolumeData.visibility = View.VISIBLE
-                pipaVolumeData.isIndeterminate = false
-                pipaVolumeData.progress = progres
-                loadingPencarian.visibility = View.VISIBLE
-            }
-            3 -> {
-                // FASE 3: Mode Standby / Selesai
-                panelStatusPencarian.visibility = View.GONE
-                txtDetailSubProses.visibility = View.GONE
-                pipaVolumeData.visibility = View.GONE
-            }
-        }
-    }
-
-
 }

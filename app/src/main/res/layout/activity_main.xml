@@ -22,11 +22,20 @@
             android:paddingHorizontal="10dp"
             android:paddingTop="10dp"
             android:paddingBottom="4dp">
-
+                      <!-- TUAS MEKANIS PEMBUKA LACI -->
+            <ImageView
+                android:id="@+id/btnMenuDrawer"
+                android:layout_width="45dp"
+                android:layout_height="45dp"
+                android:layout_marginStart="8dp"
+                android:padding="2dp"
+                android:background="?android:attr/selectableItemBackgroundBorderless"
+                app:srcCompat="@android:drawable/ic_menu_sort_by_size"
+                app:tint="#004D40" />
             <EditText
                 android:id="@+id/edtPencarian"
                 android:layout_width="0dp"
-                android:layout_height="50dp"
+                android:layout_height="45dp"
                 android:layout_weight="1"
                 android:padding="10dp"
                 android:background="@android:color/white"
@@ -35,17 +44,6 @@
                 android:inputType="text"
                 android:imeOptions="actionSearch" 
                 android:maxLines="1" />
-
-            <!-- TUAS MEKANIS PEMBUKA LACI -->
-            <ImageView
-                android:id="@+id/btnMenuDrawer"
-                android:layout_width="45dp"
-                android:layout_height="45dp"
-                android:layout_marginStart="8dp"
-                android:padding="10dp"
-                android:background="?android:attr/selectableItemBackgroundBorderless"
-                app:srcCompat="@android:drawable/ic_menu_sort_by_size"
-                app:tint="#004D40" />
         </LinearLayout>
 
 
@@ -343,4 +341,6 @@
 
         </ScrollView>
     </LinearLayout>
+    <!-- PIPA PENYAMBUNG ANTARMUKA 7 FASE -->
+    <include layout="@layout/layout_inisialisasi_mesin" />
 </androidx.drawerlayout.widget.DrawerLayout>

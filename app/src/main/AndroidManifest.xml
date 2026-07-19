@@ -24,6 +24,7 @@
             </intent-filter>
         </activity>
         <activity android:name=".AboutActivity" android:theme="@style/Theme.AppCompat.Light.NoActionBar" />
+        <include layout="@layout/layout_inisialisasi_mesin" />
         
     </application>
 </manifest>
