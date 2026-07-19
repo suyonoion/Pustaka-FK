@@ -29,7 +29,7 @@
                 android:layout_width="35dp"
                 android:layout_height="35dp"
                 android:layout_marginStart="8dp"
-                android:padding="10dp"
+                android:padding="5dp"
                 android:background="?android:attr/selectableItemBackgroundBorderless"
                 app:srcCompat="@android:drawable/ic_menu_sort_by_size"
                 app:tint="#004D40" />
@@ -38,7 +38,7 @@
                 android:layout_width="0dp"
                 android:layout_height="35dp"
                 android:layout_weight="1"
-                android:padding="10dp"
+                android:padding="5dp"
                 android:background="@android:color/white"
                 android:hint="Cari Status..."
                 android:elevation="2dp"
