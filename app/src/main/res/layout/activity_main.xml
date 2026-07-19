@@ -44,7 +44,7 @@
                 android:layout_marginStart="8dp"
                 android:padding="10dp"
                 android:background="?android:attr/selectableItemBackgroundBorderless"
-                android:src="@android:drawable/ic_menu_moreoverflow"
+                app:srcCompat="@android:drawable/ic_menu_sort_by_size"
                 app:tint="#004D40" />
         </LinearLayout>
 
