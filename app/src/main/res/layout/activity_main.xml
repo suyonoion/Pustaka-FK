@@ -55,7 +55,7 @@
             android:layout_height="wrap_content"
             android:layout_marginHorizontal="12dp"
             android:layout_marginBottom="8dp"
-            app:cardBackgroundColor="#004D40" 
+            app:cardBackgroundColor="#E0F2F1" 
             app:cardCornerRadius="4dp"
             app:cardElevation="2dp"
             android:visibility="gone">
@@ -72,32 +72,18 @@
                     android:id="@+id/txtStatusPencarian"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:textColor="#FFFFFF"
+                    android:textColor="#004D40"
                     android:textSize="14sp"
                     android:textStyle="bold"
                     android:textAlignment="center"
                     android:text="Kategori (0 arsip)" />
 
                 <!-- Sirkuit telemetri lama disembunyikan total dengan atribut yang terdefinisi secara formal -->
-<ProgressBar 
-    android:id="@+id/loadingPencarian" 
-    android:layout_width="0dp" 
-    android:layout_height="0dp" 
-    android:visibility="gone"/>
-
-<ProgressBar 
-    android:id="@+id/pipaVolumeData" 
-    android:layout_width="0dp" 
-    android:layout_height="0dp" 
-    android:visibility="gone" />
-
-<TextView 
-    android:id="@+id/txtDetailSubProses" 
-    android:layout_width="0dp" 
-    android:layout_height="0dp" 
-    android:visibility="gone" />
-
-
+               <ProgressBar 
+               android:id="@+id/loadingPencarian" 
+               android:layout_width="0dp" 
+               android:layout_height="0dp" 
+               android:visibility="gone"/>
             </LinearLayout>
         </androidx.cardview.widget.CardView>
 

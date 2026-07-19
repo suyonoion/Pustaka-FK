@@ -73,17 +73,10 @@ class MainActivity : AppCompatActivity() {
     private lateinit var proyektorBuku: ViewPager2
     private lateinit var edtPencarian: EditText
     private lateinit var panelStatusPencarian: CardView
-
     private lateinit var loadingPencarian: ProgressBar
     private lateinit var txtStatusPencarian: TextView
-    
     private lateinit var gridAdapter: GridAdapter
     private lateinit var bukuAdapter: BukuAdapter
-    
-    // TAMBAHKAN 2 KOMPONEN INI UNTUK TELEMETRI HORIZONTAL
-    private lateinit var pipaVolumeData: ProgressBar
-    private lateinit var txtDetailSubProses: TextView
-    // Tambahkan komponen ini di area deklarasi variabel
     private lateinit var recyclerTimeline: RecyclerView
     // Penampung Arus Data & Sakelar Status Informasi
     private var daftarArsipAktif: List<ArsipEntity> = listOf()
@@ -111,10 +104,6 @@ class MainActivity : AppCompatActivity() {
         panelStatusPencarian = findViewById(R.id.panelStatusPencarian)
         loadingPencarian = findViewById(R.id.loadingPencarian)
         txtStatusPencarian = findViewById(R.id.txtStatusPencarian)
-
-        // IKAT KOMPONEN BARU
-        pipaVolumeData = findViewById(R.id.pipaVolumeData)
-        txtDetailSubProses = findViewById(R.id.txtDetailSubProses)
         recyclerTimeline = findViewById(R.id.recyclerTimeline)
 
         recyclerGridMode.layoutManager = GridLayoutManager(this, 2)
@@ -156,7 +145,12 @@ class MainActivity : AppCompatActivity() {
                 else if (wadahModeBuku.visibility == View.VISIBLE) {
                     wadahModeBuku.visibility = View.GONE
                     recyclerGridMode.visibility = View.VISIBLE
+                    // TAMBAHKAN INJEKSI PELEPASAN MEMORI INI:
+                    if (daftarArsipAktif.size > 5000) {
+                        bukuAdapter.perbaruiData(emptyList()) // Kosongkan RAM proyektor kembali
+                        }
                 } 
+
                 // JARING PENANGKAP GANDA: Sensor Kolom Pencarian & Sensor Kategori Laci
                 else if (isSearchMode || edtPencarian.text.toString().isNotEmpty() || modeKategoriAktif) {
                     
@@ -397,12 +391,14 @@ class MainActivity : AppCompatActivity() {
                     val berkasLokal = File(getExternalFilesDir(null), "Master_Data_Arsip_FK_11_Juli_2026.json")
                     val bobotMinimum = 110 * 1024 * 1024 // Batasan formal 110 MB
                     
-                    if (berkasLokal.exists() && berkasLokal.length() >= bobotMinimum) {
+                                        if (berkasLokal.exists() && berkasLokal.length() >= bobotMinimum) {
                         // BYPASS BERHASIL: Berkas valid ditemukan di tangki lokal, langsung eksekusi injeksi
                         isMesinSibuk = true
-                        panelStatusPencarian.visibility = View.VISIBLE
-                        loadingPencarian.visibility = View.VISIBLE
-                        txtStatusPencarian.text = "Berkas lokal terdeteksi. Menyuntikkan data ke database..."
+                        
+                        // HIDUPKAN PANEL 7 FASE, MATIKAN PANEL USANG
+                        val panelUtama = findViewById<ConstraintLayout>(R.id.panelInisialisasiUtama)
+                        panelUtama.visibility = View.VISIBLE
+                        perbaruiPanelTelemetri(FaseInjeksi.FASE_5, 0, 0, 0)
                         
                         lifecycleScope.launch(Dispatchers.IO) {
                             ekstrakDanInjeksiKeDb(berkasLokal, lenganRobot)
@@ -425,7 +421,7 @@ class MainActivity : AppCompatActivity() {
         if (cursor != null) {
             while (cursor.moveToNext()) {
                 val titleIndex = cursor.getColumnIndex(DownloadManager.COLUMN_TITLE)
-                if (titleIndex != -1 && cursor.getString(titleIndex) == "Arsip Status FK") {
+                if (titleIndex != -1 && cursor.getString(titleIndex) == "Arsip Fatwa Kehidupan") {
                     val idIndex = cursor.getColumnIndex(DownloadManager.COLUMN_ID)
                     val id = cursor.getLong(idIndex)
                     cursor.close()
@@ -437,27 +433,32 @@ class MainActivity : AppCompatActivity() {
         return -1L
     }
 
-        private fun aktifkanMesinPenyedot() {
+            private fun aktifkanMesinPenyedot() {
         // INJEKSI SENSOR: Jika arus mati, hentikan operasi seketika
         if (!isJaringanTersedia()) {
             tampilkanPeringatanJaringan()
-            return // Instruksi absolut untuk membatalkan sisa kode di bawahnya
+            return
         }
-        // ========================================================
+        
         // KUNCI MESIN: Blokir aktivitas lain
         isMesinSibuk = true
         val downloadManager = getSystemService(Context.DOWNLOAD_SERVICE) as DownloadManager
         val idPipaAktif = cariPipaAktif(downloadManager)
+        
+        // Buka paksa kompartemen fase 7 (Sirkuit Baru)
+        val panelUtama = findViewById<ConstraintLayout>(R.id.panelInisialisasiUtama)
+        panelUtama.visibility = View.VISIBLE
+        
+        // Jika Pipa Unduhan sudah ada (Aplikasi dibuka dari latar belakang)
         if (idPipaAktif != -1L) {
-            panelStatusPencarian.visibility = View.VISIBLE
+            // Langsung sambungkan ulang sensor telemetri tanpa memicu unduhan baru
             pantauTekananUnduhan(idPipaAktif, downloadManager)
             pasangSensorPendaratan(idPipaAktif, downloadManager)
             return
         }
 
-        panelStatusPencarian.visibility = View.VISIBLE
-        loadingPencarian.visibility = View.VISIBLE
-        txtStatusPencarian.text = "Menghubungkan ke server..."
+        // Jika tidak ada Pipa Aktif, mulai FASE 2: Menghubungkan ke server
+        perbaruiPanelTelemetri(FaseInjeksi.FASE_2, 0, 0, 100)
 
         val namaFileTemp = "$namaFile.temp"
         val fileTempLama = File(getExternalFilesDir(null), namaFileTemp)
@@ -472,9 +473,12 @@ class MainActivity : AppCompatActivity() {
             .setAllowedOverRoaming(true)
 
         val idUnduhan = downloadManager.enqueue(request)
+        
+        // Transisi ke FASE 3 dikendalikan murni oleh pantauTekananUnduhan
         pantauTekananUnduhan(idUnduhan, downloadManager)
         pasangSensorPendaratan(idUnduhan, downloadManager)
     }
+
 
 
         private fun pasangSensorPendaratan(idUnduhan: Long, downloadManager: DownloadManager) {
@@ -487,18 +491,22 @@ class MainActivity : AppCompatActivity() {
                     val cursor = downloadManager.query(query)
                     if (cursor != null && cursor.moveToFirst()) {
                         val statusIndex = cursor.getColumnIndex(DownloadManager.COLUMN_STATUS)
-                        if (statusIndex != -1 && cursor.getInt(statusIndex) == DownloadManager.STATUS_SUCCESSFUL) {
+                        
+                                               if (statusIndex != -1 && cursor.getInt(statusIndex) == DownloadManager.STATUS_SUCCESSFUL) {
                             val namaFileTemp = "$namaFile.temp"
                             val fileTempSelesai = File(getExternalFilesDir(null), namaFileTemp)
                             val fileAsli = File(getExternalFilesDir(null), namaFile)
                             if (fileTempSelesai.renameTo(fileAsli)) {
-                                txtStatusPencarian.text = "Unduhan selesai. Memproses data..."
+                                // GANTI ARUS KE PANEL TELEMETRI 7 FASE
+                                perbaruiPanelTelemetri(FaseInjeksi.FASE_5, 0, 0, 0)
                                 eksekusiPabrikData() 
                             }
                         } else {
-                            panelStatusPencarian.visibility = View.GONE
+                            // MATIKAN PANEL 7 FASE JIKA UNDUHAN GAGAL
+                            findViewById<ConstraintLayout>(R.id.panelInisialisasiUtama).visibility = View.GONE
                             Toast.makeText(this@MainActivity, "Pengunduhan gagal.", Toast.LENGTH_LONG).show()
                         }
+
                     }
                     cursor?.close()
                 }
@@ -680,10 +688,14 @@ class MainActivity : AppCompatActivity() {
             kargoSiapRakit.add(KargoCampuran.StatusKonten(arsip, indeksMurni))
             indeksMurni++
         }
-
-        gridAdapter.perbaruiData(kargoSiapRakit)
-        bukuAdapter.perbaruiData(kargoMentah)
-
+           gridAdapter.perbaruiData(kargoSiapRakit)
+           // JALUR PENGHEMATAN MEMORI:
+           // Jika data terlalu masif (posisi menampilkan semua status), matikan suplai masal ke bukuAdapter
+           if (kargoMentah.size > 5000) {
+           bukuAdapter.perbaruiData(emptyList())
+           } else {
+           bukuAdapter.perbaruiData(kargoMentah)
+           }
         val adapterTimeline = TimelineAdapter(titikNavigasi) { indeksTujuan ->
             (recyclerGridMode.layoutManager as androidx.recyclerview.widget.GridLayoutManager)
                 .scrollToPositionWithOffset(indeksTujuan, 0)
@@ -693,10 +705,30 @@ class MainActivity : AppCompatActivity() {
     }
 
 
-    private fun bukaModeBuku(posisi: Int) {
-        recyclerGridMode.visibility = View.GONE
-        wadahModeBuku.visibility = View.VISIBLE
-        proyektorBuku.setCurrentItem(posisi, false)
+        private fun bukaModeBuku(posisi: Int) {
+        // Blokir interaksi UI sementara agar proses injeksi tidak terganggu
+        isMesinSibuk = true 
+        
+        lifecycleScope.launch(Dispatchers.Main) {
+            // Jika adapter dalam kondisi kosong (Bypass Semua Data Aktif)
+            if (bukuAdapter.itemCount == 0 && daftarArsipAktif.isNotEmpty()) {
+                tampilkanIndikator("Menyiapkan proyektor buku...", true)
+                
+                // Pindahkan alokasi data ke background thread agar main thread tidak freeze
+                withContext(Dispatchers.Default) {
+                    bukuAdapter.perbaruiData(daftarArsipAktif)
+                }
+                
+                tampilkanIndikator("", false)
+            }
+
+            // Eksekusi proyeksi visual setelah data terpasang di memori
+            recyclerGridMode.visibility = View.GONE
+            wadahModeBuku.visibility = View.VISIBLE
+            proyektorBuku.setCurrentItem(posisi, false)
+            
+            isMesinSibuk = false
+        }
     }
 
     // Sirkuit Pencarian Diperkuat Dengan Penangkap Katup Enter Manual (Universal Keyboard Fix
