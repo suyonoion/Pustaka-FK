@@ -1,13 +1,21 @@
 <?xml version="1.0" encoding="utf-8"?>
-<TextView xmlns:android="http://schemas.android.com/apk/res/android"
-    android:id="@+id/txtLabelTimeline"
+<LinearLayout 
+    xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
-    android:text="Jan"
-    android:textSize="10sp"
-    android:textColor="#424242"
-    android:textAlignment="center"
-    android:paddingVertical="8dp"
-    android:background="?android:attr/selectableItemBackground"
-    android:clickable="true"
-    android:focusable="true"/>
+    android:gravity="center"
+    android:paddingVertical="10dp"
+    android:background="?android:attr/selectableItemBackground">
+
+    <!-- Ukuran diturunkan ke 10sp agar muat 2 baris dengan presisi -->
+    <TextView
+        android:id="@+id/txtLabelTimeline"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:gravity="center"
+        android:text="Jan\n'25"
+        android:textColor="#555555"
+        android:textSize="10sp"
+        android:textStyle="bold"
+        android:lineSpacingExtra="-2dp" />
+</LinearLayout>

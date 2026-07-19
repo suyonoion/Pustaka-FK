@@ -37,6 +37,15 @@ import kotlinx.coroutines.withContext
 import java.io.File
 import java.io.FileReader
 
+// Cetak Biru Hibrida untuk Rel Samping
+data class TitikNavigasi(
+    val tipe: Int, // 0 = Tahun, 1 = Bulan
+    val teks: String,
+    val indeksTujuan: Int = -1,
+    val warnaGenap: Boolean = false
+)
+
+
 class MainActivity : AppCompatActivity() {
 
     private val namaFile = "Master_Data_Arsip_FK_11_Juli_2026.json"
@@ -106,9 +115,17 @@ class MainActivity : AppCompatActivity() {
         recyclerGridMode.layoutManager = layoutManagerGrid
         recyclerGridMode.adapter = gridAdapter
 
+                // ... (kode Anda yang ada di onCreate)
         bukuAdapter = BukuAdapter(daftarArsipAktif)
         proyektorBuku.adapter = bukuAdapter
+
+        // INJEKSI TUAS PENGAMAN INI:
+        // Memaksa mesin hanya memproses 1 halaman aktual tanpa merakit halaman sebelah
+        proyektorBuku.offscreenPageLimit = 1
         
+        // Mematikan efek pegas (overscroll) yang memakan siklus komputasi ekstra
+        val mesinProyeksi = proyektorBuku.getChildAt(0) as? RecyclerView
+        mesinProyeksi?.overScrollMode = View.OVER_SCROLL_NEVER
 
         // PENGELASAN UTAMA: Sirkuit Pengereman Berjenjang Mutlak (Hardware Back Button)
         onBackPressedDispatcher.addCallback(this, object : OnBackPressedCallback(true) {
@@ -261,7 +278,12 @@ class MainActivity : AppCompatActivity() {
                 modeKategoriAktif = true
                 edtPencarian.text.clear()
                 
-                tampilkanIndikator("Ditemukan ${hasilSaringanAkhir.size} arsip.", false)
+                // KALIBRASI OUTPUT: Merakit muatan teks menjadi format pelat judul buku
+                val muatanTeks = "$labelKategori (${hasilSaringanAkhir.size} arsip)"
+                
+                // Pompa muatan teks baru ke mesin indikator
+                tampilkanIndikator(muatanTeks, false)
+                
                 panelStatusPencarian.visibility = View.VISIBLE 
                 wadahModeBuku.visibility = View.GONE
                 recyclerGridMode.visibility = View.VISIBLE
@@ -269,6 +291,7 @@ class MainActivity : AppCompatActivity() {
                 pompaDataKeLayar(hasilSaringanAkhir) 
                 drawerLayout.closeDrawers()
             }
+
         }
     }
 
@@ -614,31 +637,22 @@ if (kalkulasiPersen > persentaseLayarTerakhir) {
         }
     }
 
-
-        // GANTI FUNGSI LAMA DENGAN BLOK KODE INI
     private fun pompaDataKeLayar(kargoMentah: List<ArsipEntity>) {
         daftarArsipAktif = kargoMentah
         
         val kargoSiapRakit = mutableListOf<KargoCampuran>()
         val titikNavigasi = mutableListOf<TitikNavigasi>()
+        
         var pembatasAktif = ""
-        var indeksMurni = 0 // Digunakan untuk mensinkronkan posisi dengan ViewPager (Buku)
+        var tahunAktif = ""
+        var putaranWarnaBulan = 0 
+        var indeksMurni = 0 
 
-        // Asumsi format waktuRilis (Long) atau tanggalBaca (String). 
-        // Anda menggunakan tanggalBaca format "2025-01-20"
         for (arsip in kargoMentah) {
-            val tanggalStr = arsip.tanggalBaca // Format: YYYY-MM-DD
+            val tanggalStr = arsip.tanggalBaca 
             val tahun = if (tanggalStr.length >= 4) tanggalStr.substring(0, 4) else "Tahun"
             val bulanAngka = if (tanggalStr.length >= 7) tanggalStr.substring(5, 7) else "00"
             
-            // Konverter Mekanis Bulan
-            val namaBulan = when (bulanAngka) {
-                "01" -> "Januari"; "02" -> "Februari"; "03" -> "Maret"
-                "04" -> "April"; "05" -> "Mei"; "06" -> "Juni"
-                "07" -> "Juli"; "08" -> "Agustus"; "09" -> "September"
-                "10" -> "Oktober"; "11" -> "November"; "12" -> "Desember"
-                else -> "Bulan"
-            }
             val namaSingkat = when (bulanAngka) {
                 "01" -> "Jan"; "02" -> "Feb"; "03" -> "Mar"
                 "04" -> "Apr"; "05" -> "Mei"; "06" -> "Jun"
@@ -647,28 +661,38 @@ if (kalkulasiPersen > persentaseLayarTerakhir) {
                 else -> "Bln"
             }
 
-            val headerBulanTahun = "$tahun | $namaBulan"
+            val headerBulanTahun = "$tahun | $namaSingkat"
 
-            // Jika masuk blok waktu baru, cetak pembatas
+            // Deteksi Pergantian Tahun
+            if (tahun != tahunAktif) {
+                titikNavigasi.add(TitikNavigasi(tipe = 0, teks = tahun))
+                tahunAktif = tahun
+            }
+
+            // Deteksi Pergantian Bulan (Batas Grid)
             if (headerBulanTahun != pembatasAktif) {
                 kargoSiapRakit.add(KargoCampuran.PembatasWaktu(headerBulanTahun))
-                // Daftarkan koordinat ini ke rel timeline kanan
-                titikNavigasi.add(TitikNavigasi(namaSingkat, kargoSiapRakit.size - 1))
+                
+                // Cetak stempel bulan ke rel dengan warna selang-seling (Genap/Ganjil)
+                val isGenap = (putaranWarnaBulan % 2 == 0)
+                titikNavigasi.add(TitikNavigasi(
+                    tipe = 1, 
+                    teks = namaSingkat, 
+                    indeksTujuan = kargoSiapRakit.size - 1, 
+                    warnaGenap = isGenap
+                ))
+                
                 pembatasAktif = headerBulanTahun
+                putaranWarnaBulan++
             }
             
-            // Masukkan data konten status dan posisi aslinya
             kargoSiapRakit.add(KargoCampuran.StatusKonten(arsip, indeksMurni))
             indeksMurni++
         }
 
-        // Tembakkan kargo campuran ke layar Grid
         gridAdapter.perbaruiData(kargoSiapRakit)
-        
-        // Tembakkan kargo mentah murni ke mode Buku
         bukuAdapter.perbaruiData(kargoMentah)
 
-        // Rakit dan pasang pelontar rel Timeline (Kanan)
         val adapterTimeline = TimelineAdapter(titikNavigasi) { indeksTujuan ->
             (recyclerGridMode.layoutManager as androidx.recyclerview.widget.GridLayoutManager)
                 .scrollToPositionWithOffset(indeksTujuan, 0)
@@ -739,7 +763,13 @@ if (kalkulasiPersen > persentaseLayarTerakhir) {
                         pompaDataKeLayar(hasilSaringanPresisi)
                         
                         loadingPencarian.visibility = View.GONE
-                        txtStatusPencarian.text = "Ditemukan ${hasilSaringanPresisi.size} arsip."
+                        // INJEKSI KALIBRASI OUTPUT PENCARIAN
+                        val muatanTeks = if (kataKunci.isNotEmpty()) {
+                            "Pencarian: $kataKunci (${hasilSaringanPresisi.size} arsip)"
+                        } else {
+                            "Semua Arsip (${hasilSaringanPresisi.size} arsip)"
+                        }
+                        txtStatusPencarian.text = muatanTeks
                         
                         edtPencarian.clearFocus()
                         val imm = getSystemService(Context.INPUT_METHOD_SERVICE) as InputMethodManager

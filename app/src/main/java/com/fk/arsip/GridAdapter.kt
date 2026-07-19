@@ -14,8 +14,7 @@ sealed class KargoCampuran {
     data class StatusKonten(val data: ArsipEntity, val posisiAsli: Int) : KargoCampuran()
 }
 
-// Struktur untuk rel timeline kanan
-data class TitikNavigasi(val labelBulan: String, val indeksTujuan: Int)
+
 
 class GridAdapter(
     private var daftarKargo: List<KargoCampuran>,
@@ -44,7 +43,7 @@ class GridAdapter(
         }
     }
 
-    override fun onBindViewHolder(holder: RecyclerView.ViewHolder, position: Int) {
+        override fun onBindViewHolder(holder: RecyclerView.ViewHolder, position: Int) {
         val material = daftarKargo[position]
         
         if (holder is HeaderViewHolder && material is KargoCampuran.PembatasWaktu) {
@@ -55,9 +54,13 @@ class GridAdapter(
             holder.txtKategori.text = arsip.kategori
             holder.txtTanggal.text = arsip.tanggalBaca.substringBefore(" ")
             holder.txtCuplikan.text = arsip.kontenPenuh
+            
+            // INJEKSI MESIN PENCETAK INDEKS
+            val nomorUrut = material.posisiAsli + 1 // Ditambah 1 untuk bahasa natural (mulai dari 1)
+            holder.txtIndeksGrid.text = "#$nomorUrut"
 
             holder.itemView.setOnClickListener {
-                pemicuBuku(material.posisiAsli) // Buka ViewPager pada indeks arsip murni
+                pemicuBuku(material.posisiAsli) 
             }
         }
     }
@@ -73,10 +76,13 @@ class GridAdapter(
         val txtHeader: TextView = view.findViewById(R.id.txtHeaderWaktu)
     }
 
-    class KontenViewHolder(view: View) : RecyclerView.ViewHolder(view) {
+        class KontenViewHolder(view: View) : RecyclerView.ViewHolder(view) {
         val imgProfil: ImageView = view.findViewById(R.id.imgGridProfil)
         val txtTanggal: TextView = view.findViewById(R.id.txtGridTanggal)
         val txtKategori: TextView = view.findViewById(R.id.txtGridKategori)
         val txtCuplikan: TextView = view.findViewById(R.id.txtGridCuplikan)
+        // INJEKSI KABEL PENGIKAT
+        val txtIndeksGrid: TextView = view.findViewById(R.id.txtIndeksGrid) 
     }
+
 }

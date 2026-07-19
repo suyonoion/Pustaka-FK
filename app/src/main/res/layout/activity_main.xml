@@ -13,87 +13,80 @@
         android:orientation="vertical"
         android:background="#EFEFEF">
 
-        <EditText
-            android:id="@+id/edtPencarian"
+              <!-- PIPA NAVIGASI ATAS -->
+        <LinearLayout
             android:layout_width="match_parent"
-            android:layout_height="50dp"
-            android:layout_margin="10dp"
-            android:padding="10dp"
-            android:background="@android:color/white"
-            android:hint="Cari Fatwa..."
-            android:elevation="2dp"
-            android:inputType="text"
-            android:imeOptions="actionSearch" 
-            android:maxLines="1" />
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:gravity="center_vertical"
+            android:paddingHorizontal="10dp"
+            android:paddingTop="10dp"
+            android:paddingBottom="4dp">
 
+            <EditText
+                android:id="@+id/edtPencarian"
+                android:layout_width="0dp"
+                android:layout_height="50dp"
+                android:layout_weight="1"
+                android:padding="10dp"
+                android:background="@android:color/white"
+                android:hint="Cari Fatwa..."
+                android:elevation="2dp"
+                android:inputType="text"
+                android:imeOptions="actionSearch" 
+                android:maxLines="1" />
+
+            <!-- TUAS MEKANIS PEMBUKA LACI -->
+            <ImageView
+                android:id="@+id/btnMenuDrawer"
+                android:layout_width="45dp"
+                android:layout_height="45dp"
+                android:layout_marginStart="8dp"
+                android:padding="10dp"
+                android:background="?android:attr/selectableItemBackgroundBorderless"
+                android:src="@android:drawable/ic_menu_moreoverflow"
+                app:tint="#004D40" />
+        </LinearLayout>
+
+
+                 <!-- PLAT JUDUL KATEGORI (DOMINAN) -->
          <androidx.cardview.widget.CardView
             android:id="@+id/panelStatusPencarian"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_marginHorizontal="12dp"
-            android:layout_marginBottom="10dp"
-            app:cardCornerRadius="8dp"
+            android:layout_marginBottom="8dp"
+            app:cardBackgroundColor="#004D40" 
+            app:cardCornerRadius="4dp"
             app:cardElevation="2dp"
             android:visibility="gone">
 
-            <!-- WADAH UTAMA CARDVIEW (UBAH MENJADI VERTICAL) -->
             <LinearLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:orientation="vertical"
-                android:padding="12dp">
+                android:gravity="center"
+                android:padding="8dp">
 
-                <!-- BARIS 1: INDIKATOR PUTARAN & STATUS UTAMA -->
-                <LinearLayout
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:orientation="horizontal"
-                    android:gravity="center_vertical">
-
-                    <ProgressBar
-                        android:id="@+id/loadingPencarian"
-                        style="?android:attr/progressBarStyleSmall"
-                        android:layout_width="20dp"
-                        android:layout_height="20dp"
-                        android:indeterminateTint="#004D40" />
-
-                    <TextView
-                        android:id="@+id/txtStatusPencarian"
-                        android:layout_width="0dp"
-                        android:layout_height="wrap_content"
-                        android:layout_weight="1"
-                        android:layout_marginStart="10dp"
-                        android:textColor="#1C1E21"
-                        android:textSize="13sp"
-                        android:text="Memproses data..." />
-                </LinearLayout>
-
-                <!-- BARIS 2: SIRKUIT TELEMETRI HORIZONTAL (TAMBAHAN BARU) -->
-                <ProgressBar
-                    android:id="@+id/pipaVolumeData"
-                    style="?android:attr/progressBarStyleHorizontal"
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:layout_marginTop="12dp"
-                    android:max="100"
-                    android:progress="0"
-                    android:progressTint="#004D40"
-                    android:visibility="gone" />
-
-                <!-- BARIS 3: TERMINAL OUTPUT DETAIL -->
+                <!-- Teks Dominan Rata Tengah -->
                 <TextView
-                    android:id="@+id/txtDetailSubProses"
+                    android:id="@+id/txtStatusPencarian"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:layout_marginTop="4dp"
-                    android:text="Menunggu instruksi masuk..."
-                    android:textColor="#666666"
-                    android:textSize="11sp"
-                    android:textAlignment="viewEnd"
-                    android:visibility="gone" />
+                    android:textColor="#FFFFFF"
+                    android:textSize="14sp"
+                    android:textStyle="bold"
+                    android:textAlignment="center"
+                    android:text="Kategori (0 arsip)" />
+
+                <!-- Sirkuit telemetri lama disembunyikan total agar MainActivity tidak korsleting -->
+                <ProgressBar android:id="@+id/loadingPencarian" layout_width="0dp" layout_height="0dp" visibility="gone"/>
+                <ProgressBar android:id="@+id/pipaVolumeData" layout_width="0dp" layout_height="0dp" visibility="gone" />
+                <TextView android:id="@+id/txtDetailSubProses" layout_width="0dp" layout_height="0dp" visibility="gone" />
 
             </LinearLayout>
         </androidx.cardview.widget.CardView>
+
 
         <!-- WADAH MULTI-JALUR UNTUK GRID DAN TIMELINE -->
         <LinearLayout
@@ -126,17 +119,24 @@
                 </RelativeLayout>
             </FrameLayout>
 
-            <!-- JALUR KANAN: REL NAVIGASI TIMELINE -->
-            <androidx.recyclerview.widget.RecyclerView
-                android:id="@+id/recyclerTimeline"
+            <!-- JALUR KANAN: REL NAVIGASI TIMELINE DENGAN GRAVITASI TENGAH -->
+            <FrameLayout
                 android:layout_width="45dp"
                 android:layout_height="match_parent"
                 android:background="#EFEFEF"
-                android:scrollbars="none"
-                android:paddingTop="8dp"
-                android:paddingBottom="8dp"
-                android:clipToPadding="false"
-                android:elevation="1dp" />
+                android:elevation="1dp">
+                
+                <androidx.recyclerview.widget.RecyclerView
+                    android:id="@+id/recyclerTimeline"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_gravity="center_vertical"
+                    android:scrollbars="none"
+                    android:paddingTop="8dp"
+                    android:paddingBottom="8dp"
+                    android:clipToPadding="false" />
+            </FrameLayout>
+
                 
         </LinearLayout>
 
@@ -291,18 +291,20 @@
             android:layout_width="match_parent"
             android:layout_height="match_parent"
             android:fillViewport="true">
-            <LinearLayout
+                    <LinearLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:orientation="vertical"
-                android:paddingBottom="20dp">
+                android:paddingBottom="10dp">
                 
-                <TextView android:id="@+id/menuBiografi" android:layout_width="match_parent" android:layout_height="wrap_content" android:text="Biografi" android:drawableStart="@android:drawable/ic_menu_info_details" android:drawablePadding="12dp" android:textColor="#212121" android:textSize="14sp" android:padding="14dp" android:background="?android:attr/selectableItemBackground"/>
-                <TextView android:id="@+id/menuSosmed" android:layout_width="match_parent" android:layout_height="wrap_content" android:text="Sosial Media" android:drawableStart="@android:drawable/ic_menu_share" android:drawablePadding="12dp" android:textColor="#212121" android:textSize="14sp" android:padding="14dp" android:background="?android:attr/selectableItemBackground"/>
-                <TextView android:id="@+id/menuLetnan" android:layout_width="match_parent" android:layout_height="wrap_content" android:text="Letnan" android:drawableStart="@android:drawable/ic_menu_myplaces" android:drawablePadding="12dp" android:textColor="#212121" android:textSize="14sp" android:padding="14dp" android:background="?android:attr/selectableItemBackground"/>
-                <TextView android:id="@+id/menuYayasan" android:layout_width="match_parent" android:layout_height="wrap_content" android:text="Yayasan" android:drawableStart="@android:drawable/ic_menu_manage" android:drawablePadding="12dp" android:textColor="#212121" android:textSize="14sp" android:padding="14dp" android:background="?android:attr/selectableItemBackground"/>
+                <!-- Pemampatan sumbu Y: paddingVertical diturunkan menjadi 8dp -->
+                <TextView android:id="@+id/menuBiografi" android:layout_width="match_parent" android:layout_height="wrap_content" android:text="Biografi" android:drawableStart="@android:drawable/ic_menu_info_details" android:drawablePadding="12dp" android:textColor="#212121" android:textSize="14sp" android:paddingVertical="8dp" android:paddingHorizontal="14dp" android:background="?android:attr/selectableItemBackground"/>
+                <TextView android:id="@+id/menuSosmed" android:layout_width="match_parent" android:layout_height="wrap_content" android:text="Sosial Media" android:drawableStart="@android:drawable/ic_menu_share" android:drawablePadding="12dp" android:textColor="#212121" android:textSize="14sp" android:paddingVertical="8dp" android:paddingHorizontal="14dp" android:background="?android:attr/selectableItemBackground"/>
+                <TextView android:id="@+id/menuLetnan" android:layout_width="match_parent" android:layout_height="wrap_content" android:text="Letnan" android:drawableStart="@android:drawable/ic_menu_myplaces" android:drawablePadding="12dp" android:textColor="#212121" android:textSize="14sp" android:paddingVertical="8dp" android:paddingHorizontal="14dp" android:background="?android:attr/selectableItemBackground"/>
+                <TextView android:id="@+id/menuYayasan" android:layout_width="match_parent" android:layout_height="wrap_content" android:text="Yayasan" android:drawableStart="@android:drawable/ic_menu_manage" android:drawablePadding="12dp" android:textColor="#212121" android:textSize="14sp" android:paddingVertical="8dp" android:paddingHorizontal="14dp" android:background="?android:attr/selectableItemBackground"/>
 
-                <View android:layout_width="match_parent" android:layout_height="1dp" android:background="#E0E0E0" android:layout_marginVertical="8dp"/>
+                <!-- Ketebalan garis pembatas diturunkan -->
+                <View android:layout_width="match_parent" android:layout_height="1dp" android:background="#E0E0E0" android:layout_marginVertical="4dp"/>
                 
                 <TextView
                     android:layout_width="match_parent"
@@ -311,17 +313,19 @@
                     android:textStyle="bold"
                     android:textColor="#004D40"
                     android:paddingHorizontal="14dp"
-                    android:paddingVertical="10dp"
+                    android:paddingVertical="6dp"
                     android:textSize="12sp"/>
 
+                <!-- Pipa kategori dinamis merapat -->
                 <LinearLayout
                     android:id="@+id/wadahKategoriDinamis"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:orientation="vertical"
-                    android:paddingTop="5dp"
-                    android:paddingBottom="5dp" />
+                    android:paddingTop="2dp"
+                    android:paddingBottom="2dp" />
             </LinearLayout>
+
         </ScrollView>
     </LinearLayout>
 </androidx.drawerlayout.widget.DrawerLayout>
