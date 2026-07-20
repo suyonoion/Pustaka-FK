@@ -770,7 +770,7 @@ class MainActivity : AppCompatActivity() {
           recyclerGridMode.post {
           val manager = recyclerGridMode.layoutManager as? GridLayoutManager
          // Pastikan indeksTujuan adalah posisi valid dalam daftarKargo
-              if (indeksTujuan in 0 until itemCount) {
+              if (indeksTujuan in 0 until gridAdapter.itemCount) {
                   manager?.scrollToPositionWithOffset(indeksTujuan, 0)
               }
           }
@@ -912,10 +912,10 @@ class MainActivity : AppCompatActivity() {
         // PERBAIKAN: Gunakan akses langsung ke data list di adapter, 
         // JANGAN panggil getItemViewType jika tidak diperlukan.
         // Panggil tipe data dari list sumber (data list) secara langsung.
-        return if (gridAdapter.isHeader(position)) {
-            hitungKolom 
+        return if (gridAdapter.getItemViewType(position) == GridAdapter.TIPE_PEMBATAS) {
+        hitungKolom 
         } else {
-            1
+        1
         }
     }
 }
