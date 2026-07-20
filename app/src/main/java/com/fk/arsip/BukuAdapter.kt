@@ -259,13 +259,14 @@ private fun terapkanWarna(teksLengkap: String): android.text.SpannableString {
     }
 
     override fun getItemCount(): Int = daftarArsip.size
+// ... kode Anda sebelumnya ...
 
     fun perbaruiData(baru: List<ArsipEntity>) {
         this.daftarArsip = baru
         notifyDataSetChanged()
     }
-    
-        // ========================================================
+
+    // ========================================================
     // KATUP PEMBUANGAN LIMBAH (ANTI MEMORY LEAK)
     // ========================================================
     override fun onViewRecycled(holder: BukuViewHolder) {
@@ -294,5 +295,4 @@ private fun terapkanWarna(teksLengkap: String): android.text.SpannableString {
         // 3. Hancurkan struktur sasis rakitan agar tidak bertumpuk di siklus berikutnya
         holder.wadahFoto.removeAllViews()
     }
- }
 }
