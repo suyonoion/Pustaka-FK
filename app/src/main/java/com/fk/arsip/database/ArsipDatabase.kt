@@ -21,7 +21,6 @@ abstract class ArsipDatabase : RoomDatabase() {
                     ArsipDatabase::class.java,
                     "arsip_zuhri_formalism.db"
                 )
-                // Katup Darurat: Hancurkan dan bangun ulang rak jika dimensi struktur berubah di masa depan
                 .fallbackToDestructiveMigration() 
                 .build()
                 
