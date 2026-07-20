@@ -353,7 +353,7 @@ class MainActivity : AppCompatActivity() {
                     findViewById<ConstraintLayout>(R.id.panelInisialisasiUtama).visibility = View.GONE
                     isMesinSibuk = false
                     panelStatusPencarian.visibility = View.GONE
-                    pompaDataKeLayar(sesemuaData)
+                    pompaDataKeLayar(semuaData)
                 } else {
                     aktifkanMesinPenyedot()
                 }
