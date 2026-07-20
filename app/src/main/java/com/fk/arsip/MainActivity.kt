@@ -52,13 +52,13 @@ data class TitikNavigasi(
 )
 
 enum class FaseInjeksi(val pesan: String, val idGambar: Int) {
-    FASE_1("1. Memulai aplikasi pertama kali...", R.drawable.img_1),
-    FASE_2("2. Menghubungkan ke server...", R.drawable.img_2),
-    FASE_3("3. Mengunduh data status...", R.drawable.img_3),
-    FASE_4("4. Menunggu jaringan stabil...", R.drawable.img_4), 
-    FASE_5("5. Mengelas blok data ke memori...", R.drawable.img_5),
-    FASE_6("6. Injeksi baris data ke SQLite...", R.drawable.img_6),
-    FASE_7("7. Proses selesai.", R.drawable.img_7)
+    FASE_1("Memulai aplikasi pertama kali...", R.drawable.img_1),
+    FASE_2("Menghubungkan ke server...", R.drawable.img_2),
+    FASE_3("Mengunduh data status...", R.drawable.img_3),
+    FASE_4("Menunggu jaringan stabil...", R.drawable.img_4), 
+    FASE_5("Mengelas blok data ke memori...", R.drawable.img_5),
+    FASE_6("Injeksi baris data ke SQLite...", R.drawable.img_6),
+    FASE_7("Proses selesai.", R.drawable.img_7)
 }
 
 class MainActivity : AppCompatActivity() {
@@ -78,6 +78,8 @@ class MainActivity : AppCompatActivity() {
     private lateinit var gridAdapter: GridAdapter
     private lateinit var bukuAdapter: BukuAdapter
     private lateinit var recyclerTimeline: RecyclerView
+    private lateinit var kontainerJalurKanan: FrameLayout
+
     private var daftarArsipAktif: List<ArsipEntity> = listOf()
     private var isSearchMode = false 
     private var isMesinSibuk = false
@@ -102,6 +104,8 @@ class MainActivity : AppCompatActivity() {
         loadingPencarian = findViewById(R.id.loadingPencarian)
         txtStatusPencarian = findViewById(R.id.txtStatusPencarian)
         recyclerTimeline = findViewById(R.id.recyclerTimeline)
+        kontainerJalurKanan = findViewById(R.id.kontainerJalurKanan)
+
 
         recyclerGridMode.layoutManager = GridLayoutManager(this, 2)
         sesuaikanKompartemenGrid() 
@@ -131,14 +135,20 @@ class MainActivity : AppCompatActivity() {
                 if (drawerLayout.isDrawerOpen(androidx.core.view.GravityCompat.START)) {
                     drawerLayout.closeDrawer(androidx.core.view.GravityCompat.START)
                 } 
-                else if (wadahModeBuku.visibility == View.VISIBLE) {
-                    wadahModeBuku.visibility = View.GONE
-                    recyclerTimeline.visibility = View.VISIBLE
-                    recyclerGridMode.visibility = View.VISIBLE
-                    if (daftarArsipAktif.size > 5000) {
-                        bukuAdapter.perbaruiData(emptyList()) 
-                    }
-                } 
+               else if (wadahModeBuku.visibility == View.VISIBLE) {
+    wadahModeBuku.visibility = View.GONE
+    
+    // PEMULIHAN SEREMPAK KEDUA JALUR
+    recyclerGridMode.visibility = View.VISIBLE
+    kontainerJalurKanan.visibility = View.VISIBLE // Jalur kanan tegak kembali selebar 45dp
+    recyclerTimeline.visibility = View.VISIBLE
+    
+    if (daftarArsipAktif.size > 5000) {
+        bukuAdapter.perbaruiData(emptyList()) 
+    }
+}
+
+
                 else if (isSearchMode || edtPencarian.text.toString().isNotEmpty() || modeKategoriAktif) {
                     isSearchMode = false
                     modeKategoriAktif = false 
@@ -172,27 +182,42 @@ class MainActivity : AppCompatActivity() {
     }
     
     private fun perbaruiPanelTelemetri(fase: FaseInjeksi, persentase: Int, volumeSelesai: Int, volumeTotal: Int) {
-        val panelUtama = findViewById<ConstraintLayout>(R.id.panelInisialisasiUtama)
-        val teksStatus = findViewById<TextView>(R.id.teksStatusFase)
-        val indikatorVisual = findViewById<ImageView>(R.id.indikatorVisualMesin)
-        val lingkarProgres = findViewById<ProgressBar>(R.id.lingkarPersentaseUtama)
-        val teksPersen = findViewById<TextView>(R.id.teksPersentaseSentral)
-        val teksTelemetri = findViewById<TextView>(R.id.teksTelemetriData)
+    val panelUtama = findViewById<ConstraintLayout>(R.id.panelInisialisasiUtama)
+    val teksStatus = findViewById<TextView>(R.id.teksStatusFase)
+    val indikatorVisual = findViewById<ImageView>(R.id.indikatorVisualMesin)
+    val lingkarProgres = findViewById<ProgressBar>(R.id.lingkarPersentaseUtama)
+    val teksPersen = findViewById<TextView>(R.id.teksPersentaseSentral)
+    val teksTelemetri = findViewById<TextView>(R.id.teksTelemetriData)
 
-        teksStatus.text = fase.pesan
-        indikatorVisual.setImageResource(fase.idGambar)
-        lingkarProgres.progress = persentase
-        teksPersen.text = "$persentase%"
+    teksStatus.text = fase.pesan
+    indikatorVisual.setImageResource(fase.idGambar)
 
-        if (fase != FaseInjeksi.FASE_7) {
-            teksTelemetri.text = "Arsip Status Digital Fatwa Kehidupan: $volumeSelesai / $volumeTotal baris\nSistem sedang bekerja..."
-        } else {
-            teksTelemetri.text = "Seluruh blok data berhasil dilas ke dalam memori SQLite."
-            Handler(Looper.getMainLooper()).postDelayed({
-                panelUtama.visibility = View.GONE
-            }, 1500)
+    // KALIBRASI INDIKATOR VISUAL BERDASARKAN FASE
+    when (fase) {
+        FaseInjeksi.FASE_1, FaseInjeksi.FASE_2, FaseInjeksi.FASE_4 -> {
+            // Aktifkan mode animasi berputar kontinu karena angka kepastian belum ada
+            lingkarProgres.isIndeterminate = true
+            teksPersen.text = "---"
+            teksTelemetri.text = "Sistem sedang menginisialisasi modul internal..."
+        }
+        else -> {
+            // Kembalikan ke mode perhitungan angka pasti untuk fase unduhan dan injeksi
+            lingkarProgres.isIndeterminate = false
+            lingkarProgres.progress = persentase
+            teksPersen.text = "$persentase%"
+            
+            if (fase != FaseInjeksi.FASE_7) {
+                teksTelemetri.text = "Arsip Status Digital Fatwa Kehidupan\n $volumeSelesai / $volumeTotal baris\nSistem sedang bekerja..."
+            } else {
+                teksTelemetri.text = "Seluruh blok data berhasil dilas ke dalam memori SQLite."
+                Handler(Looper.getMainLooper()).postDelayed({
+                    panelUtama.visibility = View.GONE
+                }, 1500)
+            }
         }
     }
+}
+
 
     override fun onConfigurationChanged(newConfig: android.content.res.Configuration) {
         super.onConfigurationChanged(newConfig)
@@ -328,38 +353,77 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun eksekusiPabrikData() {
-        lifecycleScope.launch(Dispatchers.IO) {
-            delay(1500)
-            val database = ArsipDatabase.operasikanMesin(this@MainActivity)
-            val lenganRobot = database.arsipDao()
-            
-            val berkasLokal = File(getExternalFilesDir(null), "Master_Data_Arsip_FK_11_Juli_2026.json")
-            val bobotMinimum = 1 * 1024 * 1024 
+    lifecycleScope.launch(Dispatchers.IO) {
+        delay(1500)
+        val database = ArsipDatabase.operasikanMesin(this@MainActivity)
+        val lenganRobot = database.arsipDao()
+        
+        // 1. Hitung isi tangki SQLite saat ini
+        val jumlahBarisData = lenganRobot.hitungTotalBarisData() 
+        
+        val berkasLokal = File(getExternalFilesDir(null), "Master_Data_Arsip_FK_11_Juli_2026.json")
+        val bobotMinimum = 110 * 1024 * 1024 
 
-            if (berkasLokal.exists() && berkasLokal.length() >= bobotMinimum) {
-                withContext(Dispatchers.Main) {
-                    isMesinSibuk = true
-                    findViewById<ConstraintLayout>(R.id.panelInisialisasiUtama).visibility = View.VISIBLE
-                    perbaruiPanelTelemetri(FaseInjeksi.FASE_5, 0, 0, 0)
-                    // PENGAPIAN WORKER LATAR BELAKANG
-                    jalankanMesinInjeksiOtonom(berkasLokal.absolutePath)
+        // 2. KONDISI PRE-VALIDASI: Jika berkas JSON ada, hitung kapasitas totalnya secara dinamis
+        var totalDataHarusAda = -1
+        if (berkasLokal.exists() && berkasLokal.length() >= bobotMinimum) {
+            try {
+                // Sensor cepat: Membaca berkas untuk menghitung jumlah total entri di dalam array JSON
+                berkasLokal.bufferedReader().use { pembaca ->
+                    var baris = pembaca.readLine()
+                    var hitung = 0
+                    while (baris != null) {
+                        // Jika struktur JSON Anda per baris mengandung penanda objek (misal ada karakter '{')
+                        if (baris.contains("{")) {
+                            hitung++
+                        }
+                        baris = pembaca.readLine()
+                    }
+                    totalDataHarusAda = hitung
                 }
-                return@launch
-            }
-
-            val semuaData = lenganRobot.tarikSemuaArsip()
-            withContext(Dispatchers.Main) {
-                if (semuaData.isNotEmpty()) {
-                    findViewById<ConstraintLayout>(R.id.panelInisialisasiUtama).visibility = View.GONE
-                    isMesinSibuk = false
-                    panelStatusPencarian.visibility = View.GONE
-                    pompaDataKeLayar(semuaData)
-                } else {
-                    aktifkanMesinPenyedot()
-                }
+            } catch (e: Exception) {
+                totalDataHarusAda = -1
             }
         }
+
+        // KONDISI A: Konstruksi SQLite sudah selesai dan sesuai dengan manifes berkas sumber
+        // Atau jika berkas JSON sudah dihapus (berarti proses batch sebelumnya sukses total) dan data SQLite terdeteksi padat (> 0)
+        if ((totalDataHarusAda > 0 && jumlahBarisData >= totalDataHarusAda) || (!berkasLokal.exists() && jumlahBarisData > 0)) {
+            val semuaData = lenganRobot.tarikSemuaArsip()
+            withContext(Dispatchers.Main) {
+                findViewById<ConstraintLayout>(R.id.panelInisialisasiUtama).visibility = View.GONE
+                isMesinSibuk = false
+                panelStatusPencarian.visibility = View.GONE
+                pompaDataKeLayar(semuaData)
+                
+                // Hapus berkas mentah JSON karena seluruh data telah dipindahkan ke SQLite
+                if (berkasLokal.exists()) { berkasLokal.delete() }
+            }
+            return@launch
+        }
+
+        // KONDISI B: Berkas JSON utuh tersedia, tetapi isi SQLite kosong atau jumlahnya tidak cocok (setengah matang)
+        if (berkasLokal.exists() && berkasLokal.length() >= bobotMinimum) {
+            withContext(Dispatchers.Main) {
+                isMesinSibuk = true
+                findViewById<ConstraintLayout>(R.id.panelInisialisasiUtama).visibility = View.VISIBLE
+                perbaruiPanelTelemetri(FaseInjeksi.FASE_5, 0, 0, 0)
+                jalankanMesinInjeksiOtonom(berkasLokal.absolutePath)
+            }
+            return@launch
+        }
+
+        // KONDISI C: Konfigurasi SQLite kosong DAN berkas JSON tidak ditemukan -> Jalur Unduh Baru
+        withContext(Dispatchers.Main) {
+            findViewById<ConstraintLayout>(R.id.panelInisialisasiUtama).visibility = View.VISIBLE
+            perbaruiPanelTelemetri(FaseInjeksi.FASE_1, 0, 0, 0)
+            delay(1000)
+            aktifkanMesinPenyedot()
+        }
     }
+}
+
+
 
     private fun cariPipaAktif(downloadManager: DownloadManager): Long {
         val query = DownloadManager.Query().setFilterByStatus(
@@ -382,14 +446,27 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun aktifkanMesinPenyedot() {
-        if (!isJaringanTersedia()) {
-            tampilkanPeringatanJaringan()
-            return
-        }
-        
         isMesinSibuk = true
-        val downloadManager = getSystemService(Context.DOWNLOAD_SERVICE) as DownloadManager
-        val idPipaAktif = cariPipaAktif(downloadManager)
+    findViewById<ConstraintLayout>(R.id.panelInisialisasiUtama).visibility = View.VISIBLE
+
+    if (!isJaringanTersedia()) {
+        // Alihkan langsung ke FASE_4 tanpa memunculkan dialog pemblokir mekanis
+        perbaruiPanelTelemetri(FaseInjeksi.FASE_4, 0, 0, 0)
+        
+        lifecycleScope.launch(Dispatchers.IO) {
+            while (!isJaringanTersedia()) {
+                delay(3000) // Cek berkala setiap 3 detik hingga modem aktif
+            }
+            withContext(Dispatchers.Main) {
+                // Sinyal terdeteksi, panggil ulang mesin penyedot untuk inisialisasi download
+                aktifkanMesinPenyedot()
+            }
+        }
+        return
+    }
+    
+    val downloadManager = getSystemService(Context.DOWNLOAD_SERVICE) as DownloadManager
+    val idPipaAktif = cariPipaAktif(downloadManager)
         
         findViewById<ConstraintLayout>(R.id.panelInisialisasiUtama).visibility = View.VISIBLE
         
@@ -455,61 +532,77 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun pantauTekananUnduhan(idUnduhan: Long, downloadManager: DownloadManager) {
-        lifecycleScope.launch(Dispatchers.IO) {
-            var isMengunduh = true
-            while (isMengunduh) {
-                if (!isJaringanTersedia()) {
+    lifecycleScope.launch(Dispatchers.IO) {
+        var isMengunduh = true
+        var beradaDiFaseGagalJaringan = false
+
+        while (isMengunduh) {
+            // SENSOR CEK SINYAL
+            if (!isJaringanTersedia()) {
+                beradaDiFaseGagalJaringan = true
+                withContext(Dispatchers.Main) {
+                    // Pindahkan indikator visual ke FASE_4 secara otomatis
+                    perbaruiPanelTelemetri(FaseInjeksi.FASE_4, 0, 0, 0)
+                }
+                // Tahan perulangan selama 3 detik sebelum memeriksa kekuatan sinyal kembali
+                delay(3000)
+                continue
+            }
+
+            // Jika sinyal kembali pulih setelah mati
+            if (beradaDiFaseGagalJaringan) {
+                beradaDiFaseGagalJaringan = false
+                withContext(Dispatchers.Main) {
+                    // Kembalikan visualisasi ke FASE_3 untuk melanjutkan pembacaan byte kargo
+                    perbaruiPanelTelemetri(FaseInjeksi.FASE_3, 0, 0, 0)
+                }
+            }
+
+            val query = DownloadManager.Query().setFilterById(idUnduhan)
+            val cursor = downloadManager.query(query)
+            
+            if (cursor != null && cursor.moveToFirst()) {
+                val statusIndex = cursor.getColumnIndex(DownloadManager.COLUMN_STATUS)
+                val status = cursor.getInt(statusIndex)
+                
+                if (status == DownloadManager.STATUS_SUCCESSFUL) {
+                    isMengunduh = false 
+                } else if (status == DownloadManager.STATUS_FAILED) {
+                    // Jika kegagalan sistem bersifat mutlak (bukan sekadar kehilangan sinyal sementara)
                     isMengunduh = false
                     withContext(Dispatchers.Main) {
                         findViewById<ConstraintLayout>(R.id.panelInisialisasiUtama).visibility = View.GONE
                         isMesinSibuk = false
-                        tampilkanPeringatanJaringan()
+                        Toast.makeText(this@MainActivity, "Kargo rusak fatal. Mengulang proses dari awal...", Toast.LENGTH_SHORT).show()
+                        eksekusiPabrikData()
                     }
-                    return@launch 
-                }
-
-                val query = DownloadManager.Query().setFilterById(idUnduhan)
-                val cursor = downloadManager.query(query)
-                
-                if (cursor != null && cursor.moveToFirst()) {
-                    val statusIndex = cursor.getColumnIndex(DownloadManager.COLUMN_STATUS)
-                    val status = cursor.getInt(statusIndex)
-                    
-                    if (status == DownloadManager.STATUS_SUCCESSFUL) {
-                        isMengunduh = false 
-                    } else if (status == DownloadManager.STATUS_FAILED) {
-                        isMengunduh = false
-                        withContext(Dispatchers.Main) {
-                            findViewById<ConstraintLayout>(R.id.panelInisialisasiUtama).visibility = View.GONE
-                            isMesinSibuk = false
-                            Toast.makeText(this@MainActivity, "Sedotan terputus. Silakan mulai ulang aplikasi.", Toast.LENGTH_LONG).show()
-                        }
-                    } else {
-                        val bytesDownloadedIndex = cursor.getColumnIndex(DownloadManager.COLUMN_BYTES_DOWNLOADED_SO_FAR)
-                        val bytesTotalIndex = cursor.getColumnIndex(DownloadManager.COLUMN_TOTAL_SIZE_BYTES)
-                        if (bytesDownloadedIndex != -1 && bytesTotalIndex != -1) {
-                            val downloaded = cursor.getLong(bytesDownloadedIndex)
-                            val total = cursor.getLong(bytesTotalIndex)
-                            if (total > 0) {
-                                val persentase = ((downloaded * 100L) / total).toInt()
-                                withContext(Dispatchers.Main) {
-                                    perbaruiPanelTelemetri(FaseInjeksi.FASE_3, persentase, 0, 0)
-                                }
+                } else {
+                    val bytesDownloadedIndex = cursor.getColumnIndex(DownloadManager.COLUMN_BYTES_DOWNLOADED_SO_FAR)
+                    val bytesTotalIndex = cursor.getColumnIndex(DownloadManager.COLUMN_TOTAL_SIZE_BYTES)
+                    if (bytesDownloadedIndex != -1 && bytesTotalIndex != -1) {
+                        val downloaded = cursor.getLong(bytesDownloadedIndex)
+                        val total = cursor.getLong(bytesTotalIndex)
+                        if (total > 0) {
+                            val persentase = ((downloaded * 100L) / total).toInt()
+                            withContext(Dispatchers.Main) {
+                                perbaruiPanelTelemetri(FaseInjeksi.FASE_3, persentase, 0, 0)
                             }
                         }
                     }
-                } else {
-                    isMengunduh = false
-                    withContext(Dispatchers.Main) {
-                        findViewById<ConstraintLayout>(R.id.panelInisialisasiUtama).visibility = View.GONE
-                        isMesinSibuk = false
-                    }
                 }
-                cursor?.close()
-                delay(500)
+            } else {
+                isMengunduh = false
+                withContext(Dispatchers.Main) {
+                    findViewById<ConstraintLayout>(R.id.panelInisialisasiUtama).visibility = View.GONE
+                    isMesinSibuk = false
+                }
             }
+            cursor?.close()
+            delay(1000) // Frekuensi pembacaan tangki unduhan setiap 1 detik
         }
     }
+}
+
 
     // SIRKUIT BARU: Antena Pemantau Sinyal Kerja WorkManager Latar Belakang
     private fun jalankanMesinInjeksiOtonom(jalurFileJson: String) {
@@ -620,22 +713,33 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun bukaModeBuku(posisi: Int) {
-        recyclerTimeline.visibility = View.GONE
-        isMesinSibuk = true 
-        lifecycleScope.launch(Dispatchers.Main) {
-            if (bukuAdapter.itemCount == 0 && daftarArsipAktif.isNotEmpty()) {
-                tampilkanIndikator("Membuka buku...", true)
-                withContext(Dispatchers.Default) {
-                    bukuAdapter.perbaruiData(daftarArsipAktif)
-                }
-                tampilkanIndikator("", false)
-            }
-            recyclerGridMode.visibility = View.GONE
-            wadahModeBuku.visibility = View.VISIBLE
-            proyektorBuku.setCurrentItem(posisi, false)
-            isMesinSibuk = false
-        }
+    if (isMesinSibuk) {
+        Toast.makeText(this, "Sistem sedang merakit data. Harap tunggu.", Toast.LENGTH_SHORT).show()
+        return
     }
+    isMesinSibuk = true 
+    
+    lifecycleScope.launch(Dispatchers.Main) {
+        if (bukuAdapter.itemCount == 0 && daftarArsipAktif.isNotEmpty()) {
+            tampilkanIndikator("Membuka buku...", true)
+            withContext(Dispatchers.Default) {
+                bukuAdapter.perbaruiData(daftarArsipAktif)
+            }
+            tampilkanIndikator("", false)
+        }
+        
+        // COPOT TOTAL SELURUH KOMPONEN NAVIGASI KANAN
+        recyclerTimeline.visibility = View.GONE
+        kontainerJalurKanan.visibility = View.GONE // Sasis pembungkus ikut runtuh
+        recyclerGridMode.visibility = View.GONE
+        // Buka kompartemen buku secara penuh
+        wadahModeBuku.visibility = View.VISIBLE
+        proyektorBuku.setCurrentItem(posisi, false)
+        
+        isMesinSibuk = false
+    }
+}
+
 
     private fun aktifkanSirkuitPencarian() {
         edtPencarian.setOnEditorActionListener { _, actionId, event ->
@@ -738,17 +842,7 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
-    private fun tampilkanPeringatanJaringan() {
-        AlertDialog.Builder(this)
-            .setTitle("Koneksi Terputus")
-            .setMessage("Maaf, Pustaka FK perlu mengunduh database untuk pertama kalinya...")
-            .setIcon(android.R.drawable.ic_dialog_alert)
-            .setCancelable(false)
-            .setPositiveButton("Coba Lagi") { _, _ -> aktifkanMesinPenyedot() }
-            .setNegativeButton("Keluar") { _, _ -> finish() }
-            .create()
-            .show()
-    }
+
 
     private fun tampilkanIndikator(pesan: String, aktif: Boolean) {
         panelStatusPencarian.visibility = if (aktif) View.VISIBLE else View.GONE

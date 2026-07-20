@@ -135,12 +135,17 @@ class MesinInjeksiWorker(context: Context, params: WorkerParameters) : Coroutine
             ))
 
             return@withContext Result.success()
+} catch (e: Exception) {
+    e.printStackTrace()
+    // Kuras data setengah matang agar tidak mengontaminasi SQLite
+    val database = ArsipDatabase.operasikanMesin(applicationContext)
+    database.arsipDao().kurasTangkiKotor() 
+    
+    if (fileTarget.exists()) { fileTarget.delete() }
+    return@withContext Result.failure(workDataOf("KODE_GAGAL" to "ERROR_SISTEM"))
+}
 
-        } catch (e: Exception) {
-            e.printStackTrace()
-            fileTarget.delete()
-            return@withContext Result.failure(workDataOf("KODE_GAGAL" to "ERROR_SISTEM"))
-        }
+
     }
     
     // INJEKSI AMUNISI: Logika pemindai kategori jamak yang dipindahkan dari MainActivity

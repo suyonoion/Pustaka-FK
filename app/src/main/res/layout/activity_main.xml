@@ -90,55 +90,56 @@
 
         <!-- WADAH MULTI-JALUR UNTUK GRID DAN TIMELINE -->
         <LinearLayout
+    android:layout_width="match_parent"
+    android:layout_height="0dp"
+    android:layout_weight="1"
+    android:orientation="horizontal">
+
+    <!-- JALUR KIRI: PUSAT PROYEKSI (GRID / BUKU) -->
+    <FrameLayout
+        android:layout_width="0dp"
+        android:layout_height="match_parent"
+        android:layout_weight="1">
+        
+        <androidx.recyclerview.widget.RecyclerView
+            android:id="@+id/recyclerGridMode"
             android:layout_width="match_parent"
-            android:layout_height="0dp"
-            android:layout_weight="1"
-            android:orientation="horizontal">
+            android:layout_height="match_parent"
+            android:padding="4dp" />
+            
+        <RelativeLayout
+            android:id="@+id/wadahModeBuku"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:visibility="gone">
+            <androidx.viewpager2.widget.ViewPager2
+                android:id="@+id/proyektorBuku"
+                android:layout_width="match_parent"
+                android:layout_height="match_parent" />
+        </RelativeLayout>
+    </FrameLayout>
 
-            <!-- JALUR KIRI: PUSAT PROYEKSI (GRID / BUKU) -->
-            <FrameLayout
-                android:layout_width="0dp"
-                android:layout_height="match_parent"
-                android:layout_weight="1">
-                
-                <androidx.recyclerview.widget.RecyclerView
-                    android:id="@+id/recyclerGridMode"
-                    android:layout_width="match_parent"
-                    android:layout_height="match_parent"
-                    android:padding="4dp" />
-                    
-                <RelativeLayout
-                    android:id="@+id/wadahModeBuku"
-                    android:layout_width="match_parent"
-                    android:layout_height="match_parent"
-                    android:visibility="gone">
-                    <androidx.viewpager2.widget.ViewPager2
-                        android:id="@+id/proyektorBuku"
-                        android:layout_width="match_parent"
-                        android:layout_height="match_parent" />
-                </RelativeLayout>
-            </FrameLayout>
+    <!-- JALUR KANAN: KANTONG NAVIGASI TIMELINE (DIBERIKAN ID UNTUK KENDALI SENSOR) -->
+    <FrameLayout
+        android:id="@+id/kontainerJalurKanan"
+        android:layout_width="45dp"
+        android:layout_height="match_parent"
+        android:background="#EFEFEF"
+        android:elevation="1dp">
+        
+        <androidx.recyclerview.widget.RecyclerView
+            android:id="@+id/recyclerTimeline"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_gravity="center_vertical"
+            android:scrollbars="none"
+            android:paddingTop="8dp"
+            android:paddingBottom="8dp"
+            android:clipToPadding="false" />
+    </FrameLayout>
+        
+</LinearLayout>
 
-            <!-- JALUR KANAN: REL NAVIGASI TIMELINE DENGAN GRAVITASI TENGAH -->
-            <FrameLayout
-                android:layout_width="45dp"
-                android:layout_height="match_parent"
-                android:background="#EFEFEF"
-                android:elevation="1dp">
-                
-                <androidx.recyclerview.widget.RecyclerView
-                    android:id="@+id/recyclerTimeline"
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:layout_gravity="center_vertical"
-                    android:scrollbars="none"
-                    android:paddingTop="8dp"
-                    android:paddingBottom="8dp"
-                    android:clipToPadding="false" />
-            </FrameLayout>
-
-                
-        </LinearLayout>
 
                 <LinearLayout
             android:layout_width="match_parent"
