@@ -264,4 +264,35 @@ private fun terapkanWarna(teksLengkap: String): android.text.SpannableString {
         this.daftarArsip = baru
         notifyDataSetChanged()
     }
+    
+        // ========================================================
+    // KATUP PEMBUANGAN LIMBAH (ANTI MEMORY LEAK)
+    // ========================================================
+    override fun onViewRecycled(holder: BukuViewHolder) {
+        super.onViewRecycled(holder)
+        
+        // 1. Kuras memori dari foto profil bawaan
+        Glide.with(holder.itemView.context).clear(holder.imgProfil)
+        
+        // 2. Kuras memori dari seluruh proyektor foto/video dinamis yang dirakit manual
+        for (i in 0 until holder.wadahFoto.childCount) {
+            val sasisAnak = holder.wadahFoto.getChildAt(i)
+            
+            if (sasisAnak is FrameLayout) { // Mode 1 Foto
+                val img = sasisAnak.getChildAt(0) as? ImageView
+                if (img != null) Glide.with(holder.itemView.context).clear(img)
+            } 
+            else if (sasisAnak is LinearLayout) { // Mode Grid (Baris Ganda)
+                for (j in 0 until sasisAnak.childCount) {
+                    val sasisGrid = sasisAnak.getChildAt(j) as? FrameLayout
+                    val img = sasisGrid?.getChildAt(0) as? ImageView
+                    if (img != null) Glide.with(holder.itemView.context).clear(img)
+                }
+            }
+        }
+        
+        // 3. Hancurkan struktur sasis rakitan agar tidak bertumpuk di siklus berikutnya
+        holder.wadahFoto.removeAllViews()
+    }
+ }
 }

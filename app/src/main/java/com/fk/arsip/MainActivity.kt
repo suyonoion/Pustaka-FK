@@ -358,39 +358,14 @@ class MainActivity : AppCompatActivity() {
         val database = ArsipDatabase.operasikanMesin(this@MainActivity)
         val lenganRobot = database.arsipDao()
         
-        // 1. Hitung isi tangki SQLite saat ini
-        // SENSOR 1: Periksa densitas data riil di dalam SQLite menggunakan modul yang ada
-        val jumlahBarisData = lenganRobot.hitungTotalArsip() // Tembakan disesuaikan ke hitungTotalArsip()
-
-        
+        val jumlahBarisData = lenganRobot.hitungTotalArsip() 
         val berkasLokal = File(getExternalFilesDir(null), "Master_Data_Arsip_FK_11_Juli_2026.json")
         val bobotMinimum = 110 * 1024 * 1024 
 
-        // 2. KONDISI PRE-VALIDASI: Jika berkas JSON ada, hitung kapasitas totalnya secara dinamis
-        var totalDataHarusAda = -1
-        if (berkasLokal.exists() && berkasLokal.length() >= bobotMinimum) {
-            try {
-                // Sensor cepat: Membaca berkas untuk menghitung jumlah total entri di dalam array JSON
-                berkasLokal.bufferedReader().use { pembaca ->
-                    var baris = pembaca.readLine()
-                    var hitung = 0
-                    while (baris != null) {
-                        // Jika struktur JSON Anda per baris mengandung penanda objek (misal ada karakter '{')
-                        if (baris.contains("{")) {
-                            hitung++
-                        }
-                        baris = pembaca.readLine()
-                    }
-                    totalDataHarusAda = hitung
-                }
-            } catch (e: Exception) {
-                totalDataHarusAda = -1
-            }
-        }
+        // KUNCI ABSOLUT: Hanya lolos jika data SQLite mendekati atau sama dengan total array riil (17934)
+        val batasAmanAbsolut = 17900 
 
-        // KONDISI A: Konstruksi SQLite sudah selesai dan sesuai dengan manifes berkas sumber
-        // Atau jika berkas JSON sudah dihapus (berarti proses batch sebelumnya sukses total) dan data SQLite terdeteksi padat (> 0)
-        if ((totalDataHarusAda > 0 && jumlahBarisData >= totalDataHarusAda) || (!berkasLokal.exists() && jumlahBarisData > 0)) {
+        if (jumlahBarisData >= batasAmanAbsolut) {
             val semuaData = lenganRobot.tarikSemuaArsip()
             withContext(Dispatchers.Main) {
                 findViewById<ConstraintLayout>(R.id.panelInisialisasiUtama).visibility = View.GONE
@@ -398,13 +373,12 @@ class MainActivity : AppCompatActivity() {
                 panelStatusPencarian.visibility = View.GONE
                 pompaDataKeLayar(semuaData)
                 
-                // Hapus berkas mentah JSON karena seluruh data telah dipindahkan ke SQLite
                 if (berkasLokal.exists()) { berkasLokal.delete() }
             }
             return@launch
         }
 
-        // KONDISI B: Berkas JSON utuh tersedia, tetapi isi SQLite kosong atau jumlahnya tidak cocok (setengah matang)
+        // KONDISI B: Jika data di bawah batas aman, tetapi file JSON mentah masih ada
         if (berkasLokal.exists() && berkasLokal.length() >= bobotMinimum) {
             withContext(Dispatchers.Main) {
                 isMesinSibuk = true
@@ -415,8 +389,11 @@ class MainActivity : AppCompatActivity() {
             return@launch
         }
 
-        // KONDISI C: Konfigurasi SQLite kosong DAN berkas JSON tidak ditemukan -> Jalur Unduh Baru
+        // KONDISI C: Jika data di bawah batas aman DAN file JSON tidak ada (berarti unduhan sebelumnya korup)
         withContext(Dispatchers.Main) {
+            // Hapus data setengah matang (9000 item) agar tidak menumpuk saat diunduh ulang
+            lifecycleScope.launch(Dispatchers.IO) { lenganRobot.kurasTangkiKotor() }
+            
             findViewById<ConstraintLayout>(R.id.panelInisialisasiUtama).visibility = View.VISIBLE
             perbaruiPanelTelemetri(FaseInjeksi.FASE_1, 0, 0, 0)
             delay(1000)
@@ -424,7 +401,6 @@ class MainActivity : AppCompatActivity() {
         }
     }
 }
-
 
 
     private fun cariPipaAktif(downloadManager: DownloadManager): Long {
@@ -713,7 +689,7 @@ class MainActivity : AppCompatActivity() {
         recyclerTimeline.layoutManager = androidx.recyclerview.widget.LinearLayoutManager(this)
         recyclerTimeline.adapter = adapterTimeline
     }
-
+    
     private fun bukaModeBuku(posisi: Int) {
     if (isMesinSibuk) {
         Toast.makeText(this, "Sistem sedang merakit data. Harap tunggu.", Toast.LENGTH_SHORT).show()
@@ -724,23 +700,30 @@ class MainActivity : AppCompatActivity() {
     lifecycleScope.launch(Dispatchers.Main) {
         if (bukuAdapter.itemCount == 0 && daftarArsipAktif.isNotEmpty()) {
             tampilkanIndikator("Membuka buku...", true)
-            withContext(Dispatchers.Default) {
-                bukuAdapter.perbaruiData(daftarArsipAktif)
-            }
+            
+            // PERBAIKAN FATAL: Eksekusi langsung di jalur utama. 
+            // DILARANG keras memasukkan ini ke dalam withContext(Dispatchers.Default)
+            bukuAdapter.perbaruiData(daftarArsipAktif) 
+            
             tampilkanIndikator("", false)
         }
         
         // COPOT TOTAL SELURUH KOMPONEN NAVIGASI KANAN
         recyclerTimeline.visibility = View.GONE
-        kontainerJalurKanan.visibility = View.GONE // Sasis pembungkus ikut runtuh
+        kontainerJalurKanan.visibility = View.GONE 
         recyclerGridMode.visibility = View.GONE
+        
         // Buka kompartemen buku secara penuh
         wadahModeBuku.visibility = View.VISIBLE
-        proyektorBuku.setCurrentItem(posisi, false)
+        
+        // Parameter 'false' mematikan animasi geser. Ini sangat krusial agar 
+        // ViewPager2 tidak mencoba merender ribuan halaman yang dilewati saat melompat jauh.
+        proyektorBuku.setCurrentItem(posisi, false) 
         
         isMesinSibuk = false
     }
 }
+
 
 
     private fun aktifkanSirkuitPencarian() {

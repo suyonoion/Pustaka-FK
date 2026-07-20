@@ -48,84 +48,88 @@ class MesinInjeksiWorker(context: Context, params: WorkerParameters) : Coroutine
             reader.beginArray()
 
             val muatanSementara = mutableListOf<ArsipEntity>()
-            var indeks = 0
-            var persentaseLayarTerakhir = -1
+var indeks = 0
+var persentaseLayarTerakhir = -1
 
-            while (reader.hasNext()) {
-                if (indeks % 500 == 0) {
-                    val kalkulasiFase5 = ((indeks.toDouble() / estimasiTotalItem.toDouble()) * 100).toInt().coerceAtMost(99)
-                    setProgress(workDataOf(
-                        "FASE" to 5,
-                        "PERSENTASE" to kalkulasiFase5,
-                        "INDEKS" to indeks,
-                        "TOTAL" to estimasiTotalItem
-                    ))
-                }
+while (reader.hasNext()) {
+    if (indeks % 500 == 0) {
+        val kalkulasiFase5 = ((indeks.toDouble() / estimasiTotalItem.toDouble()) * 100).toInt().coerceAtMost(99)
+        setProgress(workDataOf(
+            "FASE" to 5,
+            "PERSENTASE" to kalkulasiFase5,
+            "INDEKS" to indeks,
+            "TOTAL" to estimasiTotalItem
+        ))
+        
+        // PEMBERSIHAN MEMORI BERKALA (Anti-Crash OOM)
+        System.gc()
+    }
 
-                val elemenGson = com.google.gson.JsonParser.parseReader(reader)
-                val obj = org.json.JSONObject(elemenGson.toString())
+    val elemenGson = com.google.gson.JsonParser.parseReader(reader)
+    val obj = org.json.JSONObject(elemenGson.toString())
 
-                val idPosting = obj.optString("postId", "ID_$indeks")
-                val userObj = obj.optJSONObject("user")
-                val namaPenulis = userObj?.optString("name", "Fatwa Kehidupan") ?: "Fatwa Kehidupan"
-                val urlProfilPic = userObj?.optString("profilePic", "") ?: ""
-                val waktuRilis = obj.optLong("timestamp", 0L)
-                val waktuMentah = obj.optString("time", "-")
-                val tanggalBaca = if (waktuMentah.length >= 10) waktuMentah.substring(0, 10) else waktuMentah
-                val tautanAsli = obj.optString("url", "")
+    val idPosting = obj.optString("postId", "ID_$indeks")
+    val userObj = obj.optJSONObject("user")
+    val namaPenulis = userObj?.optString("name", "Fatwa Kehidupan") ?: "Fatwa Kehidupan"
+    val urlProfilPic = userObj?.optString("profilePic", "") ?: ""
+    val waktuRilis = obj.optLong("timestamp", 0L)
+    val waktuMentah = obj.optString("time", "-")
+    val tanggalBaca = if (waktuMentah.length >= 10) waktuMentah.substring(0, 10) else waktuMentah
+    val tautanAsli = obj.optString("url", "")
 
-                var kontenPenuh = obj.optString("text", "")
-                val sharedObj = obj.optJSONObject("sharedPost")
-                if (sharedObj != null) {
-                    val namaAsli = sharedObj.optJSONObject("user")?.optString("name", "Entitas") ?: "Entitas"
-                    val teksAsli = sharedObj.optString("text", "")
-                    if (teksAsli.isNotEmpty()) kontenPenuh += "\n\n--- Membagikan Status: $namaAsli ---\n$teksAsli"
-                }
+    var kontenPenuh = obj.optString("text", "")
+    val sharedObj = obj.optJSONObject("sharedPost")
+    if (sharedObj != null) {
+        val namaAsli = sharedObj.optJSONObject("user")?.optString("name", "Entitas") ?: "Entitas"
+        val teksAsli = sharedObj.optString("text", "")
+        if (teksAsli.isNotEmpty()) kontenPenuh += "\n\n--- Membagikan Status: $namaAsli ---\n$teksAsli"
+    }
 
-                // MENGEKSEKUSI MESIN SORTIR LOKAL
-                val kategori = mesinDeteksiKategori(kontenPenuh)
+    val kategori = mesinDeteksiKategori(kontenPenuh)
 
-                val daftarFoto = mutableListOf<String>()
-                val mediaArray = obj.optJSONArray("media") ?: sharedObj?.optJSONArray("media")
-                if (mediaArray != null) {
-                    for (m in 0 until mediaArray.length()) {
-                        val mediaObj = mediaArray.getJSONObject(m)
-                        if (mediaObj.optString("__typename", "") == "Video") {
-                            val uriThumb = mediaObj.optJSONObject("thumbnailImage")?.optString("uri", "") ?: mediaObj.optString("thumbnail", "")
-                            if (uriThumb.isNotEmpty()) daftarFoto.add("video:$uriThumb")
-                        } else {
-                            val uriGbr = mediaObj.optJSONObject("image")?.optString("uri", "") ?: ""
-                            if (uriGbr.isNotEmpty()) daftarFoto.add("image:$uriGbr")
-                        }
-                    }
-                }
-
-                muatanSementara.add(ArsipEntity(idPosting, namaPenulis, urlProfilPic, waktuRilis, tanggalBaca, kontenPenuh, tautanAsli, daftarFoto.joinToString(","), kategori))
-                indeks++
-
-                if (muatanSementara.size >= 3000) {
-                    lenganRobot.injeksiMassal(muatanSementara)
-                    muatanSementara.clear()
-
-                    val kalkulasiPersen = ((indeks.toDouble() / estimasiTotalItem.toDouble()) * 100).toInt().coerceAtMost(99)
-                    if (kalkulasiPersen > persentaseLayarTerakhir) {
-                        persentaseLayarTerakhir = kalkulasiPersen
-                        
-                        setProgress(workDataOf(
-                            "FASE" to 6,
-                            "PERSENTASE" to kalkulasiPersen,
-                            "INDEKS" to indeks,
-                            "TOTAL" to estimasiTotalItem
-                        ))
-                    }
-                }
+    val daftarFoto = mutableListOf<String>()
+    val mediaArray = obj.optJSONArray("media") ?: sharedObj?.optJSONArray("media")
+    if (mediaArray != null) {
+        for (m in 0 until mediaArray.length()) {
+            val mediaObj = mediaArray.getJSONObject(m)
+            if (mediaObj.optString("__typename", "") == "Video") {
+                val uriThumb = mediaObj.optJSONObject("thumbnailImage")?.optString("uri", "") ?: mediaObj.optString("thumbnail", "")
+                if (uriThumb.isNotEmpty()) daftarFoto.add("video:$uriThumb")
+            } else {
+                val uriGbr = mediaObj.optJSONObject("image")?.optString("uri", "") ?: ""
+                if (uriGbr.isNotEmpty()) daftarFoto.add("image:$uriGbr")
             }
+        }
+    }
 
-            if (muatanSementara.isNotEmpty()) { lenganRobot.injeksiMassal(muatanSementara) }
-            reader.endArray()
-            reader.close()
+    muatanSementara.add(ArsipEntity(idPosting, namaPenulis, urlProfilPic, waktuRilis, tanggalBaca, kontenPenuh, tautanAsli, daftarFoto.joinToString(","), kategori))
+    indeks++
 
-            if (fileTarget.exists()) { fileTarget.delete() }
+    // KALIBRASI AMBANG BATAS: Turunkan ke 500 untuk stabilitas RAM
+    if (muatanSementara.size >= 500) {
+        lenganRobot.injeksiMassal(muatanSementara)
+        muatanSementara.clear()
+
+        val kalkulasiPersen = ((indeks.toDouble() / estimasiTotalItem.toDouble()) * 100).toInt().coerceAtMost(99)
+        if (kalkulasiPersen > persentaseLayarTerakhir) {
+            persentaseLayarTerakhir = kalkulasiPersen
+            
+            setProgress(workDataOf(
+                "FASE" to 6,
+                "PERSENTASE" to kalkulasiPersen,
+                "INDEKS" to indeks,
+                "TOTAL" to estimasiTotalItem
+            ))
+        }
+    }
+}
+
+if (muatanSementara.isNotEmpty()) { lenganRobot.injeksiMassal(muatanSementara) }
+reader.endArray()
+reader.close()
+
+// PENGAPUSAN BERKAS HANYA JIKA BERHASIL TOTAL
+if (fileTarget.exists()) { fileTarget.delete() }
 
             setProgress(workDataOf(
                 "FASE" to 7,
