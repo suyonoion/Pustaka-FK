@@ -18,6 +18,7 @@ import android.widget.EditText
 import android.widget.ImageView
 import android.widget.LinearLayout
 import android.widget.RelativeLayout
+import android.widget.FrameLayout
 import android.widget.TextView
 import android.widget.Toast
 import android.widget.ProgressBar
@@ -104,8 +105,7 @@ class MainActivity : AppCompatActivity() {
         loadingPencarian = findViewById(R.id.loadingPencarian)
         txtStatusPencarian = findViewById(R.id.txtStatusPencarian)
         recyclerTimeline = findViewById(R.id.recyclerTimeline)
-        kontainerJalurKanan = findViewById(R.id.kontainerJalurKanan)
-
+        kontainerJalurKanan = findViewById<FrameLayout>(R.id.kontainerJalurKanan)
 
         recyclerGridMode.layoutManager = GridLayoutManager(this, 2)
         sesuaikanKompartemenGrid() 
@@ -359,7 +359,9 @@ class MainActivity : AppCompatActivity() {
         val lenganRobot = database.arsipDao()
         
         // 1. Hitung isi tangki SQLite saat ini
-        val jumlahBarisData = lenganRobot.hitungTotalBarisData() 
+        // SENSOR 1: Periksa densitas data riil di dalam SQLite menggunakan modul yang ada
+        val jumlahBarisData = lenganRobot.hitungTotalArsip() // Tembakan disesuaikan ke hitungTotalArsip()
+
         
         val berkasLokal = File(getExternalFilesDir(null), "Master_Data_Arsip_FK_11_Juli_2026.json")
         val bobotMinimum = 110 * 1024 * 1024 
