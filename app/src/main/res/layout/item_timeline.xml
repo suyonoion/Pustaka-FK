@@ -3,12 +3,19 @@
     xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
-    android:gravity="center"
+    android:gravity="center_vertical"
     android:paddingVertical="10dp"
     android:background="?android:attr/selectableItemBackground">
-  
 
-    <!-- Ukuran diturunkan ke 10sp agar muat 2 baris dengan presisi -->
+    <!-- Garis Vertikal di Sisi Kiri Timeline -->
+    <View
+        android:layout_width="1dp"
+        android:layout_height="match_parent"
+        android:background="#B2DFDB"
+        android:layout_marginStart="8dp"
+        android:layout_marginEnd="8dp" />
+
+    <!-- Label Tanggal / Bulan -->
     <TextView
         android:id="@+id/txtLabelTimeline"
         android:layout_width="wrap_content"

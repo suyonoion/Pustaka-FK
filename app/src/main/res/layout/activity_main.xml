@@ -20,15 +20,14 @@
             android:layout_height="wrap_content"
             android:orientation="horizontal"
             android:gravity="center_vertical"
-            android:paddingHorizontal="10dp"
-            android:paddingTop="10dp"
-            android:paddingBottom="4dp">
+            android:padding="0dp"
+            android:layout_margin="0dp">
                       <!-- TUAS MEKANIS PEMBUKA LACI -->
             <ImageView
                 android:id="@+id/btnMenuDrawer"
                 android:layout_width="35dp"
                 android:layout_height="35dp"
-                android:layout_marginStart="8dp"
+                android:layout_marginStart="5dp"
                 android:padding="5dp"
                 android:background="?android:attr/selectableItemBackgroundBorderless"
                 app:srcCompat="@android:drawable/ic_menu_sort_by_size"
@@ -55,6 +54,8 @@
             android:layout_height="wrap_content"
             android:layout_marginHorizontal="12dp"
             android:layout_marginBottom="8dp"
+            android:padding="0dp"
+            android:layout_margin="0dp"
             app:cardBackgroundColor="#E0F2F1" 
             app:cardCornerRadius="4dp"
             app:cardElevation="2dp"

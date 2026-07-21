@@ -82,6 +82,9 @@ class MainActivity : AppCompatActivity() {
     private lateinit var kontainerJalurKanan: FrameLayout
 
     private var daftarArsipAktif: List<ArsipEntity> = listOf()
+    private var titikNolJendela = 0
+    private val radiusMuatan = 50 
+
     private var isSearchMode = false 
     private var isMesinSibuk = false
     private var modeKategoriAktif = false
@@ -129,7 +132,22 @@ class MainActivity : AppCompatActivity() {
         
         val mesinProyeksi = proyektorBuku.getChildAt(0) as? RecyclerView
         mesinProyeksi?.overScrollMode = View.OVER_SCROLL_NEVER
-
+        proyektorBuku.registerOnPageChangeCallback(object : ViewPager2.OnPageChangeCallback() {
+        override fun onPageSelected(position: Int) {
+            super.onPageSelected(position)
+            
+            val indeksAbsolut = titikNolJendela + position
+            val jarakKritis = 10
+            val totalFragmenAktif = proyektorBuku.adapter?.itemCount ?: 0
+            
+            if (position <= jarakKritis && titikNolJendela > 0) {
+                geserSabukProyektor(indeksAbsolut)
+            } 
+            else if (position >= totalFragmenAktif - jarakKritis && indeksAbsolut < daftarArsipAktif.size - 1) {
+                geserSabukProyektor(indeksAbsolut)
+            }
+        }
+    })
         onBackPressedDispatcher.addCallback(this, object : OnBackPressedCallback(true) {
             override fun handleOnBackPressed() {
                 if (drawerLayout.isDrawerOpen(androidx.core.view.GravityCompat.START)) {
@@ -170,7 +188,16 @@ class MainActivity : AppCompatActivity() {
                         
                         withContext(Dispatchers.Main) {
                             pompaDataKeLayar(semuaData)
-                            panelStatusPencarian.visibility = View.GONE
+                            if (semuaData.isNotEmpty()) {
+            val tanggalTerbaru = semuaData.first().tanggal 
+            val tanggalTerlama = semuaData.last().tanggal
+            val totalVolume = semuaData.size
+
+            panelStatusPencarian.visibility = View.VISIBLE
+            teksStatusPencarian.text = "Arsip [$tanggalTerlama - $tanggalTerbaru] Total $totalVolume Status"
+        } else {
+            panelStatusPencarian.visibility = View.GONE
+        }
                         }
                     }
                 } 
@@ -262,6 +289,8 @@ class MainActivity : AppCompatActivity() {
                 isClickable = true
                 isFocusable = true
                 gravity = android.view.Gravity.CENTER_VERTICAL
+                setCompoundDrawablesWithIntrinsicBounds(R.drawable.ic_kategori, 0, 0, 0)
+                compoundDrawablePadding = 12
             }
 
             if (daftarCabang.size == 1 && daftarCabang[0].first == namaInduk) {
@@ -714,32 +743,27 @@ class MainActivity : AppCompatActivity() {
     isMesinSibuk = true 
     
     lifecycleScope.launch(Dispatchers.Main) {
-        // 1. Matikan seluruh instrumen navigasi luar untuk melegakan beban RAM
+        // Matikan sasis luar
         recyclerTimeline.visibility = View.GONE
         kontainerJalurKanan.visibility = View.GONE 
         recyclerGridMode.visibility = View.GONE
         wadahModeBuku.visibility = View.VISIBLE
 
-        // 2. Periksa apakah tangki proyektor kosong
-        if (bukuAdapter.itemCount == 0 && daftarArsipAktif.isNotEmpty()) {
-            tampilkanIndikator("Menyiapkan proyektor buku...", true)
-            
-            // Berikan mesin jeda 100 milidetik agar OS Android selesai 
-            // menggambar perpindahan sasis layar sebelum menembakkan 17rb data
-            delay(100) 
-            
-            bukuAdapter.perbaruiData(daftarArsipAktif) 
-            tampilkanIndikator("", false)
-        }
+        tampilkanIndikator("Membuka proyektor...", true)
         
-        // 3. Eksekusi perpindahan roda gigi setelah adaptor siap menerima beban
+        // Jeda relai untuk pernapasan RAM
+        delay(100) 
+
+        // Tembakkan posisi awal ke mesin sabuk berjalan
+        geserSabukProyektor(posisi)
+        
+        tampilkanIndikator("", false)
+        
         proyektorBuku.post {
-            proyektorBuku.setCurrentItem(posisi, false)
             isMesinSibuk = false 
         }
     }
 }
-
 
     private fun aktifkanSirkuitPencarian() {
         edtPencarian.setOnEditorActionListener { _, actionId, event ->
@@ -842,11 +866,26 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
-
-
     private fun tampilkanIndikator(pesan: String, aktif: Boolean) {
         panelStatusPencarian.visibility = if (aktif) View.VISIBLE else View.GONE
         loadingPencarian.visibility = if (aktif) View.VISIBLE else View.GONE
         txtStatusPencarian.text = pesan
     }
+    private fun geserSabukProyektor(indeksAbsolutFokus: Int) {
+    val totalData = daftarArsipAktif.size
+    val batasKiri = maxOf(0, indeksAbsolutFokus - radiusMuatan)
+    val batasKanan = minOf(totalData, indeksAbsolutFokus + radiusMuatan + 1)
+    
+    // Kunci titik koordinat baru
+    titikNolJendela = batasKiri
+    
+    val fragmenData = daftarArsipAktif.subList(batasKiri, batasKanan)
+    val posisiRelatif = indeksAbsolutFokus - batasKiri
+
+    // Heningkan pembaruan: Jangan gunakan animasi (false) agar transisi 
+    // pemotongan data tidak terasa oleh usapan jari pengguna
+    bukuAdapter.perbaruiData(fragmenData)
+    proyektorBuku.setCurrentItem(posisiRelatif, false)
+}
+
 }
