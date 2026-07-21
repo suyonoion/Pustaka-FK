@@ -188,7 +188,15 @@ class MainActivity : AppCompatActivity() {
     val lingkarProgres = findViewById<ProgressBar>(R.id.lingkarPersentaseUtama)
     val teksPersen = findViewById<TextView>(R.id.teksPersentaseSentral)
     val teksTelemetri = findViewById<TextView>(R.id.teksTelemetriData)
-
+    if (fase == FaseInjeksi.FASE_1 || fase == FaseInjeksi.FASE_7) {
+        // Matikan total pada Fase 1 dan Fase 7 agar tidak ada sisa visual mengganggu
+        lingkarProgres.visibility = View.GONE
+        teksPersen.visibility = View.GONE
+    } else {
+        // Hidupkan hanya untuk fase unduhan dan injeksi tengah
+        lingkarProgres.visibility = View.VISIBLE
+        teksPersen.visibility = View.VISIBLE
+    }
     teksStatus.text = fase.pesan
     indikatorVisual.setImageResource(fase.idGambar)
 
@@ -691,40 +699,31 @@ class MainActivity : AppCompatActivity() {
     }
     
     private fun bukaModeBuku(posisi: Int) {
-    if (isMesinSibuk) {
-        Toast.makeText(this, "Sistem sedang merakit data. Harap tunggu.", Toast.LENGTH_SHORT).show()
-        return
-    }
+    if (isMesinSibuk) return
     isMesinSibuk = true 
     
     lifecycleScope.launch(Dispatchers.Main) {
         if (bukuAdapter.itemCount == 0 && daftarArsipAktif.isNotEmpty()) {
-            tampilkanIndikator("Membuka buku...", true)
-            
-            // PERBAIKAN FATAL: Eksekusi langsung di jalur utama. 
-            // DILARANG keras memasukkan ini ke dalam withContext(Dispatchers.Default)
             bukuAdapter.perbaruiData(daftarArsipAktif) 
-            
-            tampilkanIndikator("", false)
         }
         
-        // COPOT TOTAL SELURUH KOMPONEN NAVIGASI KANAN
+        // Mematikan sasis navigasi luar
         recyclerTimeline.visibility = View.GONE
         kontainerJalurKanan.visibility = View.GONE 
         recyclerGridMode.visibility = View.GONE
-        
-        // Buka kompartemen buku secara penuh
         wadahModeBuku.visibility = View.VISIBLE
         
-        // Parameter 'false' mematikan animasi geser. Ini sangat krusial agar 
-        // ViewPager2 tidak mencoba merender ribuan halaman yang dilewati saat melompat jauh.
-        proyektorBuku.setCurrentItem(posisi, false) 
-        
-        isMesinSibuk = false
+        // ========================================================
+        // PEMASANGAN RELAY PENUNDA (DELAY RELAY SWITCH)
+        // ========================================================
+        // Fungsi .post{} memastikan pemindahan halaman dieksekusi 
+        // hanya setelah ViewPager2 selesai merakit seluruh tata letaknya.
+        proyektorBuku.post {
+            proyektorBuku.setCurrentItem(posisi, false)
+            isMesinSibuk = false // Buka kembali gerbang input setelah mesin selesai melompat
+        }
     }
 }
-
-
 
     private fun aktifkanSirkuitPencarian() {
         edtPencarian.setOnEditorActionListener { _, actionId, event ->

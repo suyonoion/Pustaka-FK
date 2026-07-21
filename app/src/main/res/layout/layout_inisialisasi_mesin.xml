@@ -46,6 +46,10 @@
         app:layout_constraintEnd_toEndOf="parent"
         android:layout_marginTop="32dp"/>
 
+    <!-- ========================================================= -->
+    <!-- KATUP ISOLATOR TERPASANG: VISIBILITY SET KE "GONE"        -->
+    <!-- ========================================================= -->
+    
     <!-- Indikator Lingkar Sentral -->
     <ProgressBar
         android:id="@+id/lingkarPersentaseUtama"
@@ -55,23 +59,28 @@
         android:progressDrawable="@drawable/desain_lingkar_progres"
         android:max="100"
         android:progress="0"
+        android:visibility="gone" 
         app:layout_constraintTop_toBottomOf="@id/indikatorVisualMesin"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintEnd_toEndOf="parent"
         android:layout_marginTop="32dp"/>
 
+    <!-- Teks Persentase Angka -->
     <TextView
         android:id="@+id/teksPersentaseSentral"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:text="0%"
-        android:textColor="#00E5FF"
+        android:textColor="#E0F2F1"
         android:textSize="32sp"
         android:textStyle="bold"
+        android:visibility="gone"
         app:layout_constraintTop_toTopOf="@id/lingkarPersentaseUtama"
         app:layout_constraintBottom_toBottomOf="@id/lingkarPersentaseUtama"
         app:layout_constraintStart_toStartOf="@id/lingkarPersentaseUtama"
         app:layout_constraintEnd_toEndOf="@id/lingkarPersentaseUtama"/>
+
+    <!-- ========================================================= -->
 
     <!-- Telemetri Volume Data -->
     <TextView
@@ -79,7 +88,7 @@
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:text="PUSTAKA FK \n Arsip Status Digital Fatwa Kehidupan"
-        android:textColor="#8892B0"
+        android:textColor="#B2DFDB"
         android:textSize="14sp"
         android:gravity="center"
         app:layout_constraintTop_toBottomOf="@id/lingkarPersentaseUtama"

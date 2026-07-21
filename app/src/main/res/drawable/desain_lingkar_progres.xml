@@ -1,16 +1,20 @@
 <?xml version="1.0" encoding="utf-8"?>
 <layer-list xmlns:android="http://schemas.android.com/apk/res/android">
-    <!-- Rel Dasar -->
+    <!-- Rel Dasar (Dibuat lebih gelap dari latar belakang utama) -->
     <item>
         <shape android:shape="ring" android:thicknessRatio="12" android:useLevel="false">
-            <solid android:color="#112240" />
+            <solid android:color="#00332C" /> 
         </shape>
     </item>
-    <!-- Jalur Injeksi Aktif -->
+    
+    <!-- Jalur Injeksi Aktif (Gradasi Mint/Cyan yang selaras dengan ikon) -->
     <item>
         <rotate android:fromDegrees="270" android:toDegrees="270">
             <shape android:shape="ring" android:thicknessRatio="12" android:useLevel="true">
-                <gradient android:startColor="#00E5FF" android:endColor="#0077FF" android:type="sweep" />
+                <gradient 
+                    android:startColor="#80CBC4" 
+                    android:endColor="#00E5FF" 
+                    android:type="sweep" />
             </shape>
         </rotate>
     </item>

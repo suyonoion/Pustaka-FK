@@ -1,0 +1,7 @@
+<resources>
+    <!-- Warna dasar sasis (Latar Belakang) -->
+    <color name="hijau_pustaka">#094D41</color> 
+    
+    <!-- Warna rotor penggerak (Cyan terang dari ikon) -->
+    <color name="cyan_aksen">#00D4FF</color> 
+</resources>
