@@ -188,13 +188,13 @@ class MainActivity : AppCompatActivity() {
                         
                         withContext(Dispatchers.Main) {
                             pompaDataKeLayar(semuaData)
-                            if (semuaData.isNotEmpty()) {
-            val tanggalTerbaru = semuaData.first().tanggal 
-            val tanggalTerlama = semuaData.last().tanggal
+        if (semuaData.isNotEmpty()) {
+            val tanggalTerbaru = semuaData.first().tanggalBaca 
+            val tanggalTerlama = semuaData.last().tanggalBaca
             val totalVolume = semuaData.size
 
             panelStatusPencarian.visibility = View.VISIBLE
-            teksStatusPencarian.text = "Arsip [$tanggalTerlama - $tanggalTerbaru] Total $totalVolume Status"
+            txtStatusPencarian.text = "Arsip [$tanggalTerlama - $tanggalTerbaru] Total $totalVolume Status"
         } else {
             panelStatusPencarian.visibility = View.GONE
         }
