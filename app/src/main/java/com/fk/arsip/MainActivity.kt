@@ -157,7 +157,12 @@ class MainActivity : AppCompatActivity() {
                     edtPencarian.clearFocus()
                     val imm = getSystemService(Context.INPUT_METHOD_SERVICE) as InputMethodManager
                     imm.hideSoftInputFromWindow(edtPencarian.windowToken, 0)
-                    
+    // --- INJEKSI KATUP TIMELINE: BUKA PAKSA SEBELUM MEMOMPA DATA ---
+    wadahModeBuku.visibility = View.GONE
+    recyclerGridMode.visibility = View.VISIBLE
+    kontainerJalurKanan.visibility = View.VISIBLE
+    recyclerTimeline.visibility = View.VISIBLE
+    // ---------------------------------------------------------------
                     tampilkanIndikator("Memuat ulang semua status...", true)
                     lifecycleScope.launch(Dispatchers.IO) {
                         val database = ArsipDatabase.operasikanMesin(this@MainActivity).arsipDao()
@@ -311,20 +316,26 @@ class MainActivity : AppCompatActivity() {
             val hasilSaringanAkhir = database.saringBerdasarkanKolomKategori(labelKategori)
 
             withContext(Dispatchers.Main) {
-                isSearchMode = false
-                modeKategoriAktif = true
-                edtPencarian.text.clear()
-                
-                val muatanTeks = "$labelKategori (${hasilSaringanAkhir.size} arsip)"
-                tampilkanIndikator(muatanTeks, false)
-                
-                panelStatusPencarian.visibility = View.VISIBLE 
-                wadahModeBuku.visibility = View.GONE
-                recyclerGridMode.visibility = View.VISIBLE
-                
-                pompaDataKeLayar(hasilSaringanAkhir) 
-                drawerLayout.closeDrawers()
-            }
+    isSearchMode = false
+    modeKategoriAktif = true
+    edtPencarian.text.clear()
+    
+    val muatanTeks = "$labelKategori (${hasilSaringanAkhir.size} arsip)"
+    tampilkanIndikator(muatanTeks, false)
+    
+    panelStatusPencarian.visibility = View.VISIBLE 
+    wadahModeBuku.visibility = View.GONE
+    
+    // --- INJEKSI KATUP TIMELINE: BUKA PAKSA ---
+    recyclerGridMode.visibility = View.VISIBLE
+    kontainerJalurKanan.visibility = View.VISIBLE
+    recyclerTimeline.visibility = View.VISIBLE
+    // ------------------------------------------
+    
+    pompaDataKeLayar(hasilSaringanAkhir) 
+    drawerLayout.closeDrawers()
+}
+
         }
     }
 
@@ -703,27 +714,32 @@ class MainActivity : AppCompatActivity() {
     isMesinSibuk = true 
     
     lifecycleScope.launch(Dispatchers.Main) {
-        if (bukuAdapter.itemCount == 0 && daftarArsipAktif.isNotEmpty()) {
-            bukuAdapter.perbaruiData(daftarArsipAktif) 
-        }
-        
-        // Mematikan sasis navigasi luar
+        // 1. Matikan seluruh instrumen navigasi luar untuk melegakan beban RAM
         recyclerTimeline.visibility = View.GONE
         kontainerJalurKanan.visibility = View.GONE 
         recyclerGridMode.visibility = View.GONE
         wadahModeBuku.visibility = View.VISIBLE
+
+        // 2. Periksa apakah tangki proyektor kosong
+        if (bukuAdapter.itemCount == 0 && daftarArsipAktif.isNotEmpty()) {
+            tampilkanIndikator("Menyiapkan proyektor buku...", true)
+            
+            // Berikan mesin jeda 100 milidetik agar OS Android selesai 
+            // menggambar perpindahan sasis layar sebelum menembakkan 17rb data
+            delay(100) 
+            
+            bukuAdapter.perbaruiData(daftarArsipAktif) 
+            tampilkanIndikator("", false)
+        }
         
-        // ========================================================
-        // PEMASANGAN RELAY PENUNDA (DELAY RELAY SWITCH)
-        // ========================================================
-        // Fungsi .post{} memastikan pemindahan halaman dieksekusi 
-        // hanya setelah ViewPager2 selesai merakit seluruh tata letaknya.
+        // 3. Eksekusi perpindahan roda gigi setelah adaptor siap menerima beban
         proyektorBuku.post {
             proyektorBuku.setCurrentItem(posisi, false)
-            isMesinSibuk = false // Buka kembali gerbang input setelah mesin selesai melompat
+            isMesinSibuk = false 
         }
     }
 }
+
 
     private fun aktifkanSirkuitPencarian() {
         edtPencarian.setOnEditorActionListener { _, actionId, event ->
