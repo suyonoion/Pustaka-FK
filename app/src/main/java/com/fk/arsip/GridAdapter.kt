@@ -3,18 +3,16 @@ package com.fk.arsip
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
-import android.widget.ImageView
 import android.widget.TextView
 import androidx.recyclerview.widget.RecyclerView
 import com.fk.arsip.database.ArsipEntity
+import com.google.android.material.imageview.ShapeableImageView // IMPORT TAMBAHAN UNTUK PROFIL BULAT
 
 // TAHAP 2: Kontainer Universal (Sealed Class)
 sealed class KargoCampuran {
     data class PembatasWaktu(val label: String) : KargoCampuran()
     data class StatusKonten(val data: ArsipEntity, val posisiAsli: Int) : KargoCampuran()
 }
-
-
 
 class GridAdapter(
     private var daftarKargo: List<KargoCampuran>,
@@ -26,14 +24,12 @@ class GridAdapter(
         const val TIPE_KONTEN = 1
     }
 
-        override fun getItemViewType(position: Int): Int {
-        // Akses langsung list via index tanpa logika bercabang yang rumit
+    override fun getItemViewType(position: Int): Int {
         return when (daftarKargo[position]) {
             is KargoCampuran.PembatasWaktu -> TIPE_PEMBATAS
-            else -> TIPE_KONTEN // TIPE_KONTEN adalah default, memangkas pengecekan tipe
+            else -> TIPE_KONTEN
         }
     }
-
 
     override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): RecyclerView.ViewHolder {
         return if (viewType == TIPE_PEMBATAS) {
@@ -45,36 +41,42 @@ class GridAdapter(
         }
     }
 
-        override fun onBindViewHolder(holder: RecyclerView.ViewHolder, position: Int) {
+    override fun onBindViewHolder(holder: RecyclerView.ViewHolder, position: Int) {
         val material = daftarKargo[position]
         
         if (holder is HeaderViewHolder && material is KargoCampuran.PembatasWaktu) {
             holder.txtHeader.text = material.label
         } 
-                else if (holder is KontenViewHolder && material is KargoCampuran.StatusKonten) {
+        else if (holder is KontenViewHolder && material is KargoCampuran.StatusKonten) {
             val arsip = material.data
-            holder.txtKategori.text = arsip.kategori
+            
+            // 1. PENYESUAIAN KATEGORI & TANGGAL
             holder.txtTanggal.text = arsip.tanggalBaca.substringBefore(" ")
             
-            // PENGELASAN: Potong string agar tidak membebani layout
+            if (arsip.kategori.isNullOrEmpty()) {
+                holder.txtKategori.visibility = View.GONE
+            } else {
+                holder.txtKategori.visibility = View.VISIBLE
+                holder.txtKategori.text = arsip.kategori
+            }
+            
+            // 2. PENGELASAN CUPLIKAN TEKS
             val cuplikan = if (arsip.kontenPenuh.length > 100) {
                 arsip.kontenPenuh.substring(0, 100) + "..."
             } else {
                 arsip.kontenPenuh
             }
-            // HANYA PASANG SATU KALI:
             holder.txtCuplikan.text = cuplikan 
             
-            // HAPUS: holder.txtCuplikan.text = arsip.kontenPenuh  <-- INI PENYEBAB FREEZE
-            
+            // 3. NOMOR URUT INDEKS
             val nomorUrut = material.posisiAsli + 1 
             holder.txtIndeksGrid.text = "#$nomorUrut"
 
+            // 4. ESEKUSI KLIK ITEM
             holder.itemView.setOnClickListener {
                 pemicuBuku(material.posisiAsli) 
             }
         }
-
     }
 
     override fun getItemCount(): Int = daftarKargo.size
@@ -88,13 +90,12 @@ class GridAdapter(
         val txtHeader: TextView = view.findViewById(R.id.txtHeaderWaktu)
     }
 
-        class KontenViewHolder(view: View) : RecyclerView.ViewHolder(view) {
-        val imgProfil: ImageView = view.findViewById(R.id.imgGridProfil)
+    class KontenViewHolder(view: View) : RecyclerView.ViewHolder(view) {
+        // PENYESUAIAN TIPE DATA: Menggunakan ShapeableImageView untuk foto profil bulat
+        val imgProfil: ShapeableImageView = view.findViewById(R.id.imgGridProfil)
         val txtTanggal: TextView = view.findViewById(R.id.txtGridTanggal)
         val txtKategori: TextView = view.findViewById(R.id.txtGridKategori)
         val txtCuplikan: TextView = view.findViewById(R.id.txtGridCuplikan)
-        // INJEKSI KABEL PENGIKAT
         val txtIndeksGrid: TextView = view.findViewById(R.id.txtIndeksGrid) 
     }
-
 }

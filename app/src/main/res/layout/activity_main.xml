@@ -14,38 +14,50 @@
         android:orientation="vertical"
         android:background="#EFEFEF">
 
-              <!-- PIPA NAVIGASI ATAS -->
-        <LinearLayout
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:orientation="horizontal"
-            android:gravity="center_vertical"
-            android:padding="0dp"
-            android:layout_margin="0dp">
-                      <!-- TUAS MEKANIS PEMBUKA LACI -->
-            <ImageView
-                android:id="@+id/btnMenuDrawer"
-                android:layout_width="35dp"
-                android:layout_height="35dp"
-                android:layout_marginStart="5dp"
-                android:padding="5dp"
-                android:background="?android:attr/selectableItemBackgroundBorderless"
-                app:srcCompat="@android:drawable/ic_menu_sort_by_size"
-                app:tint="#004D40" />
-            <EditText
-                android:id="@+id/edtPencarian"
-                android:layout_width="0dp"
-                android:layout_height="35dp"
-                android:layout_weight="1"
-                android:padding="5dp"
-                android:background="@android:color/white"
-                android:hint="Cari Status..."
-                android:elevation="2dp"
-                android:inputType="text"
-                android:imeOptions="actionSearch" 
-                android:maxLines="1" />
-        </LinearLayout>
+<!-- PIPA NAVIGASI ATAS -->
+<LinearLayout
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:orientation="horizontal"
+    android:gravity="center_vertical"
+    android:layout_marginTop="12dp"
+    android:layout_marginStart="8dp"
+    android:layout_marginEnd="8dp">
 
+    <!-- TOMBOL HAMBURGER -->
+    <ImageView
+        android:id="@+id/btnMenuDrawer"
+        android:layout_width="40dp"
+        android:layout_height="40dp"
+        android:padding="8dp"
+        android:clickable="true"
+        android:focusable="true"
+        android:background="?android:attr/selectableItemBackgroundBorderless"
+        app:srcCompat="@drawable/ic_hamburger_menu"
+        app:tint="#004D40" />
+
+    <!-- KOTAK PENCARIAN -->
+    <EditText
+        android:id="@+id/edtPencarian"
+        android:layout_width="0dp"
+        android:layout_height="42dp"
+        android:layout_weight="1"
+        android:layout_marginStart="8dp"
+        android:background="@drawable/bg_search_box"
+        android:drawableStart="@android:drawable/ic_menu_search"
+        android:drawablePadding="10dp"
+        android:paddingStart="16dp"
+        android:paddingEnd="16dp"
+        android:hint="Cari status..."
+        android:elevation="2dp"
+        android:textColorHint="#9AA0A6"
+        android:textColor="#FFFFFF"
+        android:textSize="14sp"
+        android:inputType="text"
+        android:imeOptions="actionSearch"
+        android:maxLines="1" />
+
+</LinearLayout>
 
                  <!-- PLAT JUDUL KATEGORI (DOMINAN) -->
          <androidx.cardview.widget.CardView
@@ -56,7 +68,7 @@
             android:layout_marginBottom="8dp"
             android:padding="0dp"
             android:layout_margin="0dp"
-            app:cardBackgroundColor="#E0F2F1" 
+            app:cardBackgroundColor="#004D40" 
             app:cardCornerRadius="4dp"
             app:cardElevation="2dp"
             android:visibility="gone">
@@ -73,7 +85,7 @@
                     android:id="@+id/txtStatusPencarian"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:textColor="#004D40"
+                    android:textColor="#FFFFFF"
                     android:textSize="14sp"
                     android:textStyle="bold"
                     android:textAlignment="center"
@@ -251,7 +263,7 @@
 
     </LinearLayout>
 
-    <LinearLayout
+        <LinearLayout
         android:id="@+id/navViewCustom"
         android:layout_width="280dp"
         android:layout_height="match_parent"
@@ -261,52 +273,125 @@
         android:clickable="true"
         android:focusable="true">
 
-        <LinearLayout
+        <FrameLayout
             android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:background="#004D40"
-            android:orientation="vertical"
-            android:padding="20dp">
+            android:layout_height="180dp">
+
+            <!-- 1. GAMBAR VECTOR BACKGROUND (bg_header_drawer.xml) -->
             <ImageView
-                android:layout_width="70dp"
-                android:layout_height="70dp"
-                android:src="@drawable/profil_abah"
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"
                 android:scaleType="centerCrop"
-                android:layout_marginTop="16dp"/>
-            <TextView
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:text="Fatwa Kehidupan"
-                android:textColor="#FFFFFF"
-                android:textStyle="bold"
-                android:textSize="18sp"
-                android:layout_marginTop="12dp"/>
-            <TextView
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:text="Arsip Status Digital"
-                android:textColor="#B2DFDB"
-                android:textSize="12sp"/>
-        </LinearLayout>
+                android:src="@drawable/bg_header_drawer" />
+
+            <!-- 2. OVERLAY HITAM TRANSPARAN (Agar teks & foto kontras) -->
+            <View
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"
+                android:background="#80000000" /> 
+
+            <!-- 3. KONTEN FOTO PROFIL DAN TEKS -->
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"
+                android:orientation="vertical"
+                android:gravity="bottom"
+                android:padding="16dp">
+
+                <ImageView
+                    android:layout_width="60dp"
+                    android:layout_height="60dp"
+                    android:src="@drawable/profil_abah"
+                    android:scaleType="centerCrop"/>
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="Fatwa Kehidupan"
+                    android:textColor="#FFFFFF"
+                    android:textStyle="bold"
+                    android:textSize="18sp"
+                    android:layout_marginTop="8dp"/>
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="Arsip Status Digital"
+                    android:textColor="#E0E0E0"
+                    android:textSize="12sp"/>
+            </LinearLayout>
+
+        </FrameLayout>
 
         <ScrollView
             android:layout_width="match_parent"
             android:layout_height="match_parent"
             android:fillViewport="true">
-                    <LinearLayout
+
+            <LinearLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:orientation="vertical"
                 android:paddingBottom="10dp">
                 
-                <!-- Pemampatan sumbu Y: paddingVertical diturunkan menjadi 8dp -->
-                <TextView android:id="@+id/menuBiografi" android:layout_width="match_parent" android:layout_height="wrap_content" android:text="Biografi" android:drawableStart="@android:drawable/ic_menu_info_details" android:drawablePadding="12dp" android:textColor="#212121" android:textSize="14sp" android:paddingVertical="8dp" android:paddingHorizontal="14dp" android:background="?android:attr/selectableItemBackground"/>
-                <TextView android:id="@+id/menuSosmed" android:layout_width="match_parent" android:layout_height="wrap_content" android:text="Sosial Media" android:drawableStart="@android:drawable/ic_menu_share" android:drawablePadding="12dp" android:textColor="#212121" android:textSize="14sp" android:paddingVertical="8dp" android:paddingHorizontal="14dp" android:background="?android:attr/selectableItemBackground"/>
-                <TextView android:id="@+id/menuLetnan" android:layout_width="match_parent" android:layout_height="wrap_content" android:text="Letnan" android:drawableStart="@android:drawable/ic_menu_myplaces" android:drawablePadding="12dp" android:textColor="#212121" android:textSize="14sp" android:paddingVertical="8dp" android:paddingHorizontal="14dp" android:background="?android:attr/selectableItemBackground"/>
-                <TextView android:id="@+id/menuYayasan" android:layout_width="match_parent" android:layout_height="wrap_content" android:text="Yayasan" android:drawableStart="@android:drawable/ic_menu_manage" android:drawablePadding="12dp" android:textColor="#212121" android:textSize="14sp" android:paddingVertical="8dp" android:paddingHorizontal="14dp" android:background="?android:attr/selectableItemBackground"/>
+                <!-- Menu Statis Atas -->
+                <TextView 
+                    android:id="@+id/menuBiografi" 
+                    android:layout_width="match_parent" 
+                    android:layout_height="wrap_content" 
+                    android:text="Biografi" 
+                    android:drawableStart="@android:drawable/ic_menu_info_details" 
+                    android:drawablePadding="12dp" 
+                    android:textColor="#212121" 
+                    android:textSize="13sp" 
+                    android:paddingVertical="8dp" 
+                    android:paddingHorizontal="16dp" 
+                    android:background="?android:attr/selectableItemBackground"/>
 
-                <!-- Ketebalan garis pembatas diturunkan -->
-                <View android:layout_width="match_parent" android:layout_height="1dp" android:background="#E0E0E0" android:layout_marginVertical="4dp"/>
+                <TextView 
+                    android:id="@+id/menuSosmed" 
+                    android:layout_width="match_parent" 
+                    android:layout_height="wrap_content" 
+                    android:text="Sosial Media" 
+                    android:drawableStart="@android:drawable/ic_menu_share" 
+                    android:drawablePadding="12dp" 
+                    android:textColor="#212121" 
+                    android:textSize="13sp" 
+                    android:paddingVertical="8dp" 
+                    android:paddingHorizontal="16dp" 
+                    android:background="?android:attr/selectableItemBackground"/>
+
+                <TextView 
+                    android:id="@+id/menuLetnan" 
+                    android:layout_width="match_parent" 
+                    android:layout_height="wrap_content" 
+                    android:text="Letnan" 
+                    android:drawableStart="@android:drawable/ic_menu_myplaces" 
+                    android:drawablePadding="12dp" 
+                    android:textColor="#212121" 
+                    android:textSize="13sp" 
+                    android:paddingVertical="8dp" 
+                    android:paddingHorizontal="16dp" 
+                    android:background="?android:attr/selectableItemBackground"/>
+                
+                <TextView 
+                    android:id="@+id/menuYayasan" 
+                    android:layout_width="match_parent" 
+                    android:layout_height="wrap_content" 
+                    android:text="Yayasan" 
+                    android:drawableStart="@android:drawable/ic_menu_manage" 
+                    android:drawablePadding="12dp" 
+                    android:textColor="#212121" 
+                    android:textSize="13sp" 
+                    android:paddingVertical="8dp" 
+                    android:paddingHorizontal="16dp" 
+                    android:background="?android:attr/selectableItemBackground"/>
+
+                <View 
+                    android:layout_width="match_parent" 
+                    android:layout_height="1dp" 
+                    android:background="#E0E0E0" 
+                    android:layout_marginVertical="4dp"/>
                 
                 <TextView
                     android:layout_width="match_parent"
@@ -318,7 +403,6 @@
                     android:paddingVertical="6dp"
                     android:textSize="12sp"/>
 
-                <!-- Pipa kategori dinamis merapat -->
                 <LinearLayout
                     android:id="@+id/wadahKategoriDinamis"
                     android:layout_width="match_parent"
@@ -330,4 +414,5 @@
 
         </ScrollView>
     </LinearLayout>
+
 </androidx.drawerlayout.widget.DrawerLayout>

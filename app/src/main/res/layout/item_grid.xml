@@ -1,149 +1,156 @@
 <?xml version="1.0" encoding="utf-8"?>
-<RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android"
+<com.google.android.material.card.MaterialCardView 
+    xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent"
-    android:layout_height="120dp"
-    android:layout_margin="2dp"
-    android:background="@drawable/bg_border_buku"
-    android:padding="6dp">
+    android:layout_height="124dp"
+    android:layout_margin="4dp"
+    app:cardBackgroundColor="#FFFFFF"
+    app:cardCornerRadius="8dp"
+    app:cardElevation="1dp"
+    app:strokeColor="#E0E6E5"
+    app:strokeWidth="1dp">
 
-    <!-- HEADER MINIATUR -->
-    <LinearLayout
-        android:id="@+id/blokHeaderGrid"
+    <RelativeLayout
         android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:orientation="horizontal"
-        android:gravity="center_vertical">
-        
-         <ImageView
-            android:id="@+id/imgGridProfil"
-            android:layout_width="20dp"
-            android:layout_height="20dp"
-            android:src="@drawable/profil_abah"
-            android:scaleType="centerCrop"/>
+        android:layout_height="match_parent"
+        android:padding="8dp">
 
+        <!-- HEADER MINIATUR -->
         <LinearLayout
-            android:layout_width="0dp"
-            android:layout_weight="1"
+            android:id="@+id/blokHeaderGrid"
+            android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:orientation="vertical"
-            android:layout_marginStart="6dp">
-            
+            android:orientation="horizontal"
+            android:gravity="center_vertical">
+
+            <!-- FOTO PROFIL BULAT -->
+            <com.google.android.material.imageview.ShapeableImageView
+                android:id="@+id/imgGridProfil"
+                android:layout_width="22dp"
+                android:layout_height="22dp"
+                android:src="@drawable/profil_abah"
+                android:scaleType="centerCrop"
+                app:shapeAppearanceOverlay="@style/ShapeAppearance.MaterialComponents.Users.Circle" />
+
+            <LinearLayout
+                android:layout_width="0dp"
+                android:layout_weight="1"
+                android:layout_height="wrap_content"
+                android:orientation="vertical"
+                android:layout_marginStart="8dp">
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="Fatwa Kehidupan"
+                    android:textStyle="bold"
+                    android:textColor="#004D40"
+                    android:textSize="9.5sp" />
+
+                <!-- SUB-INFO: TANGGAL & KATEGORI (WARNA LEMBUT) -->
+                <LinearLayout
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:orientation="horizontal"
+                    android:gravity="center_vertical"
+                    android:layout_marginTop="1dp">
+
+                    <TextView
+                        android:id="@+id/txtGridTanggal"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="2026-05-31"
+                        android:textSize="7.5sp"
+                        android:textColor="#757575" />
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text=" • "
+                        android:textSize="7.5sp"
+                        android:textColor="#B0BEC5" />
+
+                    <!-- KATEGORI: Warna merah disoftkan menjadi Terracotta/Muted Red -->
+                    <TextView
+                        android:id="@+id/txtGridKategori"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="Zuhri Formalism"
+                        android:textColor="#C62828"
+                        android:textStyle="bold"
+                        android:textSize="7.5sp"
+                        android:maxLines="1"
+                        android:ellipsize="end" />
+                </LinearLayout>
+            </LinearLayout>
+        </LinearLayout>
+
+        <!-- KONTEN TENGAH (BERNAFAS TANPA GARIS PEMBATAS) -->
+        <TextView
+            android:id="@+id/txtGridCuplikan"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_below="@id/blokHeaderGrid"
+            android:layout_above="@+id/blokFooterGrid"
+            android:text="Cuplikan teks fatwa atau status..."
+            android:textSize="9.5sp"
+            android:textColor="#37474F"
+            android:maxLines="3"
+            android:ellipsize="end"
+            android:layout_marginTop="6dp"
+            android:layout_marginBottom="4dp"
+            android:lineSpacingExtra="1.5dp" />
+
+        <!-- FOOTER MINIATUR -->
+        <LinearLayout
+            android:id="@+id/blokFooterGrid"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_alignParentBottom="true"
+            android:orientation="horizontal"
+            android:gravity="center_vertical">
+
+            <LinearLayout
+                android:layout_width="0dp"
+                android:layout_weight="1"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal"
+                android:gravity="center_vertical">
+                <ImageView android:layout_width="9dp" android:layout_height="9dp" android:src="@android:drawable/ic_menu_mylocation" app:tint="#B0BEC5"/>
+                <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="SanFK" android:textColor="#90A4AE" android:textSize="7.5sp" android:layout_marginStart="2dp"/>
+            </LinearLayout>
+
+            <LinearLayout
+                android:layout_width="0dp"
+                android:layout_weight="1"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal"
+                android:gravity="center_vertical">
+                <ImageView android:layout_width="9dp" android:layout_height="9dp" app:srcCompat="@drawable/logo_saung" app:tint="#B0BEC5"/>
+                <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Saung" android:textColor="#90A4AE" android:textSize="7.5sp" android:layout_marginStart="2dp"/>
+            </LinearLayout>
+
+            <LinearLayout
+                android:layout_width="0dp"
+                android:layout_weight="1"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal"
+                android:gravity="center_vertical">
+                <ImageView android:layout_width="9dp" android:layout_height="9dp" app:srcCompat="@drawable/ic_launcher_zf" app:tint="#B0BEC5"/>
+                <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="ZF" android:textColor="#90A4AE" android:textSize="7.5sp" android:layout_marginStart="2dp"/>
+            </LinearLayout>
+
+            <!-- NOMOR INDEKS (MENYATU DI BARIS FOOTER) -->
             <TextView
+                android:id="@+id/txtIndeksGrid"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:text="Fatwa Kehidupan"
-                android:textStyle="bold"
-                android:textColor="#004D40"
-                android:textSize="9sp"/>
-                
-            <!-- KALIBRASI TEKS: Tanggal dan Kategori disusun vertikal (atas-bawah) -->
-            <TextView
-                android:id="@+id/txtGridTanggal"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:text="Tanggal"
+                android:text="#2"
                 android:textSize="8sp"
-                android:textColor="#424242"/>
-            
-            <TextView
-                android:id="@+id/txtGridKategori"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:text="Kategori"
-                android:textColor="#D32F2F"
                 android:textStyle="bold"
-                android:textSize="8sp"
-                android:maxLines="2"
-                android:ellipsize="end"
-                android:layout_marginTop="1dp"/>
-        </LinearLayout>
-    </LinearLayout>
-
-    <View 
-        android:id="@+id/garisAtas"
-        android:layout_width="match_parent" 
-        android:layout_height="1dp" 
-        android:background="#E0E0E0"
-        android:layout_below="@id/blokHeaderGrid"
-        android:layout_marginTop="4dp"/>
-
-    <!-- KONTEN TENGAH -->
-    <TextView
-        android:id="@+id/txtGridCuplikan"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:layout_below="@id/garisAtas"
-        android:layout_above="@+id/garisBawah"
-        android:text="Cuplikan teks..."
-        android:textSize="10sp"
-        android:textColor="#212121"
-        android:maxLines="3"
-        android:ellipsize="end"
-        android:layout_marginTop="4dp"
-        android:layout_marginBottom="4dp"
-        android:lineSpacingExtra="2dp"/>
-
-    <View 
-        android:id="@+id/garisBawah"
-        android:layout_width="match_parent" 
-        android:layout_height="1dp" 
-        android:background="#E0E0E0"
-        android:layout_above="@+id/blokFooterGrid"
-        android:layout_marginBottom="4dp"/>
-        
-    <!-- FOOTER MINIATUR -->
-    <LinearLayout
-        android:id="@+id/blokFooterGrid"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:layout_alignParentBottom="true"
-        android:orientation="horizontal"
-        android:gravity="center_vertical"
-        android:baselineAligned="false">
-        
-        <LinearLayout
-            android:layout_width="0dp"
-            android:layout_weight="1"
-            android:layout_height="wrap_content"
-            android:orientation="horizontal"
-            android:gravity="center_vertical">
-            <ImageView android:layout_width="10dp" android:layout_height="10dp" android:src="@android:drawable/ic_menu_mylocation" app:tint="#A0A0A0"/>
-            <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="SanFK" android:textColor="#A0A0A0" android:textSize="8sp" android:layout_marginStart="2dp"/>
+                android:textColor="#B0BEC5" />
         </LinearLayout>
 
-        <LinearLayout
-            android:layout_width="0dp"
-            android:layout_weight="1"
-            android:layout_height="wrap_content"
-            android:orientation="horizontal"
-            android:gravity="center_vertical">
-            <ImageView android:layout_width="10dp" android:layout_height="10dp" app:srcCompat="@drawable/logo_saung"/>
-            <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Saung" android:textColor="#A0A0A0" android:textSize="8sp" android:layout_marginStart="2dp"/>
-        </LinearLayout>
-
-        <LinearLayout
-            android:layout_width="0dp"
-            android:layout_weight="1"
-            android:layout_height="wrap_content"
-            android:orientation="horizontal"
-            android:gravity="center_vertical">
-            <ImageView android:layout_width="10dp" android:layout_height="10dp" app:srcCompat="@drawable/ic_launcher_zf"/>
-            <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="ZF" android:textColor="#A0A0A0" android:textSize="8sp" android:layout_marginStart="2dp"/>
-        </LinearLayout>
-    </LinearLayout>
-
-    <!-- INJEKSI TERMINAL INDEKS (ABSOLUT KANAN BAWAH) -->
-    <TextView
-        android:id="@+id/txtIndeksGrid"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:layout_alignParentBottom="true"
-        android:layout_alignParentEnd="true"
-        android:textSize="9sp"
-        android:textStyle="bold"
-        android:textColor="#9E9E9E" 
-        android:background="#FFFFFF"
-        android:paddingStart="4dp" />
-
-</RelativeLayout>
+    </RelativeLayout>
+</com.google.android.material.card.MaterialCardView>

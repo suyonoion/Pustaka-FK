@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <style name="ShapeAppearance.MaterialComponents.Users.Circle" parent="">
+        <item name="cornerSize">50%</item>
+    </style>
+</resources>

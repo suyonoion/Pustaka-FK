@@ -1,0 +1,46 @@
+<?xml version="1.0" encoding="utf-8"?>
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:aapt="http://schemas.android.com/aapt"
+    android:width="280dp"
+    android:height="180dp"
+    android:viewportWidth="280"
+    android:viewportHeight="180">
+
+    <!-- 1. GRADIEN DASAR: BIRU FB KE HIJAU PEKAT -->
+    <path android:pathData="M0,0h280v180h-280z">
+        <aapt:attr name="android:fillColor">
+            <gradient
+                android:startX="0"
+                android:startY="0"
+                android:endX="280"
+                android:endY="180"
+                android:type="linear">
+                <item android:color="#00251A" android:offset="0.0" />
+                <item android:color="#004D40" android:offset="0.5" />
+                <item android:color="#1877F2" android:offset="1.0" />
+            </gradient>
+        </aapt:attr>
+    </path>
+
+    <!-- 2. AKSEN LOGO 'f' SIMBOLIS DIGITAL (SISI KANAN ATAS) -->
+    <path
+        android:fillColor="#15FFFFFF"
+        android:pathData="M230,20 h20 v20 h-20 z M210,40 h20 v20 h-20 z M230,40 h20 v20 h-20 z M230,60 h20 v20 h-20 z M230,80 h20 v20 h-20 z" />
+
+    <!-- 3. GARIS KISI MATRIKS DATA (SIMBOL ARSIP DIGITAL) -->
+    <path
+        android:strokeWidth="0.8"
+        android:strokeColor="#20FFFFFF"
+        android:pathData="
+            M0,30 H280 M0,60 H280 M0,90 H280 M0,120 H280 M0,150 H280
+            M40,0 V180 M80,0 V180 M120,0 V180 M160,0 V180 M200,0 V180 M240,0 V180" />
+
+    <!-- 4. ORNAMEN ELEMEN BULAT SIMPUL JARINGAN -->
+    <path
+        android:fillColor="#30FFFFFF"
+        android:pathData="
+            M120,30 m-3,0 a3,3 0 1,0 6,0 a3,3 0 1,0 -6,0
+            M200,90 m-4,0 a4,4 0 1,0 8,0 a4,4 0 1,0 -8,0
+            M80,120 m-3,0 a3,3 0 1,0 6,0 a3,3 0 1,0 -6,0" />
+
+</vector>
