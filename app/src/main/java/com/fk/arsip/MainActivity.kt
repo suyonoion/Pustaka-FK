@@ -305,7 +305,7 @@ class MainActivity : AppCompatActivity() {
             // KONDISI A: Kategori Tunggal (Tanpa Anak) -> Pasang Ikon Folder Bawaan Android
             if (daftarCabang.size == 1 && daftarCabang[0].first == namaInduk) {
                 barisInduk.setCompoundDrawablesWithIntrinsicBounds(
-                    android.R.drawable.ic_menu_archive, 0, 0, 0
+                    android.R.drawable.ic_menu_sort_by_size, 0, 0, 0
                 )
                 barisInduk.setOnClickListener { v ->
                     sorotMenuTerpilih(v)
