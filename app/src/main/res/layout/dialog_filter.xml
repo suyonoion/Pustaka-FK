@@ -1,0 +1,89 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:orientation="vertical"
+    android:padding="20dp"
+    android:background="#FAFAFA">
+
+    <TextView
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="PARAMETER PENYARINGAN"
+        android:textSize="14sp"
+        android:textStyle="bold"
+        android:textColor="#004D40"
+        android:layout_marginBottom="16dp" />
+
+    <TextView
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="Urutan Waktu (Timeline):"
+        android:textSize="12sp"
+        android:textColor="#555555" />
+
+    <RadioGroup
+        android:id="@+id/rgUrutan"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:layout_marginBottom="16dp">
+
+        <RadioButton
+            android:id="@+id/rbTerbaru"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Terbaru (Default)"
+            android:checked="true"
+            android:textSize="12sp" />
+
+        <RadioButton
+            android:id="@+id/rbTerlama"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="24dp"
+            android:text="Terlama"
+            android:textSize="12sp" />
+    </RadioGroup>
+
+    <TextView
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="Kategori Status:"
+        android:textSize="12sp"
+        android:textColor="#555555" />
+
+    <Spinner
+        android:id="@+id/spinnerKategori"
+        android:layout_width="match_parent"
+        android:layout_height="45dp"
+        android:layout_marginTop="8dp"
+        android:layout_marginBottom="24dp"
+        android:background="#EFEFEF" />
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:gravity="end">
+
+        <Button
+            android:id="@+id/btnResetFilter"
+            android:layout_width="wrap_content"
+            android:layout_height="40dp"
+            android:text="RESET KUNCI"
+            android:textSize="11sp"
+            android:textColor="#555555"
+            android:backgroundTint="#D6D6D6"
+            android:layout_marginEnd="12dp" />
+
+        <Button
+            android:id="@+id/btnTerapkanFilter"
+            android:layout_width="wrap_content"
+            android:layout_height="40dp"
+            android:text="TERAPKAN INJEKSI"
+            android:textSize="11sp"
+            android:textColor="#FFFFFF"
+            android:backgroundTint="#004D40" />
+    </LinearLayout>
+</LinearLayout>

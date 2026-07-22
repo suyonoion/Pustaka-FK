@@ -81,6 +81,7 @@ class MainActivity : AppCompatActivity() {
     private lateinit var bukuAdapter: BukuAdapter
     private lateinit var recyclerTimeline: RecyclerView
     private lateinit var kontainerJalurKanan: FrameLayout
+    private lateinit var btnFilterSort: ImageButton
 
     private var daftarArsipAktif: List<ArsipEntity> = listOf()
     private var titikNolJendela = 0
@@ -100,11 +101,16 @@ class MainActivity : AppCompatActivity() {
         findViewById<android.widget.ImageView>(R.id.btnMenuDrawer).setOnClickListener {
             drawerLayout.openDrawer(androidx.core.view.GravityCompat.START)
         }
+        
 
         recyclerGridMode = findViewById(R.id.recyclerGridMode)
         wadahModeBuku = findViewById(R.id.wadahModeBuku)
         proyektorBuku = findViewById(R.id.proyektorBuku)
         edtPencarian = findViewById<SearchView>(R.id.edtPencarian)
+        btnFilterSort = findViewById(R.id.btnFilterSort)
+        btnFilterSort.setOnClickListener {
+        bukaKatupDialogFilter()
+        }
         panelStatusPencarian = findViewById(R.id.panelStatusPencarian)
         loadingPencarian = findViewById(R.id.loadingPencarian)
         txtStatusPencarian = findViewById(R.id.txtStatusPencarian)
@@ -207,6 +213,97 @@ class MainActivity : AppCompatActivity() {
         eksekusiPabrikData()
     }
     
+    private fun bukaKatupDialogFilter() {
+    if (isMesinSibuk) {
+        Toast.makeText(this, "Mesin sedang bekerja, tahan instruksi.", Toast.LENGTH_SHORT).show()
+        return
+    }
+
+    val mesinDialog = com.google.android.material.bottomsheet.BottomSheetDialog(this)
+    val panelDialog = layoutInflater.inflate(R.layout.dialog_filter, null)
+    mesinDialog.setContentView(panelDialog)
+
+    val rgUrutan = panelDialog.findViewById<android.widget.RadioGroup>(R.id.rgUrutan)
+    val rbTerlama = panelDialog.findViewById<android.widget.RadioButton>(R.id.rbTerlama)
+    val spinnerKategori = panelDialog.findViewById<android.widget.Spinner>(R.id.spinnerKategori)
+    val btnTerapkan = panelDialog.findViewById<android.widget.Button>(R.id.btnTerapkanFilter)
+    val btnReset = panelDialog.findViewById<android.widget.Button>(R.id.btnResetFilter)
+
+    // Tarik daftar kategori dinamis dari Cetak Biru untuk menghindari Hardcoding murni
+    val daftarKategoriBaku = mutableListOf("Semua Kategori")
+    CetakBiruKategori.MATRIKS_UTAMA.forEach { induk ->
+        if (induk.second.size == 1 && induk.second[0].first == induk.first) {
+            daftarKategoriBaku.add(induk.first)
+        } else {
+            induk.second.forEach { anak -> daftarKategoriBaku.add(anak.first) }
+        }
+    }
+
+    val adapterSpinner = android.widget.ArrayAdapter(this, android.R.layout.simple_spinner_dropdown_item, daftarKategoriBaku)
+    spinnerKategori.adapter = adapterSpinner
+
+    btnTerapkan.setOnClickListener {
+        val urutkanTerlama = rbTerlama.isChecked
+        val kategoriTerpilih = spinnerKategori.selectedItem.toString()
+        mesinDialog.dismiss()
+        eksekusiSaringanKombinasi(kategoriTerpilih, urutkanTerlama)
+    }
+
+    btnReset.setOnClickListener {
+        mesinDialog.dismiss()
+        eksekusiSaringanKombinasi("Semua Kategori", false)
+    }
+
+    mesinDialog.show()
+}
+
+private fun eksekusiSaringanKombinasi(kategori: String, urutTerlama: Boolean) {
+    if (isMesinSibuk) return
+    isMesinSibuk = true
+    
+    tampilkanIndikator("Mereset jalur dan menyaring kargo...", true)
+
+    lifecycleScope.launch(Dispatchers.IO) {
+        val lenganRobot = ArsipDatabase.operasikanMesin(this@MainActivity).arsipDao()
+        
+        // Pemilah Arah Kueri
+        val kargoSaringan = if (kategori == "Semua Kategori") {
+            if (urutTerlama) lenganRobot.tarikSemuaArsipTerlama() else lenganRobot.tarikSemuaArsip()
+        } else {
+            if (urutTerlama) lenganRobot.saringBerdasarkanKategoriTerlama(kategori) else lenganRobot.saringBerdasarkanKolomKategori(kategori)
+        }
+
+        withContext(Dispatchers.Main) {
+            isSearchMode = false
+            modeKategoriAktif = (kategori != "Semua Kategori")
+            
+            // Bersihkan tangki pencarian
+            edtPencarian.setQuery("", false)
+            edtPencarian.clearFocus()
+
+            // Injeksi ulang katup antarmuka ke mode default
+            wadahModeBuku.visibility = View.GONE
+            recyclerGridMode.visibility = View.VISIBLE
+            kontainerJalurKanan.visibility = View.VISIBLE
+            recyclerTimeline.visibility = View.VISIBLE
+
+            val indikatorTeks = if (kategori == "Semua Kategori") {
+                "Semua Arsip (${kargoSaringan.size} status)"
+            } else {
+                "$kategori (${kargoSaringan.size} status)"
+            }
+            
+            tampilkanIndikator(indikatorTeks, false)
+            panelStatusPencarian.visibility = View.VISIBLE
+
+            // Dorong muatan baru ke rantai grid dan buku
+            pompaDataKeLayar(kargoSaringan)
+            isMesinSibuk = false
+        }
+    }
+}
+
+    
     private fun perbaruiPanelTelemetri(fase: FaseInjeksi, persentase: Int, volumeSelesai: Int, volumeTotal: Int) {
     val panelUtama = findViewById<ConstraintLayout>(R.id.panelInisialisasiUtama)
     val teksStatus = findViewById<TextView>(R.id.teksStatusFase)
@@ -308,8 +405,7 @@ class MainActivity : AppCompatActivity() {
             val wadahAnak = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
             visibility = View.GONE
-            // Pasang background garis menyatu
-            setBackgroundResource(R.drawable.bg_nested_line)
+            setBackgroundColor(android.graphics.Color.TRANSPARENT)
             }
 
             for (cabang in daftarCabang) {
