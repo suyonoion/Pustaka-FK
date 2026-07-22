@@ -22,7 +22,7 @@
         <TextView
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="@strings/nama_app"
+            android:text="@string/nama_app"
             android:textSize="24sp"
             android:textStyle="bold"
             android:textColor="#004D40"
@@ -31,14 +31,14 @@
         <TextView
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="nama_app_note"
+            android:text="@string/nama_app_note"
             android:textSize="16sp"
             android:textColor="#666666" />
 
         <TextView
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="@strings/versi_app"
+            android:text="@string/versi_app"
             android:textSize="12sp"
             android:textColor="#999999"
             android:layout_marginTop="8dp" />
@@ -52,7 +52,7 @@
         <TextView
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:text="@strings/desc_app"
+            android:text="@string/desc_app"
             android:textSize="14sp"
             android:textColor="#333333"
             android:lineSpacingExtra="4dp"
@@ -67,7 +67,7 @@
         <TextView
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="Pusat Operasional:"
+            android:text="Pusat Operasional :"
             android:textSize="12sp"
             android:textStyle="bold"
             android:textColor="#004D40" />
@@ -75,7 +75,7 @@
         <TextView
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="@strings/pusat_operasional"
+            android:text="string/pusat_operasional"
             android:textSize="14sp"
             android:textColor="#424242"
             android:textAlignment="center"

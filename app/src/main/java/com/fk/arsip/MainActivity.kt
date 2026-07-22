@@ -265,7 +265,7 @@ class MainActivity : AppCompatActivity() {
         // Variabel penampung View yang sedang aktif/terpilih
     private var viewAktifTerpilih: View? = null
 
-        private fun inisialisasiKategoriDrawer() {
+    private fun inisialisasiKategoriDrawer() {
     val wadah = findViewById<LinearLayout>(R.id.wadahKategoriDinamis)
     wadah.removeAllViews()
 
@@ -351,9 +351,6 @@ class MainActivity : AppCompatActivity() {
         }
     }
 }
-
-
-
     // FUNGSI INJEKSI WARNA AKTIF PADA MENU YANG DITEKAN
     private fun sorotMenuTerpilih(viewBaru: View) {
         // Reset warna item sebelumnya
@@ -374,7 +371,6 @@ class MainActivity : AppCompatActivity() {
         viewAktifTerpilih = viewBaru
     }
 
-  
     private fun eksekusiSaringanKategori(labelKategori: String) {
         if (isMesinSibuk) {
             Toast.makeText(this, "Sistem sedang merakit data. Harap tunggu.", Toast.LENGTH_SHORT).show()
@@ -444,7 +440,6 @@ class MainActivity : AppCompatActivity() {
         .show()
 }
 
-
     private fun eksekusiPabrikData() {
     lifecycleScope.launch(Dispatchers.IO) {
         delay(1500)
@@ -493,7 +488,6 @@ class MainActivity : AppCompatActivity() {
         }
     }
 }
-
 
     private fun cariPipaAktif(downloadManager: DownloadManager): Long {
         val query = DownloadManager.Query().setFilterByStatus(
@@ -672,7 +666,6 @@ class MainActivity : AppCompatActivity() {
         }
     }
 }
-
 
     // SIRKUIT BARU: Antena Pemantau Sinyal Kerja WorkManager Latar Belakang
     private fun jalankanMesinInjeksiOtonom(jalurFileJson: String) {
@@ -937,19 +930,32 @@ private fun eksekusiLogikaPencarian(kataKunciMentah: String?) {
     bukuAdapter.perbaruiData(fragmenData)
     proyektorBuku.setCurrentItem(posisiRelatif, false)
 }
-private fun muatDataAwalKeSasis(daftarArsipGlobal: List<ArsipEntity>) {
+    private fun muatDataAwalKeSasis(daftarArsipGlobal: List<ArsipEntity>) {
     if (daftarArsipGlobal.isNotEmpty()) {
-        val tanggalTerbaru = daftarArsipGlobal.first().tanggalBaca.substringBefore(" ")
-        val tanggalTerlama = daftarArsipGlobal.last().tanggalBaca.substringBefore(" ")
+        // Ambil bagian tanggal saja (tanpa jam)
+        val tglMentah = daftarArsipGlobal.first().tanggalBaca.substringBefore(" ")
+        
+        // Pecah string "YYYY-MM-DD" menjadi array
+        val elemen = tglMentah.split("-")
+        
+        // Ubah urutan menjadi "DD/MM/YYYY" jika format mentahnya valid (3 segmen)
+        val tanggalTerbaruFormatted = if (elemen.size == 3) {
+            "${elemen[2]}/${elemen[1]}/${elemen[0]}"
+        } else {
+            tglMentah
+        }
+
         val totalVolume = daftarArsipGlobal.size
 
         panelStatusPencarian.visibility = View.VISIBLE
         loadingPencarian.visibility = View.GONE
-        txtStatusPencarian.text = "Arsip $tanggalTerlama s.d $tanggalTerbaru Total $totalVolume Status"
+        
+        // Render akhir menggunakan format DD/MM/YYYY
+        txtStatusPencarian.text = "Arsip 24/03/2014 s.d $tanggalTerbaruFormatted Total $totalVolume Status"
     } else {
         panelStatusPencarian.visibility = View.GONE
     }
 }
 
-
 }
+

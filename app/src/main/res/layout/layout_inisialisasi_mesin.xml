@@ -8,7 +8,79 @@
     android:background="#004D40"
     android:elevation="10dp">
 
-    <!-- SEKTOR RANTAI KOMANDO -->
+    <!-- SEKTOR REAKTOR UTAMA (Dikunci Simetris di Tengah Layar) -->
+    <!-- app:layout_constraintVertical_bias="0.45" menarik objek 5% ke atas dari pusat absolut untuk keseimbangan mata -->
+       <!-- SEKTOR REAKTOR UTAMA (Ditumpu lebih ke atas untuk memberi ruang) -->
+    <ImageView
+        android:id="@+id/indikatorVisualMesin"
+        android:layout_width="160dp"
+        android:layout_height="160dp"
+        android:src="@drawable/img_1"
+        app:layout_constraintTop_toTopOf="parent"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintVertical_bias="0.25" /> 
+
+    <!-- KATUP ISOLATOR (Digantung di bawah Reaktor Utama) -->
+    <ProgressBar
+        android:id="@+id/lingkarPersentaseUtama"
+        style="?android:attr/progressBarStyleHorizontal"
+        android:layout_width="150dp"
+        android:layout_height="150dp"
+        android:progressDrawable="@drawable/desain_lingkar_progres"
+        android:max="100"
+        android:progress="0"
+        android:visibility="gone" 
+        app:layout_constraintTop_toBottomOf="@id/indikatorVisualMesin"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintEnd_toEndOf="parent"
+        android:layout_marginTop="32dp"/>
+
+    <TextView
+        android:id="@+id/teksPersentaseSentral"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="0%"
+        android:textColor="#E0F2F1"
+        android:textSize="32sp"
+        android:textStyle="bold"
+        android:visibility="gone"
+        app:layout_constraintTop_toTopOf="@id/lingkarPersentaseUtama"
+        app:layout_constraintBottom_toBottomOf="@id/lingkarPersentaseUtama"
+        app:layout_constraintStart_toStartOf="@id/lingkarPersentaseUtama"
+        app:layout_constraintEnd_toEndOf="@id/lingkarPersentaseUtama"/>
+
+    <!-- IDENTITAS TELEMETRI (Digantung di bawah Katup Isolator) -->
+    <TextView
+        android:id="@+id/teksJudulUtama"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="PUSTAKA FK"
+        android:textColor="#FFFFFF"
+        android:textSize="22sp"
+        android:textStyle="bold"
+        android:letterSpacing="0.06"
+        android:gravity="center"
+        app:layout_constraintTop_toBottomOf="@id/lingkarPersentaseUtama"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintEnd_toEndOf="parent"
+        android:layout_marginTop="28dp"/>
+
+    <!-- IDENTITAS SEKUNDER -->
+    <TextView
+        android:id="@+id/teksTelemetriData"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="Arsip Status Digital Fatwa Kehidupan"
+        android:textColor="#80CBC4" 
+        android:textSize="13sp"
+        android:gravity="center"
+        app:layout_constraintTop_toBottomOf="@id/teksJudulUtama"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintEnd_toEndOf="parent"
+        android:layout_marginTop="6dp"/>
+            <!-- SEKTOR RANTAI KOMANDO -->
     <LinearLayout
         android:id="@+id/kompartemenFase"
         android:layout_width="match_parent"
@@ -29,79 +101,4 @@
             android:textStyle="bold"
             android:gravity="center" />
     </LinearLayout>
-
-    <!-- SEKTOR REAKTOR UTAMA (Dikunci Simetris di Tengah Layar) -->
-    <!-- app:layout_constraintVertical_bias="0.45" menarik objek 5% ke atas dari pusat absolut untuk keseimbangan mata -->
-    <ImageView
-        android:id="@+id/indikatorVisualMesin"
-        android:layout_width="160dp"
-        android:layout_height="160dp"
-        android:src="@drawable/img_1"
-        app:layout_constraintTop_toTopOf="parent"
-        app:layout_constraintBottom_toBottomOf="parent"
-        app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintEnd_toEndOf="parent"
-        app:layout_constraintVertical_bias="0.45" />
-
-    <!-- KATUP ISOLATOR TERPASANG (DISEMBUNYIKAN) -->
-    <!-- Posisi jangkar disatukan dengan indikatorVisualMesin agar tidak merusak formasi ruang -->
-    <ProgressBar
-        android:id="@+id/lingkarPersentaseUtama"
-        style="?android:attr/progressBarStyleHorizontal"
-        android:layout_width="150dp"
-        android:layout_height="150dp"
-        android:progressDrawable="@drawable/desain_lingkar_progres"
-        android:max="100"
-        android:progress="0"
-        android:visibility="gone" 
-        app:layout_constraintTop_toTopOf="@id/indikatorVisualMesin"
-        app:layout_constraintBottom_toBottomOf="@id/indikatorVisualMesin"
-        app:layout_constraintStart_toStartOf="@id/indikatorVisualMesin"
-        app:layout_constraintEnd_toEndOf="@id/indikatorVisualMesin"/>
-
-    <TextView
-        android:id="@+id/teksPersentaseSentral"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:text="0%"
-        android:textColor="#E0F2F1"
-        android:textSize="32sp"
-        android:textStyle="bold"
-        android:visibility="gone"
-        app:layout_constraintTop_toTopOf="@id/lingkarPersentaseUtama"
-        app:layout_constraintBottom_toBottomOf="@id/lingkarPersentaseUtama"
-        app:layout_constraintStart_toStartOf="@id/lingkarPersentaseUtama"
-        app:layout_constraintEnd_toEndOf="@id/lingkarPersentaseUtama"/>
-
-    <!-- IDENTITAS TELEMETRI (Digantung sejajar di bawah Reaktor Utama) -->
-    <TextView
-        android:id="@+id/teksJudulUtama"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:text="PUSTAKA FK"
-        android:textColor="#FFFFFF"
-        android:textSize="22sp"
-        android:textStyle="bold"
-        android:letterSpacing="0.06"
-        android:gravity="center"
-        app:layout_constraintTop_toBottomOf="@id/indikatorVisualMesin"
-        app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintEnd_toEndOf="parent"
-        android:layout_marginTop="28dp"/>
-
-    <!-- IDENTITAS SEKUNDER (Deskripsi Fungsi) -->
-    <!-- ID lama dipertahankan agar sirkuit Kotlin tidak terputus -->
-    <TextView
-        android:id="@+id/teksTelemetriData"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:text="Arsip Status Digital Fatwa Kehidupan"
-        android:textColor="#80CBC4" 
-        android:textSize="13sp"
-        android:gravity="center"
-        app:layout_constraintTop_toBottomOf="@id/teksJudulUtama"
-        app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintEnd_toEndOf="parent"
-        android:layout_marginTop="6dp"/>
-
 </androidx.constraintlayout.widget.ConstraintLayout>

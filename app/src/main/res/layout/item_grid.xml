@@ -86,8 +86,14 @@
                 </LinearLayout>
             </LinearLayout>
         </LinearLayout>
+   <View 
+        android:id="@+id/garisAtas"
+        android:layout_width="match_parent" 
+        android:layout_height="1dp" 
+        android:background="#E0E0E0"
+        android:layout_below="@id/blokHeaderGrid"
+        android:layout_marginTop="4dp"/>
 
-        <!-- KONTEN TENGAH (BERNAFAS TANPA GARIS PEMBATAS) -->
         <TextView
             android:id="@+id/txtGridCuplikan"
             android:layout_width="match_parent"
@@ -103,6 +109,14 @@
             android:layout_marginTop="6dp"
             android:layout_marginBottom="4dp"
             android:lineSpacingExtra="1.5dp" />
+            
+               <View 
+        android:id="@+id/garisBawah"
+        android:layout_width="match_parent" 
+        android:layout_height="1dp" 
+        android:background="#E0E0E0"
+        android:layout_above="@+id/blokFooterGrid"
+        android:layout_marginBottom="4dp"/>
 
         <!-- FOOTER MINIATUR -->
         <LinearLayout
