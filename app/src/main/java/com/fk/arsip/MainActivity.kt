@@ -306,8 +306,10 @@ class MainActivity : AppCompatActivity() {
             )
             
             val wadahAnak = LinearLayout(this).apply {
-                orientation = LinearLayout.VERTICAL
-                visibility = View.GONE
+            orientation = LinearLayout.VERTICAL
+            visibility = View.GONE
+            // Pasang background garis menyatu
+            setBackgroundResource(R.drawable.bg_nested_line)
             }
 
             for (cabang in daftarCabang) {
@@ -629,18 +631,25 @@ class MainActivity : AppCompatActivity() {
                 val statusIndex = cursor.getColumnIndex(DownloadManager.COLUMN_STATUS)
                 val status = cursor.getInt(statusIndex)
                 
-                if (status == DownloadManager.STATUS_SUCCESSFUL) {
-                    isMengunduh = false 
-                } else if (status == DownloadManager.STATUS_FAILED) {
-                    // Jika kegagalan sistem bersifat mutlak (bukan sekadar kehilangan sinyal sementara)
-                    isMengunduh = false
-                    withContext(Dispatchers.Main) {
-                        findViewById<ConstraintLayout>(R.id.panelInisialisasiUtama).visibility = View.GONE
-                        isMesinSibuk = false
-                        Toast.makeText(this@MainActivity, "Kargo rusak fatal. Mengulang proses dari awal...", Toast.LENGTH_SHORT).show()
-                        eksekusiPabrikData()
-                    }
-                } else {
+                // Perubahan pada loop pantauTekananUnduhan
+if (status == DownloadManager.STATUS_SUCCESSFUL) {
+    isMengunduh = false 
+} else if (status == DownloadManager.STATUS_PAUSED || !isJaringanTersedia()) {
+    // TAHAN SISTEM DI FASE_4 SAAT PAUSE / SINYAL PUTUS
+    withContext(Dispatchers.Main) {
+        perbaruiPanelTelemetri(FaseInjeksi.FASE_4, 0, 0, 0)
+    }
+    delay(2000)
+} else if (status == DownloadManager.STATUS_FAILED) {
+    isMengunduh = false
+    withContext(Dispatchers.Main) {
+        // Jangan buka halaman utama kosong, paksa ke FASE_4
+        perbaruiPanelTelemetri(FaseInjeksi.FASE_4, 0, 0, 0)
+        delay(3000)
+        eksekusiPabrikData() // Coba hubungkan ulang
+    }
+}
+ else {
                     val bytesDownloadedIndex = cursor.getColumnIndex(DownloadManager.COLUMN_BYTES_DOWNLOADED_SO_FAR)
                     val bytesTotalIndex = cursor.getColumnIndex(DownloadManager.COLUMN_TOTAL_SIZE_BYTES)
                     if (bytesDownloadedIndex != -1 && bytesTotalIndex != -1) {

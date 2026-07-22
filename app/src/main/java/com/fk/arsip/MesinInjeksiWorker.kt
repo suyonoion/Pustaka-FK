@@ -107,21 +107,29 @@ while (reader.hasNext()) {
 
     // KALIBRASI AMBANG BATAS: Turunkan ke 500 untuk stabilitas RAM
     if (muatanSementara.size >= 500) {
-        lenganRobot.injeksiMassal(muatanSementara)
-        muatanSementara.clear()
+    // 1. Injeksi ke SQLite (FASE 6)
+    val kalkulasiPersen = ((indeks.toDouble() / estimasiTotalItem.toDouble()) * 100).toInt().coerceAtMost(99)
+    
+    setProgress(workDataOf(
+        "FASE" to 6,
+        "PERSENTASE" to kalkulasiPersen,
+        "INDEKS" to indeks,
+        "TOTAL" to estimasiTotalItem
+    ))
 
-        val kalkulasiPersen = ((indeks.toDouble() / estimasiTotalItem.toDouble()) * 100).toInt().coerceAtMost(99)
-        if (kalkulasiPersen > persentaseLayarTerakhir) {
-            persentaseLayarTerakhir = kalkulasiPersen
-            
-            setProgress(workDataOf(
-                "FASE" to 6,
-                "PERSENTASE" to kalkulasiPersen,
-                "INDEKS" to indeks,
-                "TOTAL" to estimasiTotalItem
-            ))
-        }
-    }
+    lenganRobot.injeksiMassal(muatanSementara)
+    muatanSementara.clear()
+    
+    // 2. Kembalikan Telemetri ke FASE 5 untuk pembacaan batch berikutnya
+    delay(50) // Jeda singkat agar UI sempat merekam indikator FASE 6
+    setProgress(workDataOf(
+        "FASE" to 5,
+        "PERSENTASE" to kalkulasiPersen,
+        "INDEKS" to indeks,
+        "TOTAL" to estimasiTotalItem
+    ))
+}
+
 }
 
 if (muatanSementara.isNotEmpty()) { lenganRobot.injeksiMassal(muatanSementara) }

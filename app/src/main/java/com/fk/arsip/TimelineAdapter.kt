@@ -22,37 +22,39 @@ class TimelineAdapter(
     }
 
     override fun onBindViewHolder(holder: TitikViewHolder, position: Int) {
-        val titik = daftarTitik[position]
-        holder.txtLabel.text = titik.teks
+    val titik = daftarTitik[position]
+    holder.txtLabel.text = titik.teks
 
-        if (titik.tipe == 0) {
-            // KALIBRASI TAHUN: Teks lebih besar, tebal, tanpa warna latar, klik dinonaktifkan
-            holder.txtLabel.textSize = 12f
-            holder.txtLabel.setTextColor(Color.parseColor("#004D40")) 
-            holder.txtLabel.setTypeface(null, android.graphics.Typeface.BOLD)
-            holder.txtLabel.setBackgroundColor(Color.TRANSPARENT)
-            
-            holder.itemView.setOnClickListener(null)
-            holder.itemView.isClickable = false
+    if (titik.tipe == 0) {
+        // TAHUN: Tanpa latar kartu, teks menempel langsung
+        holder.txtLabel.textSize = 11spToPx() // atau set ukuran via sp
+        holder.txtLabel.setTextColor(Color.parseColor("#004D40")) 
+        holder.txtLabel.setTypeface(null, android.graphics.Typeface.BOLD)
+        holder.txtLabel.setBackgroundColor(Color.TRANSPARENT)
+        
+        holder.itemView.setOnClickListener(null)
+        holder.itemView.isClickable = false
+    } else {
+        // BULAN: Kartu warna selang-seling
+        holder.txtLabel.textSize = 10f
+        holder.txtLabel.setTextColor(Color.WHITE)
+        holder.txtLabel.setTypeface(null, android.graphics.Typeface.BOLD)
+        
+        // SUNTIKKAN BACKGROUND DRWAABLE SELANG-SELING
+        if (titik.warnaGenap) {
+            holder.txtLabel.setBackgroundResource(R.drawable.bg_timeline_genap)
         } else {
-            // KALIBRASI BULAN: Teks standar, background selang-seling tipis, klik diaktifkan
-            holder.txtLabel.textSize = 10f
-            holder.txtLabel.setTextColor(Color.parseColor("#555555"))
-            holder.txtLabel.setTypeface(null, android.graphics.Typeface.NORMAL)
-            
-            // Mekanisme Warna Selang-Seling
-            if (titik.warnaGenap) {
-                holder.txtLabel.setBackgroundColor(Color.parseColor("#E0F2F1")) // Hijau sangat pudar
-            } else {
-                holder.txtLabel.setBackgroundColor(Color.parseColor("#FAFAFA")) // Putih keabuan
-            }
-
-            holder.itemView.setOnClickListener {
-                pemicuLompat(titik.indeksTujuan)
-            }
-            holder.itemView.isClickable = true
+            holder.txtLabel.setBackgroundResource(R.drawable.bg_timeline_ganjil)
         }
+
+        holder.itemView.setOnClickListener {
+            pemicuLompat(titik.indeksTujuan)
+        }
+        holder.itemView.isClickable = true
     }
+}
+
+
 
     override fun getItemCount(): Int = daftarTitik.size
 }
