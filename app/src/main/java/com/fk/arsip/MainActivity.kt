@@ -16,6 +16,7 @@ import android.view.inputmethod.EditorInfo
 import android.view.inputmethod.InputMethodManager
 import android.widget.EditText
 import android.widget.ImageView
+import android.widget.ImageButton
 import android.widget.LinearLayout
 import android.widget.RelativeLayout
 import android.widget.FrameLayout
@@ -107,7 +108,7 @@ class MainActivity : AppCompatActivity() {
         wadahModeBuku = findViewById(R.id.wadahModeBuku)
         proyektorBuku = findViewById(R.id.proyektorBuku)
         edtPencarian = findViewById<SearchView>(R.id.edtPencarian)
-        btnFilterSort = findViewById(R.id.btnFilterSort)
+        btnFilterSort = findViewById<ImageButton>(R.id.btnFilterSort)
         btnFilterSort.setOnClickListener {
         bukaKatupDialogFilter()
         }
