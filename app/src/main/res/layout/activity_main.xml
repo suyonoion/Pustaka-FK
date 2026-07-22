@@ -316,7 +316,7 @@
     android:layout_width="72dp"
     android:layout_height="72dp"
     android:scaleType="centerCrop"
-    android:src="@drawable/foto_abah_terkalibrasi" 
+    android:src="@drawable/profil_abah" 
     app:shapeAppearanceOverlay="@style/ShapeAppearance.MaterialComponents.Users.Circle"
     app:strokeWidth="1.5dp"
     app:strokeColor="#80CBC4" 
