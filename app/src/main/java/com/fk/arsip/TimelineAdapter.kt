@@ -27,7 +27,7 @@ class TimelineAdapter(
 
     if (titik.tipe == 0) {
         // TAHUN: Tanpa latar kartu, teks menempel langsung
-        holder.txtLabel.textSize = 11spToPx() // atau set ukuran via sp
+        holder.txtLabel.textSize = 11f // atau set ukuran via sp
         holder.txtLabel.setTextColor(Color.parseColor("#004D40")) 
         holder.txtLabel.setTypeface(null, android.graphics.Typeface.BOLD)
         holder.txtLabel.setBackgroundColor(Color.TRANSPARENT)
