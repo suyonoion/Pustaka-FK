@@ -72,7 +72,7 @@ class MainActivity : AppCompatActivity() {
     private lateinit var recyclerGridMode: RecyclerView
     private lateinit var wadahModeBuku: RelativeLayout
     private lateinit var proyektorBuku: ViewPager2
-    private lateinit var edtPencarian: EditText
+    private lateinit var edtPencarian: SearchView
     private lateinit var panelStatusPencarian: CardView
     private lateinit var loadingPencarian: ProgressBar
     private lateinit var txtStatusPencarian: TextView
@@ -153,34 +153,34 @@ class MainActivity : AppCompatActivity() {
                 if (drawerLayout.isDrawerOpen(androidx.core.view.GravityCompat.START)) {
                     drawerLayout.closeDrawer(androidx.core.view.GravityCompat.START)
                 } 
-               else if (wadahModeBuku.visibility == View.VISIBLE) {
-    wadahModeBuku.visibility = View.GONE
-    
-    // PEMULIHAN SEREMPAK KEDUA JALUR
-    recyclerGridMode.visibility = View.VISIBLE
-    kontainerJalurKanan.visibility = View.VISIBLE // Jalur kanan tegak kembali selebar 45dp
-    recyclerTimeline.visibility = View.VISIBLE
-    
-    if (daftarArsipAktif.size > 5000) {
-        bukuAdapter.perbaruiData(emptyList()) 
-    }
-}
-
-
-                else if (isSearchMode || edtPencarian.text.toString().isNotEmpty() || modeKategoriAktif) {
+                else if (wadahModeBuku.visibility == View.VISIBLE) {
+                    wadahModeBuku.visibility = View.GONE
+                    
+                    // PEMULIHAN SEREMPAK KEDUA JALUR
+                    recyclerGridMode.visibility = View.VISIBLE
+                    kontainerJalurKanan.visibility = View.VISIBLE 
+                    recyclerTimeline.visibility = View.VISIBLE
+                    
+                    if (daftarArsipAktif.size > 5000) {
+                        bukuAdapter.perbaruiData(emptyList()) 
+                    }
+                }
+                else if (isSearchMode || edtPencarian.query.toString().isNotEmpty() || modeKategoriAktif) {
                     isSearchMode = false
                     modeKategoriAktif = false 
                     
-                    edtPencarian.text.clear()
+                    edtPencarian.setQuery("", false)
                     edtPencarian.clearFocus()
                     val imm = getSystemService(Context.INPUT_METHOD_SERVICE) as InputMethodManager
                     imm.hideSoftInputFromWindow(edtPencarian.windowToken, 0)
-    // --- INJEKSI KATUP TIMELINE: BUKA PAKSA SEBELUM MEMOMPA DATA ---
-    wadahModeBuku.visibility = View.GONE
-    recyclerGridMode.visibility = View.VISIBLE
-    kontainerJalurKanan.visibility = View.VISIBLE
-    recyclerTimeline.visibility = View.VISIBLE
-    // ---------------------------------------------------------------
+                    
+                    // --- INJEKSI KATUP TIMELINE: BUKA PAKSA SEBELUM MEMOMPA DATA ---
+                    wadahModeBuku.visibility = View.GONE
+                    recyclerGridMode.visibility = View.VISIBLE
+                    kontainerJalurKanan.visibility = View.VISIBLE
+                    recyclerTimeline.visibility = View.VISIBLE
+                    // ---------------------------------------------------------------
+                    
                     tampilkanIndikator("Memuat ulang semua status...", true)
                     lifecycleScope.launch(Dispatchers.IO) {
                         val database = ArsipDatabase.operasikanMesin(this@MainActivity).arsipDao()
@@ -188,16 +188,9 @@ class MainActivity : AppCompatActivity() {
                         
                         withContext(Dispatchers.Main) {
                             pompaDataKeLayar(semuaData)
-        if (semuaData.isNotEmpty()) {
-            val tanggalTerbaru = semuaData.first().tanggalBaca 
-            val tanggalTerlama = semuaData.last().tanggalBaca
-            val totalVolume = semuaData.size
-
-            panelStatusPencarian.visibility = View.VISIBLE
-            txtStatusPencarian.text = "Arsip [$tanggalTerlama - $tanggalTerbaru] Total $totalVolume Status"
-        } else {
-            panelStatusPencarian.visibility = View.GONE
-        }
+                            
+                            // PENYEDERHANAAN: Menggunakan fungsi terpusat
+                            muatDataAwalKeSasis(semuaData)
                         }
                     }
                 } 
@@ -220,34 +213,31 @@ class MainActivity : AppCompatActivity() {
     val lingkarProgres = findViewById<ProgressBar>(R.id.lingkarPersentaseUtama)
     val teksPersen = findViewById<TextView>(R.id.teksPersentaseSentral)
     val teksTelemetri = findViewById<TextView>(R.id.teksTelemetriData)
+    
     if (fase == FaseInjeksi.FASE_1 || fase == FaseInjeksi.FASE_7) {
-        // Matikan total pada Fase 1 dan Fase 7 agar tidak ada sisa visual mengganggu
         lingkarProgres.visibility = View.GONE
         teksPersen.visibility = View.GONE
     } else {
-        // Hidupkan hanya untuk fase unduhan dan injeksi tengah
         lingkarProgres.visibility = View.VISIBLE
         teksPersen.visibility = View.VISIBLE
     }
     teksStatus.text = fase.pesan
     indikatorVisual.setImageResource(fase.idGambar)
 
-    // KALIBRASI INDIKATOR VISUAL BERDASARKAN FASE
     when (fase) {
         FaseInjeksi.FASE_1, FaseInjeksi.FASE_2, FaseInjeksi.FASE_4 -> {
-            // Aktifkan mode animasi berputar kontinu karena angka kepastian belum ada
             lingkarProgres.isIndeterminate = true
             teksPersen.text = "---"
             teksTelemetri.text = "Sistem sedang menginisialisasi modul internal..."
         }
         else -> {
-            // Kembalikan ke mode perhitungan angka pasti untuk fase unduhan dan injeksi
             lingkarProgres.isIndeterminate = false
             lingkarProgres.progress = persentase
             teksPersen.text = "$persentase%"
             
             if (fase != FaseInjeksi.FASE_7) {
-                teksTelemetri.text = "Arsip Status Digital Fatwa Kehidupan\n $volumeSelesai / $volumeTotal baris\nSistem sedang bekerja..."
+                // DIUBAH: Mengganti indikator baris mati dengan informasi progres byte & kecepatan
+                teksTelemetri.text = "Arsip Status Digital Fatwa Kehidupan\nProses unduhan data ($persentase%)\nSistem bekerja stabil..."
             } else {
                 teksTelemetri.text = "Seluruh blok data berhasil dilas ke dalam memori SQLite."
                 Handler(Looper.getMainLooper()).postDelayed({
@@ -257,7 +247,6 @@ class MainActivity : AppCompatActivity() {
         }
     }
 }
-
 
     override fun onConfigurationChanged(newConfig: android.content.res.Configuration) {
         super.onConfigurationChanged(newConfig)
@@ -276,104 +265,92 @@ class MainActivity : AppCompatActivity() {
     private var viewAktifTerpilih: View? = null
 
         private fun inisialisasiKategoriDrawer() {
-        val wadah = findViewById<LinearLayout>(R.id.wadahKategoriDinamis)
-        wadah.removeAllViews()
+    val wadah = findViewById<LinearLayout>(R.id.wadahKategoriDinamis)
+    wadah.removeAllViews()
 
-        // Konversi ukuran Dp ke Pixel presisi
-        val scale = resources.displayMetrics.density
-        val padHorizontal = (16 * scale).toInt()
-        val padVerticalInduk = (10 * scale).toInt()
-        val padVerticalAnak = (8 * scale).toInt()
-        
-        // KALIBRASI BARU: Dorongan margin kiri untuk sub-kategori (Indentasi 48dp)
-        val padLeftAnak = (48 * scale).toInt() 
+    val scale = resources.displayMetrics.density
+    val padHorizontal = (16 * scale).toInt()
+    val padVerticalInduk = (10 * scale).toInt()
+    val padVerticalAnak = (8 * scale).toInt()
+    val padLeftAnak = (48 * scale).toInt() 
 
-        for (kategori in CetakBiruKategori.MATRIKS_UTAMA) {
-            val namaInduk = kategori.first
-            val daftarCabang = kategori.second
+    for (kategori in CetakBiruKategori.MATRIKS_UTAMA) {
+        val namaInduk = kategori.first
+        val daftarCabang = kategori.second
 
-            val barisInduk = TextView(this).apply {
-                text = namaInduk
-                textSize = 13f
-                setTextColor(android.graphics.Color.parseColor("#212121"))
-                setPadding(padHorizontal, padVerticalInduk, padHorizontal, padVerticalInduk)
-                setBackgroundResource(android.R.drawable.list_selector_background)
-                isClickable = true
-                isFocusable = true
-                gravity = android.view.Gravity.CENTER_VERTICAL
-                compoundDrawablePadding = (12 * scale).toInt()
+        val barisInduk = TextView(this).apply {
+            text = namaInduk
+            textSize = 13f
+            setTextColor(android.graphics.Color.parseColor("#212121"))
+            setPadding(padHorizontal, padVerticalInduk, padHorizontal, padVerticalInduk)
+            setBackgroundResource(android.R.drawable.list_selector_background)
+            isClickable = true
+            isFocusable = true
+            gravity = android.view.Gravity.CENTER_VERTICAL
+            compoundDrawablePadding = (12 * scale).toInt()
+        }
+
+        if (daftarCabang.size == 1 && daftarCabang[0].first == namaInduk) {
+            barisInduk.setCompoundDrawablesWithIntrinsicBounds(
+                R.drawable.ic_kategori_induk, 0, 0, 0
+            )
+            barisInduk.setOnClickListener { v ->
+                sorotMenuTerpilih(v)
+                eksekusiSaringanKategori(namaInduk)
+            }
+            wadah.addView(barisInduk)
+        } else {
+            barisInduk.setCompoundDrawablesWithIntrinsicBounds(
+                R.drawable.ic_kategori_induk, 0, android.R.drawable.arrow_down_float, 0
+            )
+            
+            val wadahAnak = LinearLayout(this).apply {
+                orientation = LinearLayout.VERTICAL
+                visibility = View.GONE
             }
 
-            // KONDISI A: Kategori Tunggal (Tanpa Anak) -> Pasang Ikon Folder Vektor Baru
-            if (daftarCabang.size == 1 && daftarCabang[0].first == namaInduk) {
-                // MESIN BARU: Menggunakan R.drawable.ic_kategori_induk
-                barisInduk.setCompoundDrawablesWithIntrinsicBounds(
-                    R.drawable.ic_kategori_induk, 0, 0, 0
-                )
-                barisInduk.setOnClickListener { v ->
-                    sorotMenuTerpilih(v)
-                    eksekusiSaringanKategori(namaInduk)
-                }
-                wadah.addView(barisInduk)
-            } 
-            // KONDISI B: Kategori Beranak -> Pasang Ikon Induk Baru + Panah Lipat
-            else {
-                // MESIN BARU: Menggunakan R.drawable.ic_kategori_induk
-                barisInduk.setCompoundDrawablesWithIntrinsicBounds(
-                    R.drawable.ic_kategori_induk, 0, android.R.drawable.arrow_down_float, 0
-                )
-                
-                val wadahAnak = LinearLayout(this).apply {
-                    orientation = LinearLayout.VERTICAL
-                    visibility = View.GONE
-                }
-
-                for (cabang in daftarCabang) {
-                    val namaAnak = cabang.first
-                    val barisAnak = TextView(this).apply {
-                        // MESIN BARU: Injeksi manual peluru ("•") dicabut. Hanya menerima data murni.
-                        text = namaAnak 
-                        textSize = 12f
-                        setTextColor(android.graphics.Color.parseColor("#555555"))
-                        
-                        // MESIN BARU: Pemasangan titik simpul vektor anak dan pengaturan jarak
-                        setCompoundDrawablesWithIntrinsicBounds(R.drawable.ic_kategori_anak, 0, 0, 0)
-                        compoundDrawablePadding = (12 * scale).toInt()
-                        
-                        // MESIN BARU: Eksekusi indentasi dorongan ke dalam secara absolut
-                        setPadding(padLeftAnak, padVerticalAnak, padHorizontal, padVerticalAnak)
-                        
-                        setBackgroundResource(android.R.drawable.list_selector_background)
-                        isClickable = true
-                        isFocusable = true
-                        setOnClickListener { v ->
-                            sorotMenuTerpilih(v)
-                            eksekusiSaringanKategori(namaAnak)
-                        }
-                    }
-                    wadahAnak.addView(barisAnak)
-                }
-
-                barisInduk.setOnClickListener {
-                    if (wadahAnak.visibility == View.VISIBLE) {
-                        wadahAnak.visibility = View.GONE
-                        // Ganti state menggunakan ikon baru
-                        barisInduk.setCompoundDrawablesWithIntrinsicBounds(
-                            R.drawable.ic_kategori_induk, 0, android.R.drawable.arrow_down_float, 0
-                        )
-                    } else {
-                        wadahAnak.visibility = View.VISIBLE
-                        // Ganti state menggunakan ikon baru
-                        barisInduk.setCompoundDrawablesWithIntrinsicBounds(
-                            R.drawable.ic_kategori_induk, 0, android.R.drawable.arrow_up_float, 0
-                        )
+            for (cabang in daftarCabang) {
+                val namaAnak = cabang.first
+                val barisAnak = TextView(this).apply {
+                    text = namaAnak 
+                    textSize = 12f
+                    setTextColor(android.graphics.Color.parseColor("#555555"))
+                    
+                    // PENERAPAN GARIS BERNESTING: Menggunakan ikon cabang pohon
+                    setCompoundDrawablesWithIntrinsicBounds(R.drawable.ic_tree_branch, 0, 0, 0)
+                    compoundDrawablePadding = (8 * scale).toInt()
+                    
+                    setPadding(padLeftAnak, padVerticalAnak, padHorizontal, padVerticalAnak)
+                    setBackgroundResource(android.R.drawable.list_selector_background)
+                    isClickable = true
+                    isFocusable = true
+                    setOnClickListener { v ->
+                        sorotMenuTerpilih(v)
+                        eksekusiSaringanKategori(namaAnak)
                     }
                 }
-                wadah.addView(barisInduk)
-                wadah.addView(wadahAnak)
+                wadahAnak.addView(barisAnak)
             }
+
+            barisInduk.setOnClickListener {
+                if (wadahAnak.visibility == View.VISIBLE) {
+                    wadahAnak.visibility = View.GONE
+                    barisInduk.setCompoundDrawablesWithIntrinsicBounds(
+                        R.drawable.ic_kategori_induk, 0, android.R.drawable.arrow_down_float, 0
+                    )
+                } else {
+                    wadahAnak.visibility = View.VISIBLE
+                    barisInduk.setCompoundDrawablesWithIntrinsicBounds(
+                        R.drawable.ic_kategori_induk, 0, android.R.drawable.arrow_up_float, 0
+                    )
+                }
+            }
+            wadah.addView(barisInduk)
+            wadah.addView(wadahAnak)
         }
     }
+}
+
 
 
     // FUNGSI INJEKSI WARNA AKTIF PADA MENU YANG DITEKAN
@@ -411,7 +388,9 @@ class MainActivity : AppCompatActivity() {
             withContext(Dispatchers.Main) {
     isSearchMode = false
     modeKategoriAktif = true
-    edtPencarian.text.clear()
+    edtPencarian.setQuery("", false)
+    edtPencarian.clearFocus()
+
     
     val muatanTeks = "$labelKategori (${hasilSaringanAkhir.size} arsip)"
     tampilkanIndikator(muatanTeks, false)
@@ -455,14 +434,15 @@ class MainActivity : AppCompatActivity() {
     }
     
     private fun tampilkanEdukasiZuhriFormalism() {
-        AlertDialog.Builder(this)
-            .setTitle("Zuhri Formalism (ZF) Framework")
-            .setMessage("1. APA ITU ZUHRI FORMALISM?\nZuhri Formalism (ZF) adalah sebuah protokol arsitektur logika...")
-            .setPositiveButton("Selesai") { dialog, _ -> dialog.dismiss() }
-            .setCancelable(true)
-            .create()
-            .show()
-    }
+    AlertDialog.Builder(this)
+        .setTitle(getString(R.string.zf_edukasi_judul))
+        .setMessage(getString(R.string.zf_edukasi_pesan))
+        .setPositiveButton("Selesai") { dialog, _ -> dialog.dismiss() }
+        .setCancelable(true)
+        .create()
+        .show()
+}
+
 
     private fun eksekusiPabrikData() {
     lifecycleScope.launch(Dispatchers.IO) {
@@ -482,9 +462,8 @@ class MainActivity : AppCompatActivity() {
             withContext(Dispatchers.Main) {
                 findViewById<ConstraintLayout>(R.id.panelInisialisasiUtama).visibility = View.GONE
                 isMesinSibuk = false
-                panelStatusPencarian.visibility = View.GONE
                 pompaDataKeLayar(semuaData)
-                
+                muatDataAwalKeSasis(semuaData)
                 if (berkasLokal.exists()) { berkasLokal.delete() }
             }
             return@launch
@@ -830,64 +809,70 @@ class MainActivity : AppCompatActivity() {
 }
 
     private fun aktifkanSirkuitPencarian() {
-        edtPencarian.setOnEditorActionListener { _, actionId, event ->
-            if (actionId == EditorInfo.IME_ACTION_SEARCH || 
-                (event != null && event.keyCode == KeyEvent.KEYCODE_ENTER && event.action == KeyEvent.ACTION_DOWN)) {
-                
-                if (isMesinSibuk) {
-                    Toast.makeText(this@MainActivity, "Mesin sedang merakit data. Pencarian ditangguhkan.", Toast.LENGTH_SHORT).show()
-                    return@setOnEditorActionListener true 
-                }
+    edtPencarian.setOnQueryTextListener(object : androidx.appcompat.widget.SearchView.OnQueryTextListener {
+        override fun onQueryTextSubmit(query: String?): Boolean {
+            eksekusiLogikaPencarian(query)
+            return true
+        }
 
-                val kataKunci = edtPencarian.text.toString().trim()
-                isSearchMode = kataKunci.isNotEmpty()
-                
-                panelStatusPencarian.visibility = View.VISIBLE
-                loadingPencarian.visibility = View.VISIBLE
-                txtStatusPencarian.text = "Mencari data..."
-                
-                lifecycleScope.launch(Dispatchers.IO) {
-                    val lenganRobot = ArsipDatabase.operasikanMesin(this@MainActivity).arsipDao()
-                    val kargoKasar = if (kataKunci.isEmpty()) {
-                        lenganRobot.tarikSemuaArsip()
-                    } else {
-                        lenganRobot.saringArsip(kataKunci)
-                    }
-                    
-                    val hasilSaringanPresisi = if (kataKunci.isNotEmpty()) {
-                        val sensorBatasKata = Regex("\\b$kataKunci\\b", RegexOption.IGNORE_CASE)
-                        kargoKasar.filter { arsip -> sensorBatasKata.containsMatchIn(arsip.kontenPenuh) }
-                    } else {
-                        kargoKasar
-                    }
-
-                    withContext(Dispatchers.Main) {
-                        if (wadahModeBuku.visibility == View.VISIBLE) {
-                            wadahModeBuku.visibility = View.GONE
-                            recyclerGridMode.visibility = View.VISIBLE
-                        }
-
-                        pompaDataKeLayar(hasilSaringanPresisi)
-                        loadingPencarian.visibility = View.GONE
-                        
-                        val muatanTeks = if (kataKunci.isNotEmpty()) {
-                            "Pencarian: $kataKunci (${hasilSaringanPresisi.size} arsip)"
-                        } else {
-                            "Semua Arsip (${hasilSaringanPresisi.size} arsip)"
-                        }
-                        txtStatusPencarian.text = muatanTeks
-                        
-                        edtPencarian.clearFocus()
-                        val imm = getSystemService(Context.INPUT_METHOD_SERVICE) as InputMethodManager
-                        imm.hideSoftInputFromWindow(edtPencarian.windowToken, 0)
-                    }
-                }
-                true
-            } else {
-                false
+        override fun onQueryTextChange(newText: String?): Boolean {
+            if (newText.isNullOrEmpty()) {
+                eksekusiLogikaPencarian("")
             }
+            return true
+        }
+    })
+}
+
+private fun eksekusiLogikaPencarian(kataKunciMentah: String?) {
+    if (isMesinSibuk) {
+        Toast.makeText(this@MainActivity, "Mesin sedang merakit data. Pencarian ditangguhkan.", Toast.LENGTH_SHORT).show()
+        return
+    }
+
+    val kataKunci = kataKunciMentah?.trim() ?: ""
+    isSearchMode = kataKunci.isNotEmpty()
+
+    panelStatusPencarian.visibility = View.VISIBLE
+    loadingPencarian.visibility = View.VISIBLE
+    txtStatusPencarian.text = "Mencari data..."
+
+    lifecycleScope.launch(Dispatchers.IO) {
+        val lenganRobot = ArsipDatabase.operasikanMesin(this@MainActivity).arsipDao()
+        val kargoKasar = if (kataKunci.isEmpty()) {
+            lenganRobot.tarikSemuaArsip()
+        } else {
+            lenganRobot.saringArsip(kataKunci)
+        }
+
+        val hasilSaringanPresisi = if (kataKunci.isNotEmpty()) {
+            val sensorBatasKata = Regex("\\b$kataKunci\\b", RegexOption.IGNORE_CASE)
+            kargoKasar.filter { arsip -> sensorBatasKata.containsMatchIn(arsip.kontenPenuh) }
+        } else {
+            kargoKasar
+        }
+
+        withContext(Dispatchers.Main) {
+            if (wadahModeBuku.visibility == View.VISIBLE) {
+                wadahModeBuku.visibility = View.GONE
+                recyclerGridMode.visibility = View.VISIBLE
+            }
+
+            pompaDataKeLayar(hasilSaringanPresisi)
+            loadingPencarian.visibility = View.GONE
+
+            val muatanTeks = if (kataKunci.isNotEmpty()) {
+                "Pencarian: $kataKunci (${hasilSaringanPresisi.size} arsip)"
+            } else {
+                "Semua Arsip (${hasilSaringanPresisi.size} arsip)"
+            }
+            txtStatusPencarian.text = muatanTeks
+
+            edtPencarian.clearFocus()
         }
     }
+}
+
 
     private fun tampilkanPanelKonfirmasiKeluar() {
         android.app.AlertDialog.Builder(this)
@@ -951,5 +936,19 @@ class MainActivity : AppCompatActivity() {
     bukuAdapter.perbaruiData(fragmenData)
     proyektorBuku.setCurrentItem(posisiRelatif, false)
 }
+private fun muatDataAwalKeSasis(daftarArsipGlobal: List<ArsipEntity>) {
+    if (daftarArsipGlobal.isNotEmpty()) {
+        val tanggalTerbaru = daftarArsipGlobal.first().tanggalBaca.substringBefore(" ")
+        val tanggalTerlama = daftarArsipGlobal.last().tanggalBaca.substringBefore(" ")
+        val totalVolume = daftarArsipGlobal.size
+
+        panelStatusPencarian.visibility = View.VISIBLE
+        loadingPencarian.visibility = View.GONE
+        txtStatusPencarian.text = "Arsip $tanggalTerlama s.d $tanggalTerbaru Total $totalVolume Status"
+    } else {
+        panelStatusPencarian.visibility = View.GONE
+    }
+}
+
 
 }

@@ -38,27 +38,20 @@
 
     <!-- KOTAK PENCARIAN -->
        <!-- KOTAK PENCARIAN -->
-    <EditText
-        android:id="@+id/edtPencarian"
-        android:layout_width="0dp"
-        android:layout_height="42dp"
-        android:layout_weight="1"
-        android:layout_marginStart="8dp"
-        android:background="#FFFFFF"
-        android:drawableStart="@android:drawable/ic_menu_search"
-        android:drawablePadding="10dp"
-        android:paddingStart="16dp"
-        android:paddingEnd="16dp"
-        android:paddingHorizontal="16dp"
-        android:hint="Cari status..."
-        android:elevation="2dp"
-        android:textColorHint="#9E9E9E"
-        android:textColor="#212121"
-        android:textSize="14sp"
-        android:inputType="text"
-        android:imeOptions="actionSearch"
-        android:maxLines="1"
-        android:gravity="center_vertical"/>
+    <androidx.appcompat.widget.SearchView
+    android:id="@+id/edtPencarian"
+    android:layout_width="0dp"
+    android:layout_height="42dp"
+    android:layout_weight="1"
+    android:layout_marginStart="8dp"
+    android:background="#FFFFFF"
+    app:iconifiedByDefault="false"
+    app:queryHint="Cari status..."
+    android:elevation="2dp"
+    android:gravity="center_vertical"
+    app:searchIcon="@android:drawable/ic_menu_search"
+    app:queryBackground="@android:color/transparent" />
+
 </LinearLayout>
 
                  <!-- PLAT JUDUL KATEGORI (DOMINAN) -->
@@ -140,7 +133,7 @@
     <!-- JALUR KANAN: KANTONG NAVIGASI TIMELINE (DIBERIKAN ID UNTUK KENDALI SENSOR) -->
     <FrameLayout
         android:id="@+id/kontainerJalurKanan"
-        android:layout_width="52dp"
+        android:layout_width="45dp"
         android:layout_height="match_parent"
         android:background="#FFFFFF"
         android:elevation="4dp">
@@ -158,8 +151,8 @@
             android:layout_height="wrap_content"
             android:layout_gravity="center_vertical"
             android:scrollbars="none"
-            android:paddingTop="8dp"
-            android:paddingBottom="8dp"
+            android:paddingTop="0dp"
+            android:paddingBottom="0dp"
             android:clipToPadding="false" />
     </FrameLayout>
 

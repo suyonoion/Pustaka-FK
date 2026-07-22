@@ -22,7 +22,7 @@
         <TextView
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="Pustaka FK"
+            android:text="@strings/nama_app"
             android:textSize="24sp"
             android:textStyle="bold"
             android:textColor="#004D40"
@@ -31,14 +31,14 @@
         <TextView
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="Arsip Fatwa Kehidupan"
+            android:text="nama_app_note"
             android:textSize="16sp"
             android:textColor="#666666" />
 
         <TextView
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="Versi 1.0.0 (Build Stabil)"
+            android:text="@strings/versi_app"
             android:textSize="12sp"
             android:textColor="#999999"
             android:layout_marginTop="8dp" />
@@ -52,7 +52,7 @@
         <TextView
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:text="Aplikasi ini adalah terminal penyimpan log telemetri dan arsip instruksi dari sistem Fatwa Kehidupan. Dirancang untuk memastikan akses data yang solid dan terstruktur tanpa distorsi jaringan."
+            android:text="@strings/desc_app"
             android:textSize="14sp"
             android:textColor="#333333"
             android:lineSpacingExtra="4dp"
@@ -75,7 +75,7 @@
         <TextView
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="Submawil Kendal\nDesa Blorok\nSaung JAWA"
+            android:text="@strings/pusat_operasional"
             android:textSize="14sp"
             android:textColor="#424242"
             android:textAlignment="center"
