@@ -8,6 +8,7 @@ import com.fk.arsip.database.ArsipDatabase
 import com.fk.arsip.database.ArsipEntity
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
+import kotlinx.coroutines.delay
 import java.io.File
 import java.io.FileReader
 
