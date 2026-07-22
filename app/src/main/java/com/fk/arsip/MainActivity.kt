@@ -275,7 +275,7 @@ class MainActivity : AppCompatActivity() {
         // Variabel penampung View yang sedang aktif/terpilih
     private var viewAktifTerpilih: View? = null
 
-    private fun inisialisasiKategoriDrawer() {
+        private fun inisialisasiKategoriDrawer() {
         val wadah = findViewById<LinearLayout>(R.id.wadahKategoriDinamis)
         wadah.removeAllViews()
 
@@ -284,7 +284,9 @@ class MainActivity : AppCompatActivity() {
         val padHorizontal = (16 * scale).toInt()
         val padVerticalInduk = (10 * scale).toInt()
         val padVerticalAnak = (8 * scale).toInt()
-        val padLeftAnak = (32 * scale).toInt()
+        
+        // KALIBRASI BARU: Dorongan margin kiri untuk sub-kategori (Indentasi 48dp)
+        val padLeftAnak = (48 * scale).toInt() 
 
         for (kategori in CetakBiruKategori.MATRIKS_UTAMA) {
             val namaInduk = kategori.first
@@ -302,10 +304,11 @@ class MainActivity : AppCompatActivity() {
                 compoundDrawablePadding = (12 * scale).toInt()
             }
 
-            // KONDISI A: Kategori Tunggal (Tanpa Anak) -> Pasang Ikon Folder Bawaan Android
+            // KONDISI A: Kategori Tunggal (Tanpa Anak) -> Pasang Ikon Folder Vektor Baru
             if (daftarCabang.size == 1 && daftarCabang[0].first == namaInduk) {
+                // MESIN BARU: Menggunakan R.drawable.ic_kategori_induk
                 barisInduk.setCompoundDrawablesWithIntrinsicBounds(
-                    android.R.drawable.ic_menu_sort_by_size, 0, 0, 0
+                    R.drawable.ic_kategori_induk, 0, 0, 0
                 )
                 barisInduk.setOnClickListener { v ->
                     sorotMenuTerpilih(v)
@@ -313,10 +316,11 @@ class MainActivity : AppCompatActivity() {
                 }
                 wadah.addView(barisInduk)
             } 
-            // KONDISI B: Kategori Beranak -> Pasang Ikon Panah Lipat
+            // KONDISI B: Kategori Beranak -> Pasang Ikon Induk Baru + Panah Lipat
             else {
+                // MESIN BARU: Menggunakan R.drawable.ic_kategori_induk
                 barisInduk.setCompoundDrawablesWithIntrinsicBounds(
-                    android.R.drawable.ic_menu_agenda, 0, android.R.drawable.arrow_down_float, 0
+                    R.drawable.ic_kategori_induk, 0, android.R.drawable.arrow_down_float, 0
                 )
                 
                 val wadahAnak = LinearLayout(this).apply {
@@ -327,10 +331,18 @@ class MainActivity : AppCompatActivity() {
                 for (cabang in daftarCabang) {
                     val namaAnak = cabang.first
                     val barisAnak = TextView(this).apply {
-                        text = "• $namaAnak"
+                        // MESIN BARU: Injeksi manual peluru ("•") dicabut. Hanya menerima data murni.
+                        text = namaAnak 
                         textSize = 12f
                         setTextColor(android.graphics.Color.parseColor("#555555"))
+                        
+                        // MESIN BARU: Pemasangan titik simpul vektor anak dan pengaturan jarak
+                        setCompoundDrawablesWithIntrinsicBounds(R.drawable.ic_kategori_anak, 0, 0, 0)
+                        compoundDrawablePadding = (12 * scale).toInt()
+                        
+                        // MESIN BARU: Eksekusi indentasi dorongan ke dalam secara absolut
                         setPadding(padLeftAnak, padVerticalAnak, padHorizontal, padVerticalAnak)
+                        
                         setBackgroundResource(android.R.drawable.list_selector_background)
                         isClickable = true
                         isFocusable = true
@@ -345,13 +357,15 @@ class MainActivity : AppCompatActivity() {
                 barisInduk.setOnClickListener {
                     if (wadahAnak.visibility == View.VISIBLE) {
                         wadahAnak.visibility = View.GONE
+                        // Ganti state menggunakan ikon baru
                         barisInduk.setCompoundDrawablesWithIntrinsicBounds(
-                            android.R.drawable.ic_menu_agenda, 0, android.R.drawable.arrow_down_float, 0
+                            R.drawable.ic_kategori_induk, 0, android.R.drawable.arrow_down_float, 0
                         )
                     } else {
                         wadahAnak.visibility = View.VISIBLE
+                        // Ganti state menggunakan ikon baru
                         barisInduk.setCompoundDrawablesWithIntrinsicBounds(
-                            android.R.drawable.ic_menu_agenda, 0, android.R.drawable.arrow_up_float, 0
+                            R.drawable.ic_kategori_induk, 0, android.R.drawable.arrow_up_float, 0
                         )
                     }
                 }
@@ -360,6 +374,7 @@ class MainActivity : AppCompatActivity() {
             }
         }
     }
+
 
     // FUNGSI INJEKSI WARNA AKTIF PADA MENU YANG DITEKAN
     private fun sorotMenuTerpilih(viewBaru: View) {

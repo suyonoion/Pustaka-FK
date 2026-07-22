@@ -8,9 +8,7 @@
     android:background="#004D40"
     android:elevation="10dp">
 
-    <!-- SEKTOR RANTAI KOMANDO (Daftar 7 Fase) -->
-    <!-- Menggunakan ScrollView jika layar vertikal (ponsel), 
-         untuk memastikan seluruh modul mesin terlihat -->
+    <!-- SEKTOR RANTAI KOMANDO -->
     <LinearLayout
         android:id="@+id/kompartemenFase"
         android:layout_width="match_parent"
@@ -21,36 +19,32 @@
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintEnd_toEndOf="parent">
 
-        <!-- Contoh Baris 1: Status Fase -->
         <TextView
             android:id="@+id/teksStatusFase"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:text=""
             android:textColor="#FFFFFF"
-            android:textSize="18sp"
+            android:textSize="14sp"
             android:textStyle="bold"
-            android:gravity="center"
-            android:layout_marginBottom="24dp"/>
-
+            android:gravity="center" />
     </LinearLayout>
 
-    <!-- SEKTOR REAKTOR UTAMA (Visual & Persentase) -->
+    <!-- SEKTOR REAKTOR UTAMA (Dikunci Simetris di Tengah Layar) -->
+    <!-- app:layout_constraintVertical_bias="0.45" menarik objek 5% ke atas dari pusat absolut untuk keseimbangan mata -->
     <ImageView
         android:id="@+id/indikatorVisualMesin"
-        android:layout_width="200dp"
-        android:layout_height="200dp"
+        android:layout_width="160dp"
+        android:layout_height="160dp"
         android:src="@drawable/img_1"
-        app:layout_constraintTop_toBottomOf="@id/kompartemenFase"
+        app:layout_constraintTop_toTopOf="parent"
+        app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintEnd_toEndOf="parent"
-        android:layout_marginTop="32dp"/>
+        app:layout_constraintVertical_bias="0.45" />
 
-    <!-- ========================================================= -->
-    <!-- KATUP ISOLATOR TERPASANG: VISIBILITY SET KE "GONE"        -->
-    <!-- ========================================================= -->
-    
-    <!-- Indikator Lingkar Sentral -->
+    <!-- KATUP ISOLATOR TERPASANG (DISEMBUNYIKAN) -->
+    <!-- Posisi jangkar disatukan dengan indikatorVisualMesin agar tidak merusak formasi ruang -->
     <ProgressBar
         android:id="@+id/lingkarPersentaseUtama"
         style="?android:attr/progressBarStyleHorizontal"
@@ -60,12 +54,11 @@
         android:max="100"
         android:progress="0"
         android:visibility="gone" 
-        app:layout_constraintTop_toBottomOf="@id/indikatorVisualMesin"
-        app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintEnd_toEndOf="parent"
-        android:layout_marginTop="32dp"/>
+        app:layout_constraintTop_toTopOf="@id/indikatorVisualMesin"
+        app:layout_constraintBottom_toBottomOf="@id/indikatorVisualMesin"
+        app:layout_constraintStart_toStartOf="@id/indikatorVisualMesin"
+        app:layout_constraintEnd_toEndOf="@id/indikatorVisualMesin"/>
 
-    <!-- Teks Persentase Angka -->
     <TextView
         android:id="@+id/teksPersentaseSentral"
         android:layout_width="wrap_content"
@@ -80,20 +73,35 @@
         app:layout_constraintStart_toStartOf="@id/lingkarPersentaseUtama"
         app:layout_constraintEnd_toEndOf="@id/lingkarPersentaseUtama"/>
 
-    <!-- ========================================================= -->
+    <!-- IDENTITAS TELEMETRI (Digantung sejajar di bawah Reaktor Utama) -->
+    <TextView
+        android:id="@+id/teksJudulUtama"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="PUSTAKA FK"
+        android:textColor="#FFFFFF"
+        android:textSize="22sp"
+        android:textStyle="bold"
+        android:letterSpacing="0.06"
+        android:gravity="center"
+        app:layout_constraintTop_toBottomOf="@id/indikatorVisualMesin"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintEnd_toEndOf="parent"
+        android:layout_marginTop="28dp"/>
 
-    <!-- Telemetri Volume Data -->
+    <!-- IDENTITAS SEKUNDER (Deskripsi Fungsi) -->
+    <!-- ID lama dipertahankan agar sirkuit Kotlin tidak terputus -->
     <TextView
         android:id="@+id/teksTelemetriData"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:text="PUSTAKA FK \n Arsip Status Digital Fatwa Kehidupan"
-        android:textColor="#B2DFDB"
-        android:textSize="14sp"
+        android:text="Arsip Status Digital Fatwa Kehidupan"
+        android:textColor="#80CBC4" 
+        android:textSize="13sp"
         android:gravity="center"
-        app:layout_constraintTop_toBottomOf="@id/lingkarPersentaseUtama"
+        app:layout_constraintTop_toBottomOf="@id/teksJudulUtama"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintEnd_toEndOf="parent"
-        android:layout_marginTop="24dp"/>
+        android:layout_marginTop="6dp"/>
 
 </androidx.constraintlayout.widget.ConstraintLayout>

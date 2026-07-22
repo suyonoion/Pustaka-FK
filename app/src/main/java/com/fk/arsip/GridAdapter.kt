@@ -47,7 +47,7 @@ class GridAdapter(
         if (holder is HeaderViewHolder && material is KargoCampuran.PembatasWaktu) {
             holder.txtHeader.text = material.label
         } 
-        else if (holder is KontenViewHolder && material is KargoCampuran.StatusKonten) {
+                else if (holder is KontenViewHolder && material is KargoCampuran.StatusKonten) {
             val arsip = material.data
             
             // 1. PENYESUAIAN KATEGORI & TANGGAL
@@ -60,9 +60,9 @@ class GridAdapter(
                 holder.txtKategori.text = arsip.kategori
             }
             
-            // 2. PENGELASAN CUPLIKAN TEKS
-            val cuplikan = if (arsip.kontenPenuh.length > 100) {
-                arsip.kontenPenuh.substring(0, 100) + "..."
+            // 2. PENGELASAN CUPLIKAN TEKS (Dikalibrasi ke batas 200 karakter untuk ruang 5 baris)
+            val cuplikan = if (arsip.kontenPenuh.length > 200) {
+                arsip.kontenPenuh.substring(0, 200) + "..."
             } else {
                 arsip.kontenPenuh
             }

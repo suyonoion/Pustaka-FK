@@ -1,32 +1,34 @@
 <?xml version="1.0" encoding="utf-8"?>
 <LinearLayout 
     xmlns:android="http://schemas.android.com/apk/res/android"
-    android:layout_width="wrap_content"
+    android:layout_width="match_parent"
     android:layout_height="wrap_content"
     android:gravity="center_vertical"
     android:orientation="horizontal"
     android:paddingVertical="4dp"
     android:background="?android:attr/selectableItemBackground">
 
+    <!-- Garis digeser merapat ke kiri (Margin ditekan) -->
     <View
         android:layout_width="1.5dp"
         android:layout_height="match_parent"
         android:background="#B2DFDB"
-        android:layout_marginStart="8dp"
-        android:layout_marginEnd="12dp" />
+        android:layout_marginStart="4dp"
+        android:layout_marginEnd="4dp" />
+
+    <!-- Menggunakan layout_weight="1" agar teks mengembang horizontal penuh ke kanan -->
     <TextView
         android:id="@+id/txtLabelTimeline"
-        android:layout_width="wrap_content"
+        android:layout_width="0dp"
+        android:layout_weight="1"
         android:layout_height="wrap_content"
         android:gravity="center"
         android:background="@drawable/bg_timeline_card"
-        android:paddingStart="8dp"
-        android:paddingEnd="8dp"
-        android:paddingTop="6dp"
-        android:paddingBottom="6dp"
+        android:paddingHorizontal="2dp"
+        android:paddingVertical="6dp"
         android:text="Jan\n'25"
         android:textColor="#FFFFFF"
-        android:textSize="10sp"
+        android:textSize="11sp"
         android:textStyle="bold"
         android:lineSpacingExtra="-2dp" />
 

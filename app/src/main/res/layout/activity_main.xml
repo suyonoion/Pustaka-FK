@@ -37,26 +37,28 @@
         app:tint="#004D40" />
 
     <!-- KOTAK PENCARIAN -->
+       <!-- KOTAK PENCARIAN -->
     <EditText
         android:id="@+id/edtPencarian"
         android:layout_width="0dp"
         android:layout_height="42dp"
         android:layout_weight="1"
         android:layout_marginStart="8dp"
-        android:background="@drawable/bg_search_box"
+        android:background="#FFFFFF"
         android:drawableStart="@android:drawable/ic_menu_search"
         android:drawablePadding="10dp"
         android:paddingStart="16dp"
         android:paddingEnd="16dp"
+        android:paddingHorizontal="16dp"
         android:hint="Cari status..."
         android:elevation="2dp"
-        android:textColorHint="#9AA0A6"
-        android:textColor="#FFFFFF"
+        android:textColorHint="#9E9E9E"
+        android:textColor="#212121"
         android:textSize="14sp"
         android:inputType="text"
         android:imeOptions="actionSearch"
-        android:maxLines="1" />
-
+        android:maxLines="1"
+        android:gravity="center_vertical"/>
 </LinearLayout>
 
                  <!-- PLAT JUDUL KATEGORI (DOMINAN) -->
@@ -114,11 +116,14 @@
         android:layout_height="match_parent"
         android:layout_weight="1">
         
-        <androidx.recyclerview.widget.RecyclerView
+                <androidx.recyclerview.widget.RecyclerView
             android:id="@+id/recyclerGridMode"
             android:layout_width="match_parent"
             android:layout_height="match_parent"
-            android:padding="4dp" />
+            android:paddingVertical="4dp"
+            android:paddingHorizontal="0dp"
+            android:clipToPadding="false" />
+
             
         <RelativeLayout
             android:id="@+id/wadahModeBuku"
@@ -135,11 +140,18 @@
     <!-- JALUR KANAN: KANTONG NAVIGASI TIMELINE (DIBERIKAN ID UNTUK KENDALI SENSOR) -->
     <FrameLayout
         android:id="@+id/kontainerJalurKanan"
-        android:layout_width="45dp"
+        android:layout_width="52dp"
         android:layout_height="match_parent"
-        android:background="#EFEFEF"
-        android:elevation="1dp">
+        android:background="#FFFFFF"
+        android:elevation="4dp">
         
+        <!-- INJEKSI SEKAT FISIK: Garis pembatas vertikal sisi kiri -->
+        <View
+            android:layout_width="1dp"
+            android:layout_height="match_parent"
+            android:layout_gravity="start"
+            android:background="#D6D6D6" />
+            
         <androidx.recyclerview.widget.RecyclerView
             android:id="@+id/recyclerTimeline"
             android:layout_width="match_parent"
@@ -150,6 +162,7 @@
             android:paddingBottom="8dp"
             android:clipToPadding="false" />
     </FrameLayout>
+
         
 </LinearLayout>
 
@@ -298,11 +311,16 @@
                 android:gravity="bottom"
                 android:padding="16dp">
 
-                <ImageView
-                    android:layout_width="60dp"
-                    android:layout_height="60dp"
-                    android:src="@drawable/profil_abah"
-                    android:scaleType="centerCrop"/>
+                <com.google.android.material.imageview.ShapeableImageView
+    android:id="@+id/fotoProfilAbah"
+    android:layout_width="72dp"
+    android:layout_height="72dp"
+    android:scaleType="centerCrop"
+    android:src="@drawable/foto_abah_terkalibrasi" 
+    app:shapeAppearanceOverlay="@style/ShapeAppearance.MaterialComponents.Users.Circle"
+    app:strokeWidth="1.5dp"
+    app:strokeColor="#80CBC4" 
+    android:layout_marginBottom="12dp" />
 
                 <TextView
                     android:layout_width="wrap_content"
