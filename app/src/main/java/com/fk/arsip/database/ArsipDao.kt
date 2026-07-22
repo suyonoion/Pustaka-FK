@@ -34,11 +34,9 @@ interface ArsipDao {
     @Query("DELETE FROM tabel_arsip")
     suspend fun kurasTangkiKotor()
     
-    @Query("SELECT * FROM arsip_table ORDER BY id ASC")
-fun tarikSemuaArsipTerlama(): List<ArsipEntity>
+      @Query("SELECT * FROM tabel_arsip ORDER BY waktuRilis ASC")
+    fun tarikSemuaArsipTerlama(): List<ArsipEntity>
 
-@Query("SELECT * FROM arsip_table WHERE kategori = :parameterKategori ORDER BY id ASC")
-fun saringBerdasarkanKategoriTerlama(parameterKategori: String): List<ArsipEntity>
-
-
+    @Query("SELECT * FROM tabel_arsip WHERE kategori LIKE '%' || :parameterKategori || '%' ORDER BY waktuRilis ASC")
+    fun saringBerdasarkanKategoriTerlama(parameterKategori: String): List<ArsipEntity>
 }
