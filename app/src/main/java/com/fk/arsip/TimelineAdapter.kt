@@ -73,12 +73,23 @@ if (titik.tipe == 0) {
         }
     }
 
+        // KATUP EKSEKUSI KLIK
     holder.itemView.setOnClickListener {
         val posisiLama = posisiTerpilih
-        posisiTerpilih = holder.bindingAdapterPosition
-        notifyItemChanged(posisiLama)
-        notifyItemChanged(posisiTerpilih)
-        pemicuLompat(titik.indeksTujuan)
+        
+        // Gunakan adapterPosition sebagai substitusi mesin lama
+        val posisiBaru = holder.adapterPosition
+        
+        // Katup pengaman: cegah transmisi jika item sudah tidak ada di lintasan
+        if (posisiBaru != RecyclerView.NO_POSITION) {
+            posisiTerpilih = posisiBaru
+            
+            // Refresh visual item lama dan item baru
+            notifyItemChanged(posisiLama)
+            notifyItemChanged(posisiTerpilih)
+            
+            pemicuLompat(titik.indeksTujuan)
+        }
     }
     holder.itemView.isClickable = true
 }
