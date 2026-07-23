@@ -161,18 +161,32 @@ class MainActivity : AppCompatActivity() {
                 if (drawerLayout.isDrawerOpen(androidx.core.view.GravityCompat.START)) {
                     drawerLayout.closeDrawer(androidx.core.view.GravityCompat.START)
                 } 
+                // Di dalam handleOnBackPressed() pada blok wadahModeBuku.visibility == View.VISIBLE:
                 else if (wadahModeBuku.visibility == View.VISIBLE) {
-                    wadahModeBuku.visibility = View.GONE
-                    
-                    // PEMULIHAN SEREMPAK KEDUA JALUR
-                    recyclerGridMode.visibility = View.VISIBLE
-                    kontainerJalurKanan.visibility = View.VISIBLE 
-                    recyclerTimeline.visibility = View.VISIBLE
-                    
-                    if (daftarArsipAktif.size > 5000) {
-                        bukuAdapter.perbaruiData(emptyList()) 
-                    }
-                }
+    wadahModeBuku.visibility = View.GONE
+    
+    // PEMULIHAN JALUR VISUAL
+    recyclerGridMode.visibility = View.VISIBLE
+    kontainerJalurKanan.visibility = View.VISIBLE 
+    recyclerTimeline.visibility = View.VISIBLE
+    
+    // FORMAT TELEMETRI KATEGORI SAAT KEMBALI
+    panelStatusPencarian.visibility = View.VISIBLE
+    val totalVolume = daftarArsipAktif.size
+    val labelKategori = if (modeKategoriAktif && daftarArsipAktif.isNotEmpty()) {
+        daftarArsipAktif.first().kategori
+    } else {
+        "Semua Status"
+    }
+    
+    txtStatusPencarian.text = "$labelKategori • $totalVolume Status"
+    
+    if (daftarArsipAktif.size > 5000) {
+        bukuAdapter.perbaruiData(emptyList()) 
+    }
+}
+
+
                 else if (isSearchMode || edtPencarian.query.toString().isNotEmpty() || modeKategoriAktif) {
                     isSearchMode = false
                     modeKategoriAktif = false 
@@ -437,14 +451,20 @@ val wadahTeksAnak = LinearLayout(this).apply {
 for (cabang in daftarCabang) {
     val namaAnak = cabang.first
     
-    // Sasis untuk masing-masing baris item
+    // Sasis untuk masing-masing baris item (Pelat Sensor Utama)
     val barisAnak = LinearLayout(this).apply {
         orientation = LinearLayout.HORIZONTAL
-        layoutParams = LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT)
+        layoutParams = LinearLayout.LayoutParams(
+            LinearLayout.LayoutParams.MATCH_PARENT, 
+            LinearLayout.LayoutParams.WRAP_CONTENT
+        )
         gravity = android.view.Gravity.CENTER_VERTICAL
+        setBackgroundResource(android.R.drawable.list_selector_background)
+        isClickable = true
+        isFocusable = true
     }
 
-    // Rel Horizontal Penghubung (Cabang menuju teks)
+    // Rel Horizontal Penghubung
     val relHorizontal = View(this).apply {
         layoutParams = LinearLayout.LayoutParams((12 * scale).toInt(), (1.5f * scale).toInt())
         setBackgroundColor(android.graphics.Color.parseColor("#B0BEC5"))
@@ -454,22 +474,21 @@ for (cabang in daftarCabang) {
         text = namaAnak 
         textSize = 12f
         setTextColor(android.graphics.Color.parseColor("#555555"))
-        // Hapus setCompoundDrawablesWithIntrinsicBounds di sini
         setPadding((8 * scale).toInt(), padVerticalAnak, padHorizontal, padVerticalAnak)
-        setBackgroundResource(android.R.drawable.list_selector_background)
-        isClickable = true
-        isFocusable = true
-        setOnClickListener { v ->
-            sorotMenuTerpilih(v)
-            eksekusiSaringanKategori(namaAnak)
-        }
+        // Bebankan pembentangan penuh ke teks agar mengisi sasis
+        layoutParams = LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f)
+    }
+    
+    // Kunci event listener pada kontainer barisUtama, bukan hanya teks
+    barisAnak.setOnClickListener {
+        sorotMenuTerpilih(barisAnak)
+        eksekusiSaringanKategori(namaAnak)
     }
     
     barisAnak.addView(relHorizontal)
     barisAnak.addView(teksAnak)
     wadahTeksAnak.addView(barisAnak)
 }
-
 wadahAnak.addView(relVertikal)
 wadahAnak.addView(wadahTeksAnak)
 
@@ -516,7 +535,7 @@ wadahAnak.addView(wadahTeksAnak)
             Toast.makeText(this, "Sistem sedang merakit data. Harap tunggu.", Toast.LENGTH_SHORT).show()
             return
         }
-        tampilkanIndikator("Menarik kargo: $labelKategori...", true)
+        tampilkanIndikator("Memuat Kategori: $labelKategori...", true)
 
         lifecycleScope.launch(Dispatchers.IO) {
             val database = ArsipDatabase.operasikanMesin(this@MainActivity).arsipDao()
@@ -529,7 +548,7 @@ wadahAnak.addView(wadahTeksAnak)
     edtPencarian.clearFocus()
 
     
-    val muatanTeks = "$labelKategori (${hasilSaringanAkhir.size} arsip)"
+    val muatanTeks = "$labelKategori • ${hasilSaringanAkhir.size} Status"
     tampilkanIndikator(muatanTeks, false)
     
     panelStatusPencarian.visibility = View.VISIBLE 
@@ -947,27 +966,32 @@ wadahAnak.addView(wadahTeksAnak)
         recyclerTimeline.layoutManager = androidx.recyclerview.widget.LinearLayoutManager(this)
         recyclerTimeline.adapter = adapterTimeline
     }
-    
     private fun bukaModeBuku(posisi: Int) {
     if (isMesinSibuk) return
     isMesinSibuk = true 
     
     lifecycleScope.launch(Dispatchers.Main) {
-        // Matikan sasis luar
         recyclerTimeline.visibility = View.GONE
         kontainerJalurKanan.visibility = View.GONE 
         recyclerGridMode.visibility = View.GONE
         wadahModeBuku.visibility = View.VISIBLE
 
-        tampilkanIndikator("Membuka proyektor...", true)
+        // AKTIFKAN PANEL TELEMETRI DENGAN FORMAT BARU
+        panelStatusPencarian.visibility = View.VISIBLE
+        loadingPencarian.visibility = View.GONE
         
-        // Jeda relai untuk pernapasan RAM
-        delay(100) 
+        val totalVolume = daftarArsipAktif.size
+        // Menggunakan label kategori aktif jika ada, atau default jika dalam mode umum
+        val labelKategori = if (modeKategoriAktif && daftarArsipAktif.isNotEmpty()) {
+            daftarArsipAktif.first().kategori
+        } else {
+            "Semua Status"
+        }
 
-        // Tembakkan posisi awal ke mesin sabuk berjalan
-        geserSabukProyektor(posisi)
+        txtStatusPencarian.text = "$labelKategori • $totalVolume Status"
         
-        tampilkanIndikator("", false)
+        delay(100) 
+        geserSabukProyektor(posisi)
         
         proyektorBuku.post {
             isMesinSibuk = false 

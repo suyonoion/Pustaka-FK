@@ -152,8 +152,8 @@
         </RelativeLayout>
     </FrameLayout>
 
-    <!-- JALUR KANAN: KANTONG NAVIGASI TIMELINE (DIBERIKAN ID UNTUK KENDALI SENSOR) -->
-   <FrameLayout
+   <!-- JALUR KANAN: KANTONG NAVIGASI TIMELINE -->
+<FrameLayout
     android:id="@+id/kontainerJalurKanan"
     android:layout_width="45dp"
     android:layout_height="match_parent"
@@ -165,18 +165,16 @@
         android:layout_width="1dp"
         android:layout_height="match_parent"
         android:layout_gravity="start"
-        android:background="#D6D6D6" />
+        android:background="#E0E0E0" />
 
-    <!-- GARIS TIMELINE UTAMA (MENYATU PENUH DARI ATAS KE BAWAH) -->
-    <!-- GARIS TIMELINE UTAMA -->
+    <!-- GARIS TIMELINE UTAMA (Ditetapkan di Tengah Poros) -->
     <View
-    android:layout_width="2dp"
-    android:layout_height="match_parent"
-    android:layout_gravity="end" 
-    android:background="#80CBC4" />
+        android:layout_width="2dp"
+        android:layout_height="match_parent"
+        android:layout_gravity="center_horizontal" 
+        android:background="#D1D9D9" />
 
-        
-    <!-- RECYCLERVIEW HANYA MENAMPILKAN TITIK / TEKS DI ATAS GARIS -->
+    <!-- RECYCLERVIEW NAVIGASI -->
     <androidx.recyclerview.widget.RecyclerView
         android:id="@+id/recyclerTimeline"
         android:layout_width="match_parent"
@@ -187,6 +185,7 @@
         android:paddingBottom="0dp"
         android:clipToPadding="false" />
 </FrameLayout>
+
 
 </LinearLayout>
 

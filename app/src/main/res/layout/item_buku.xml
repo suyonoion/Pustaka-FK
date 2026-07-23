@@ -71,7 +71,7 @@
             android:text="Halaman : -/-"
             android:textSize="11sp"
             android:textStyle="bold"
-            android:textColor="#004D40"
+            android:textColor="#D4AF37"
             android:background="#E0F2F1"
             android:paddingHorizontal="8dp"
             android:paddingVertical="4dp"/>

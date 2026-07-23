@@ -12,6 +12,9 @@ class TimelineAdapter(
     private val pemicuLompat: (Int) -> Unit
 ) : RecyclerView.Adapter<TimelineAdapter.TitikViewHolder>() {
 
+    // Variabel penyimpan posisi item bulan yang sedang aktif dipilih
+    private var posisiTerpilih: Int = -1
+
     class TitikViewHolder(view: View) : RecyclerView.ViewHolder(view) {
         val txtLabel: TextView = view.findViewById(R.id.txtLabelTimeline)
     }
@@ -22,39 +25,65 @@ class TimelineAdapter(
     }
 
     override fun onBindViewHolder(holder: TitikViewHolder, position: Int) {
-    val titik = daftarTitik[position]
-    holder.txtLabel.text = titik.teks
+        val titik = daftarTitik[position]
+        holder.txtLabel.text = titik.teks
+val skala = holder.itemView.context.resources.displayMetrics.density
 
-    if (titik.tipe == 0) {
-        // TAHUN: Tanpa latar kartu, teks menempel langsung
-        holder.txtLabel.textSize = 11f // atau set ukuran via sp
-        holder.txtLabel.setTextColor(Color.parseColor("#004D40")) 
-        holder.txtLabel.setTypeface(null, android.graphics.Typeface.BOLD)
-        holder.txtLabel.setBackgroundColor(Color.TRANSPARENT)
-        
-        holder.itemView.setOnClickListener(null)
-        holder.itemView.isClickable = false
+if (titik.tipe == 0) {
+    // TAHUN
+    holder.txtLabel.textSize = 12f
+    holder.txtLabel.setTextColor(android.graphics.Color.parseColor("#004D40")) 
+    holder.txtLabel.setTypeface(null, android.graphics.Typeface.BOLD)
+    holder.txtLabel.setBackgroundResource(R.drawable.bg_timeline_tahun)
+    
+    // Injeksi Ruang Vektor Lancip: Kiri ekstra lebar untuk menghindari tabrakan dengan moncong lancip
+    holder.txtLabel.setPadding(
+        (12 * skala).toInt(), 
+        (4 * skala).toInt(), 
+        (8 * skala).toInt(), 
+        (4 * skala).toInt()
+    )
+    
+    holder.itemView.setOnClickListener(null)
+    holder.itemView.isClickable = false
+} else {
+    // BULAN
+    holder.txtLabel.textSize = 10f
+    holder.txtLabel.setTypeface(null, android.graphics.Typeface.BOLD)
+    
+    // Injeksi Ruang Kapsul Normal (Menggantikan fungsi padding di XML lama)
+    holder.txtLabel.setPadding(
+        (2 * skala).toInt(), 
+        (5 * skala).toInt(), 
+        (2 * skala).toInt(), 
+        (5 * skala).toInt()
+    )
+
+    // Evaluasi Status Aktif/Pasif
+    if (position == posisiTerpilih) {
+        holder.txtLabel.setBackgroundResource(R.drawable.bg_timeline_aktif)
+        holder.txtLabel.setTextColor(android.graphics.Color.WHITE)
     } else {
-        // BULAN: Kartu warna selang-seling
-        holder.txtLabel.textSize = 10f
-        holder.txtLabel.setTextColor(Color.WHITE)
-        holder.txtLabel.setTypeface(null, android.graphics.Typeface.BOLD)
-        
-        // SUNTIKKAN BACKGROUND DRWAABLE SELANG-SELING
         if (titik.warnaGenap) {
             holder.txtLabel.setBackgroundResource(R.drawable.bg_timeline_genap)
+            holder.txtLabel.setTextColor(android.graphics.Color.parseColor("#004D40"))
         } else {
             holder.txtLabel.setBackgroundResource(R.drawable.bg_timeline_ganjil)
+            holder.txtLabel.setTextColor(android.graphics.Color.parseColor("#424242"))
         }
-
-        holder.itemView.setOnClickListener {
-            pemicuLompat(titik.indeksTujuan)
-        }
-        holder.itemView.isClickable = true
     }
+
+    holder.itemView.setOnClickListener {
+        val posisiLama = posisiTerpilih
+        posisiTerpilih = holder.bindingAdapterPosition
+        notifyItemChanged(posisiLama)
+        notifyItemChanged(posisiTerpilih)
+        pemicuLompat(titik.indeksTujuan)
+    }
+    holder.itemView.isClickable = true
 }
 
-
+    }
 
     override fun getItemCount(): Int = daftarTitik.size
 }

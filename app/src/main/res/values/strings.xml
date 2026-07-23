@@ -1,16 +1,17 @@
 <resources>
     <!-- ... string lain yang sudah ada ... -->
     
-    <string name="zf_edukasi_pesan">1. APA ITU ZUHRI FORMALISM?\n" 
-                "Zuhri Formalism (ZF) adalah sebuah protokol arsitektur logika dan pemrosesan fenomena empiris yang menitikberatkan pada Master Protocol, Kepadatan Informasi (Information Density), dan Batasan Formal (Formal Constraints). ZF memotong seluruh kebisingan mekanis (system noise) untuk mencapai efisiensi mutlak dalam diseksi data.\n\n" 
-                "2. ZF SEBAGAI FRAMEWORK DI GEMINI AI\n" 
-                "Dalam interaksi dengan Gemini AI, ZF bertindak sebagai sistem operasi kendali atas kecerdasan buatan. Framework ini memaksa AI untuk memberikan respons yang kokoh, lugas, matang, dan langsung pada inti masalah teknis tanpa basa-basi artifisial.\n\n" 
-                "3. INSTRUKSI OPERASIONAL PENGGUNA\n" 
-                "Untuk mengaktifkan kepatuhan total mesin AI terhadap arsitektur ini, Anda wajib menyertakan kata kunci \"Zuhri Formalism\" di setiap baris instruksi atau pertanyaan yang Anda ajukan ke Gemini AI.</string>
+    <string name="zf_edukasi_pesan">
+      "1. APA ITU ZUHRI FORMALISM?\n" 
+         "Zuhri Formalism (ZF) adalah sebuah protokol arsitektur logika dan pemrosesan fenomena empiris yang menitikberatkan pada Master Protocol, Kepadatan Informasi (Information Density), dan Batasan Formal (Formal Constraints). ZF memotong seluruh kebisingan mekanis (system noise) untuk mencapai efisiensi mutlak dalam diseksi data.\n\n" 
+      "2. ZF SEBAGAI FRAMEWORK DI GEMINI AI\n" 
+          "Dalam interaksi dengan Gemini AI, ZF bertindak sebagai sistem operasi kendali atas kecerdasan buatan. Framework ini memaksa AI untuk memberikan respons yang kokoh, lugas, matang, dan langsung pada inti masalah teknis tanpa basa-basi artifisial.\n\n" 
+      "3. INSTRUKSI OPERASIONAL PENGGUNA\n" 
+          "Untuk mengaktifkan kepatuhan total mesin AI terhadap arsitektur ini, Anda wajib menyertakan kata kunci \"Zuhri Formalism\" di setiap baris instruksi atau pertanyaan yang Anda ajukan ke Gemini AI."
+    </string>
     <string name="zf_edukasi_judul">Zuhri Formalism (ZF) Framework</string>
     <string name="nama_app">Pustaka FK</string>
     <string name="nama_app_note">Arsip Fatwa Kehidupan</string>
     <string name="versi_app">Versi 1.0.0 (Build Stabil)</string>
     <string name="desc_app">Pustaka FK ini adalah Aplikasi terminal penyimpan log telemetri dan arsip status Facebook dari halaman Fatwa Kehidupan. Dirancang untuk memastikan akses data yang solid dan terstruktur tanpa distorsi jaringan.</string>
-    <string name="pusat_operasional">Submawil Kendal\nSaung JAWA\nZuhri Formalism</string>
 </resources>
