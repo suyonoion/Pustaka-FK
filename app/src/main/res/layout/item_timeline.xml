@@ -12,15 +12,16 @@
 
     <!-- TextView berfungsi sebagai kartu melayang (Capsule) di atas garis -->
     <TextView
-        android:id="@+id/txtLabelTimeline"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:gravity="center"
-        android:paddingHorizontal="2dp"
-        android:paddingVertical="5dp"
-        android:text="Jan\n'25"
-        android:textSize="10sp"
-        android:textStyle="bold"
-        android:lineSpacingExtra="-2dp" />
+    android:id="@+id/txtLabelTimeline"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:layout_marginEnd="4dp" 
+    android:gravity="center"
+    android:paddingHorizontal="2dp"
+    android:paddingVertical="5dp"
+    android:text="Jan\n'25"
+    android:textSize="10sp"
+    android:textStyle="bold"
+    android:lineSpacingExtra="-2dp" />
 
 </LinearLayout>

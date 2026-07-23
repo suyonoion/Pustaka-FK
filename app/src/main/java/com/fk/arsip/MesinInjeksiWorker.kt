@@ -32,39 +32,37 @@ class MesinInjeksiWorker(context: Context, params: WorkerParameters) : Coroutine
 
         val estimasiTotalItem = (totalBobotFile / 5120).toInt()
         
-        setProgress(workDataOf(
-            "FASE" to 5,
-            "PERSENTASE" to 0,
-            "INDEKS" to 0,
-            "TOTAL" to estimasiTotalItem
-        ))
+// Inisialisasi Fase Tunggal (Hanya Fase 6)
+setProgress(workDataOf(
+    "FASE" to 6,
+    "PERSENTASE" to 0,
+    "INDEKS" to 0,
+    "TOTAL" to estimasiTotalItem
+))
 
-        try {
-            val reader = com.google.gson.stream.JsonReader(FileReader(fileTarget))
-            if (reader.peek() != com.google.gson.stream.JsonToken.BEGIN_ARRAY) {
-                throw Exception("Struktur berkas tidak valid.")
-            }
-
-            lenganRobot.kurasTangkiKotor()
-            reader.beginArray()
-
-            val muatanSementara = mutableListOf<ArsipEntity>()
-var indeks = 0
-var persentaseLayarTerakhir = -1
-
-while (reader.hasNext()) {
-    if (indeks % 500 == 0) {
-        val kalkulasiFase5 = ((indeks.toDouble() / estimasiTotalItem.toDouble()) * 100).toInt().coerceAtMost(99)
-        setProgress(workDataOf(
-            "FASE" to 5,
-            "PERSENTASE" to kalkulasiFase5,
-            "INDEKS" to indeks,
-            "TOTAL" to estimasiTotalItem
-        ))
-        
-        // PEMBERSIHAN MEMORI BERKALA (Anti-Crash OOM)
-        System.gc()
+try {
+    val reader = com.google.gson.stream.JsonReader(FileReader(fileTarget))
+    if (reader.peek() != com.google.gson.stream.JsonToken.BEGIN_ARRAY) {
+        throw Exception("Struktur berkas tidak valid.")
     }
+
+    lenganRobot.kurasTangkiKotor()
+    reader.beginArray()
+
+    val muatanSementara = mutableListOf<ArsipEntity>()
+    var indeks = 0
+
+    while (reader.hasNext()) {
+        if (indeks % 500 == 0) {
+            val kalkulasiPersen = ((indeks.toDouble() / estimasiTotalItem.toDouble()) * 100).toInt().coerceAtMost(99)
+            setProgress(workDataOf(
+                "FASE" to 6,
+                "PERSENTASE" to kalkulasiPersen,
+                "INDEKS" to indeks,
+                "TOTAL" to estimasiTotalItem
+            ))
+            System.gc()
+        }
 
     val elemenGson = com.google.gson.JsonParser.parseReader(reader)
     val obj = org.json.JSONObject(elemenGson.toString())
@@ -103,37 +101,25 @@ while (reader.hasNext()) {
         }
     }
 
-    muatanSementara.add(ArsipEntity(idPosting, namaPenulis, urlProfilPic, waktuRilis, tanggalBaca, kontenPenuh, tautanAsli, daftarFoto.joinToString(","), kategori))
-    indeks++
+  muatanSementara.add(ArsipEntity(idPosting, namaPenulis, urlProfilPic, waktuRilis, tanggalBaca, kontenPenuh, tautanAsli, daftarFoto.joinToString(","), kategori))
+        indeks++
 
-    // KALIBRASI AMBANG BATAS: Turunkan ke 500 untuk stabilitas RAM
-    if (muatanSementara.size >= 500) {
-    // 1. Injeksi ke SQLite (FASE 6)
-    val kalkulasiPersen = ((indeks.toDouble() / estimasiTotalItem.toDouble()) * 100).toInt().coerceAtMost(99)
-    
-    setProgress(workDataOf(
-        "FASE" to 6,
-        "PERSENTASE" to kalkulasiPersen,
-        "INDEKS" to indeks,
-        "TOTAL" to estimasiTotalItem
-    ))
+        // INJEKSI TANPA DELAY UI JUMPING
+        if (muatanSementara.size >= 500) {
+            lenganRobot.injeksiMassal(muatanSementara)
+            muatanSementara.clear()
+            
+            val kalkulasiPersen = ((indeks.toDouble() / estimasiTotalItem.toDouble()) * 100).toInt().coerceAtMost(99)
+            setProgress(workDataOf(
+                "FASE" to 6,
+                "PERSENTASE" to kalkulasiPersen,
+                "INDEKS" to indeks,
+                "TOTAL" to estimasiTotalItem
+            ))
+        }
+    }
 
-    lenganRobot.injeksiMassal(muatanSementara)
-    muatanSementara.clear()
-    
-    // 2. Kembalikan Telemetri ke FASE 5 untuk pembacaan batch berikutnya
-    delay(50) // Jeda singkat agar UI sempat merekam indikator FASE 6
-    setProgress(workDataOf(
-        "FASE" to 5,
-        "PERSENTASE" to kalkulasiPersen,
-        "INDEKS" to indeks,
-        "TOTAL" to estimasiTotalItem
-    ))
-}
-
-}
-
-if (muatanSementara.isNotEmpty()) { lenganRobot.injeksiMassal(muatanSementara) }
+    if (muatanSementara.isNotEmpty()) { lenganRobot.injeksiMassal(muatanSementara) }
 reader.endArray()
 reader.close()
 

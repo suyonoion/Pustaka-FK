@@ -8,9 +8,7 @@
     android:background="#004D40"
     android:elevation="10dp">
 
-    <!-- SEKTOR REAKTOR UTAMA (Dikunci Simetris di Tengah Layar) -->
-    <!-- app:layout_constraintVertical_bias="0.45" menarik objek 5% ke atas dari pusat absolut untuk keseimbangan mata -->
-       <!-- SEKTOR REAKTOR UTAMA (Ditumpu lebih ke atas untuk memberi ruang) -->
+    <!-- SEKTOR REAKTOR UTAMA -->
     <ImageView
         android:id="@+id/indikatorVisualMesin"
         android:layout_width="160dp"
@@ -22,7 +20,7 @@
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintVertical_bias="0.25" /> 
 
-    <!-- KATUP ISOLATOR (Digantung di bawah Reaktor Utama) -->
+    <!-- KATUP ISOLATOR -->
     <ProgressBar
         android:id="@+id/lingkarPersentaseUtama"
         style="?android:attr/progressBarStyleHorizontal"
@@ -51,7 +49,22 @@
         app:layout_constraintStart_toStartOf="@id/lingkarPersentaseUtama"
         app:layout_constraintEnd_toEndOf="@id/lingkarPersentaseUtama"/>
 
-    <!-- IDENTITAS TELEMETRI (Digantung di bawah Katup Isolator) -->
+    <!-- TEKS STATUS FASE (Dipindahkan ke Pusat Gravitasi) -->
+    <TextView
+        android:id="@+id/teksStatusFase"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text=""
+        android:textColor="#FFFFFF"
+        android:textSize="14sp"
+        android:textStyle="bold"
+        android:gravity="center"
+        app:layout_constraintTop_toBottomOf="@id/lingkarPersentaseUtama"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintEnd_toEndOf="parent"
+        android:layout_marginTop="20dp" />
+
+    <!-- IDENTITAS TELEMETRI -->
     <TextView
         android:id="@+id/teksJudulUtama"
         android:layout_width="match_parent"
@@ -62,12 +75,11 @@
         android:textStyle="bold"
         android:letterSpacing="0.06"
         android:gravity="center"
-        app:layout_constraintTop_toBottomOf="@id/lingkarPersentaseUtama"
+        app:layout_constraintTop_toBottomOf="@id/teksStatusFase"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintEnd_toEndOf="parent"
-        android:layout_marginTop="28dp"/>
+        android:layout_marginTop="8dp"/>
 
-    <!-- IDENTITAS SEKUNDER -->
     <TextView
         android:id="@+id/teksTelemetriData"
         android:layout_width="match_parent"
@@ -80,25 +92,5 @@
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintEnd_toEndOf="parent"
         android:layout_marginTop="6dp"/>
-            <!-- SEKTOR RANTAI KOMANDO -->
-    <LinearLayout
-        android:id="@+id/kompartemenFase"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:orientation="vertical"
-        android:padding="16dp"
-        app:layout_constraintTop_toTopOf="parent"
-        app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintEnd_toEndOf="parent">
 
-        <TextView
-            android:id="@+id/teksStatusFase"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:text=""
-            android:textColor="#FFFFFF"
-            android:textSize="14sp"
-            android:textStyle="bold"
-            android:gravity="center" />
-    </LinearLayout>
 </androidx.constraintlayout.widget.ConstraintLayout>

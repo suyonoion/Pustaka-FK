@@ -72,7 +72,8 @@
 </LinearLayout>
 
                  <!-- PLAT JUDUL KATEGORI (DOMINAN) -->
-         <androidx.cardview.widget.CardView
+                <!-- PLAT JUDUL KATEGORI (DOMINAN) -->
+        <androidx.cardview.widget.CardView
             android:id="@+id/panelStatusPencarian"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
@@ -83,34 +84,38 @@
             app:cardBackgroundColor="#004D40" 
             app:cardCornerRadius="4dp"
             app:cardElevation="2dp"
-            android:visibility="gone">
+            android:visibility="visible">
 
+            <!-- Diubah menjadi HORIZONTAL agar indikator bersisian dengan teks -->
             <LinearLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:orientation="vertical"
+                android:orientation="horizontal"
                 android:gravity="center"
                 android:padding="8dp">
+
+                <!-- Lampu Sinyal Pemuatan (Telah diberi dimensi presisi) -->
+               <ProgressBar 
+                   android:id="@+id/loadingPencarian" 
+                   android:layout_width="14dp" 
+                   android:layout_height="14dp" 
+                   android:layout_marginEnd="6dp"
+                   android:indeterminateTint="#FFFFFF"
+                   android:visibility="gone"/>
 
                 <!-- Teks Dominan Rata Tengah -->
                 <TextView
                     android:id="@+id/txtStatusPencarian"
-                    android:layout_width="match_parent"
+                    android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:textColor="#FFFFFF"
                     android:textSize="10sp"
                     android:textStyle="bold"
-                    android:textAlignment="center"
-                    android:text="Kategori (0 arsip)" />
+                    android:text="Sistem Telemetri: Menunggu Instruksi" />
 
-                <!-- Sirkuit telemetri lama disembunyikan total dengan atribut yang terdefinisi secara formal -->
-               <ProgressBar 
-               android:id="@+id/loadingPencarian" 
-               android:layout_width="0dp" 
-               android:layout_height="0dp" 
-               android:visibility="gone"/>
             </LinearLayout>
         </androidx.cardview.widget.CardView>
+
 
 
         <!-- WADAH MULTI-JALUR UNTUK GRID DAN TIMELINE -->
@@ -163,11 +168,13 @@
         android:background="#D6D6D6" />
 
     <!-- GARIS TIMELINE UTAMA (MENYATU PENUH DARI ATAS KE BAWAH) -->
+    <!-- GARIS TIMELINE UTAMA -->
     <View
-        android:layout_width="2dp"
-        android:layout_height="match_parent"
-        android:layout_gravity="center_horizontal"
-        android:background="#80CBC4" />
+    android:layout_width="2dp"
+    android:layout_height="match_parent"
+    android:layout_gravity="end" 
+    android:background="#80CBC4" />
+
         
     <!-- RECYCLERVIEW HANYA MENAMPILKAN TITIK / TEKS DI ATAS GARIS -->
     <androidx.recyclerview.widget.RecyclerView

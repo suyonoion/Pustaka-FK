@@ -305,13 +305,16 @@ private fun eksekusiSaringanKombinasi(kategori: String, urutTerlama: Boolean) {
 }
 
     
-    private fun perbaruiPanelTelemetri(fase: FaseInjeksi, persentase: Int, volumeSelesai: Int, volumeTotal: Int) {
+private fun perbaruiPanelTelemetri(fase: FaseInjeksi, persentase: Int, volumeSelesai: Int, volumeTotal: Int, metrikKhusus: String = "") {
     val panelUtama = findViewById<ConstraintLayout>(R.id.panelInisialisasiUtama)
     val teksStatus = findViewById<TextView>(R.id.teksStatusFase)
     val indikatorVisual = findViewById<ImageView>(R.id.indikatorVisualMesin)
     val lingkarProgres = findViewById<ProgressBar>(R.id.lingkarPersentaseUtama)
     val teksPersen = findViewById<TextView>(R.id.teksPersentaseSentral)
     val teksTelemetri = findViewById<TextView>(R.id.teksTelemetriData)
+    
+    // Matikan FASE 5 dari sistem enum jika Anda mau, atau cukup setel FASE 6 sebagai poros operasi
+    val teksPesan = if (fase == FaseInjeksi.FASE_6) "Mengelas blok data ke memori..." else fase.pesan
     
     if (fase == FaseInjeksi.FASE_1 || fase == FaseInjeksi.FASE_7) {
         lingkarProgres.visibility = View.GONE
@@ -320,32 +323,39 @@ private fun eksekusiSaringanKombinasi(kategori: String, urutTerlama: Boolean) {
         lingkarProgres.visibility = View.VISIBLE
         teksPersen.visibility = View.VISIBLE
     }
-    teksStatus.text = fase.pesan
+    
+    teksStatus.text = teksPesan
     indikatorVisual.setImageResource(fase.idGambar)
 
     when (fase) {
         FaseInjeksi.FASE_1, FaseInjeksi.FASE_2, FaseInjeksi.FASE_4 -> {
             lingkarProgres.isIndeterminate = true
             teksPersen.text = "---"
-            teksTelemetri.text = "Sistem sedang menginisialisasi modul internal..."
+            teksTelemetri.text = "Sistem sedang menginisialisasi modul ..."
         }
-        else -> {
+        FaseInjeksi.FASE_3 -> {
             lingkarProgres.isIndeterminate = false
             lingkarProgres.progress = persentase
             teksPersen.text = "$persentase%"
-            
-            if (fase != FaseInjeksi.FASE_7) {
-                // DIUBAH: Mengganti indikator baris mati dengan informasi progres byte & kecepatan
-                teksTelemetri.text = "Arsip Status Digital Fatwa Kehidupan\nProses unduhan data ($persentase%)\nSistem bekerja stabil..."
-            } else {
-                teksTelemetri.text = "Seluruh blok data berhasil dilas ke dalam memori SQLite."
-                Handler(Looper.getMainLooper()).postDelayed({
-                    panelUtama.visibility = View.GONE
-                }, 1500)
-            }
+            teksTelemetri.text = "Arsip Status Digital Fatwa Kehidupan\n$metrikKhusus\nSistem bekerja stabil..."
         }
+        FaseInjeksi.FASE_6 -> {
+            lingkarProgres.isIndeterminate = false
+            lingkarProgres.progress = persentase
+            teksPersen.text = "$persentase%"
+            teksTelemetri.text = "Arsip Status Digital Fatwa Kehidupan\nProses injeksi baris data ($volumeSelesai / $volumeTotal baris)\nSistem bekerja stabil..."
+        }
+        FaseInjeksi.FASE_7 -> {
+            lingkarProgres.isIndeterminate = false
+            lingkarProgres.progress = 100
+            teksPersen.text = "100%"
+            teksTelemetri.text = "Seluruh blok data berhasil dilas ke dalam memori SQLite."
+            Handler(Looper.getMainLooper()).postDelayed({ panelUtama.visibility = View.GONE }, 1500)
+        }
+        else -> {}
     }
 }
+
 
     override fun onConfigurationChanged(newConfig: android.content.res.Configuration) {
         super.onConfigurationChanged(newConfig)
@@ -403,34 +413,65 @@ private fun eksekusiSaringanKombinasi(kategori: String, urutTerlama: Boolean) {
                 R.drawable.ic_kategori_induk, 0, android.R.drawable.arrow_down_float, 0
             )
             
-            val wadahAnak = LinearLayout(this).apply {
-            orientation = LinearLayout.VERTICAL
-            visibility = View.GONE
-            setBackgroundColor(android.graphics.Color.TRANSPARENT)
-            }
+            // Ganti blok inisialisasi wadahAnak sebelumnya dengan sasis baru ini:
+val wadahAnak = LinearLayout(this).apply {
+    orientation = LinearLayout.HORIZONTAL // Ubah orientasi induk untuk menampung rel utama
+    visibility = View.GONE
+    setBackgroundColor(android.graphics.Color.TRANSPARENT)
+}
 
-            for (cabang in daftarCabang) {
-                val namaAnak = cabang.first
-                val barisAnak = TextView(this).apply {
-                    text = namaAnak 
-                    textSize = 12f
-                    setTextColor(android.graphics.Color.parseColor("#555555"))
-                    
-                    // PENERAPAN GARIS BERNESTING: Menggunakan ikon cabang pohon
-                    setCompoundDrawablesWithIntrinsicBounds(R.drawable.ic_tree_branch, 0, 0, 0)
-                    compoundDrawablePadding = (8 * scale).toInt()
-                    
-                    setPadding(padLeftAnak, padVerticalAnak, padHorizontal, padVerticalAnak)
-                    setBackgroundResource(android.R.drawable.list_selector_background)
-                    isClickable = true
-                    isFocusable = true
-                    setOnClickListener { v ->
-                        sorotMenuTerpilih(v)
-                        eksekusiSaringanKategori(namaAnak)
-                    }
-                }
-                wadahAnak.addView(barisAnak)
-            }
+// Rel Vertikal Utama (Trunk/Batang penghubung kontinu)
+val relVertikal = View(this).apply {
+    layoutParams = LinearLayout.LayoutParams((1.5f * scale).toInt(), LinearLayout.LayoutParams.MATCH_PARENT).apply {
+        // Sejajarkan rel tepat di bawah ikon folder induk
+        setMargins((24 * scale).toInt(), 0, 0, 0) 
+    }
+    setBackgroundColor(android.graphics.Color.parseColor("#B0BEC5"))
+}
+
+val wadahTeksAnak = LinearLayout(this).apply {
+    orientation = LinearLayout.VERTICAL
+    layoutParams = LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f)
+}
+
+for (cabang in daftarCabang) {
+    val namaAnak = cabang.first
+    
+    // Sasis untuk masing-masing baris item
+    val barisAnak = LinearLayout(this).apply {
+        orientation = LinearLayout.HORIZONTAL
+        layoutParams = LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT)
+        gravity = android.view.Gravity.CENTER_VERTICAL
+    }
+
+    // Rel Horizontal Penghubung (Cabang menuju teks)
+    val relHorizontal = View(this).apply {
+        layoutParams = LinearLayout.LayoutParams((12 * scale).toInt(), (1.5f * scale).toInt())
+        setBackgroundColor(android.graphics.Color.parseColor("#B0BEC5"))
+    }
+
+    val teksAnak = TextView(this).apply {
+        text = namaAnak 
+        textSize = 12f
+        setTextColor(android.graphics.Color.parseColor("#555555"))
+        // Hapus setCompoundDrawablesWithIntrinsicBounds di sini
+        setPadding((8 * scale).toInt(), padVerticalAnak, padHorizontal, padVerticalAnak)
+        setBackgroundResource(android.R.drawable.list_selector_background)
+        isClickable = true
+        isFocusable = true
+        setOnClickListener { v ->
+            sorotMenuTerpilih(v)
+            eksekusiSaringanKategori(namaAnak)
+        }
+    }
+    
+    barisAnak.addView(relHorizontal)
+    barisAnak.addView(teksAnak)
+    wadahTeksAnak.addView(barisAnak)
+}
+
+wadahAnak.addView(relVertikal)
+wadahAnak.addView(wadahTeksAnak)
 
             barisInduk.setOnClickListener {
                 if (wadahAnak.visibility == View.VISIBLE) {
@@ -698,25 +739,27 @@ private fun eksekusiSaringanKombinasi(kategori: String, urutTerlama: Boolean) {
     lifecycleScope.launch(Dispatchers.IO) {
         var isMengunduh = true
         var beradaDiFaseGagalJaringan = false
-
+        var waktuTerakhir = System.currentTimeMillis()
+        var byteTerakhir = 0L
+        
         while (isMengunduh) {
-            // SENSOR CEK SINYAL
+            // SENSOR CEK SINYAL UTAMA
             if (!isJaringanTersedia()) {
                 beradaDiFaseGagalJaringan = true
                 withContext(Dispatchers.Main) {
-                    // Pindahkan indikator visual ke FASE_4 secara otomatis
+                    // Kunci sasis visual ke FASE_4 (Isolasi Jaringan)
                     perbaruiPanelTelemetri(FaseInjeksi.FASE_4, 0, 0, 0)
                 }
-                // Tahan perulangan selama 3 detik sebelum memeriksa kekuatan sinyal kembali
+                // Tahan putaran rotor pembacaan selama 3 detik sebelum cek ulang
                 delay(3000)
                 continue
             }
 
-            // Jika sinyal kembali pulih setelah mati
+            // PEMULIHAN KONEKTIVITAS
             if (beradaDiFaseGagalJaringan) {
                 beradaDiFaseGagalJaringan = false
                 withContext(Dispatchers.Main) {
-                    // Kembalikan visualisasi ke FASE_3 untuk melanjutkan pembacaan byte kargo
+                    // Lepas kunci isolasi, kembalikan transmisi visual ke FASE_3
                     perbaruiPanelTelemetri(FaseInjeksi.FASE_3, 0, 0, 0)
                 }
             }
@@ -728,39 +771,62 @@ private fun eksekusiSaringanKombinasi(kategori: String, urutTerlama: Boolean) {
                 val statusIndex = cursor.getColumnIndex(DownloadManager.COLUMN_STATUS)
                 val status = cursor.getInt(statusIndex)
                 
-                // Perubahan pada loop pantauTekananUnduhan
-if (status == DownloadManager.STATUS_SUCCESSFUL) {
-    isMengunduh = false 
-} else if (status == DownloadManager.STATUS_PAUSED || !isJaringanTersedia()) {
-    // TAHAN SISTEM DI FASE_4 SAAT PAUSE / SINYAL PUTUS
-    withContext(Dispatchers.Main) {
-        perbaruiPanelTelemetri(FaseInjeksi.FASE_4, 0, 0, 0)
-    }
-    delay(2000)
-} else if (status == DownloadManager.STATUS_FAILED) {
-    isMengunduh = false
-    withContext(Dispatchers.Main) {
-        // Jangan buka halaman utama kosong, paksa ke FASE_4
-        perbaruiPanelTelemetri(FaseInjeksi.FASE_4, 0, 0, 0)
-        delay(3000)
-        eksekusiPabrikData() // Coba hubungkan ulang
-    }
-}
- else {
+                if (status == DownloadManager.STATUS_SUCCESSFUL) {
+                    isMengunduh = false 
+                } else if (status == DownloadManager.STATUS_PAUSED || !isJaringanTersedia()) {
+                    // TAHAN SISTEM DI FASE_4 SAAT ALIRAN TERSUMBAT
+                    withContext(Dispatchers.Main) {
+                        perbaruiPanelTelemetri(FaseInjeksi.FASE_4, 0, 0, 0)
+                    }
+                    delay(2000)
+                } else if (status == DownloadManager.STATUS_FAILED) {
+                    isMengunduh = false
+                    withContext(Dispatchers.Main) {
+                        // Tolak antarmuka kosong, paksa kunci di FASE_4
+                        perbaruiPanelTelemetri(FaseInjeksi.FASE_4, 0, 0, 0)
+                        delay(3000)
+                        eksekusiPabrikData() // Picu ulang engine starter
+                    }
+                } else {
+                    // BLOK KALKULASI TELEMETRI KECEPATAN (SPEED METER)
                     val bytesDownloadedIndex = cursor.getColumnIndex(DownloadManager.COLUMN_BYTES_DOWNLOADED_SO_FAR)
                     val bytesTotalIndex = cursor.getColumnIndex(DownloadManager.COLUMN_TOTAL_SIZE_BYTES)
+                    
                     if (bytesDownloadedIndex != -1 && bytesTotalIndex != -1) {
                         val downloaded = cursor.getLong(bytesDownloadedIndex)
                         val total = cursor.getLong(bytesTotalIndex)
+                        
                         if (total > 0) {
                             val persentase = ((downloaded * 100L) / total).toInt()
+                            
+                            val waktuSekarang = System.currentTimeMillis()
+                            val selisihWaktu = waktuSekarang - waktuTerakhir
+                            var metrikUnduhan = "Menghitung tekanan aliran..."
+                            
+                            // Eksekusi kalkulasi jika mesin telah berjalan lebih dari 0 detik
+                            if (selisihWaktu > 0 && byteTerakhir > 0) {
+                                val kecepatanBps = ((downloaded - byteTerakhir) * 1000) / selisihWaktu
+                                val sisaByte = total - downloaded
+                                val sisaDetik = if (kecepatanBps > 0) sisaByte / kecepatanBps else 0
+                                
+                                val kecepatanMbps = String.format("%.2f", kecepatanBps / (1024.0 * 1024.0))
+                                val mbSelesai = String.format("%.1f", downloaded / (1024.0 * 1024.0))
+                                val mbTotal = String.format("%.1f", total / (1024.0 * 1024.0))
+                                
+                                metrikUnduhan = "$sisaDetik detik tersisa • $kecepatanMbps Mbps | $mbSelesai MB / $mbTotal MB"
+                            }
+                            
+                            waktuTerakhir = waktuSekarang
+                            byteTerakhir = downloaded
+                            
                             withContext(Dispatchers.Main) {
-                                perbaruiPanelTelemetri(FaseInjeksi.FASE_3, persentase, 0, 0)
+                                perbaruiPanelTelemetri(FaseInjeksi.FASE_3, persentase, 0, 0, metrikUnduhan)
                             }
                         }
                     }
                 }
             } else {
+                // KONDISI KOSONG/ANOMALI: Matikan mesin dan tutup panel
                 isMengunduh = false
                 withContext(Dispatchers.Main) {
                     findViewById<ConstraintLayout>(R.id.panelInisialisasiUtama).visibility = View.GONE
@@ -768,10 +834,11 @@ if (status == DownloadManager.STATUS_SUCCESSFUL) {
                 }
             }
             cursor?.close()
-            delay(1000) // Frekuensi pembacaan tangki unduhan setiap 1 detik
+            delay(1000) // Rotasi siklus pembacaan kargo: 1 detik per siklus
         }
     }
 }
+
 
     // SIRKUIT BARU: Antena Pemantau Sinyal Kerja WorkManager Latar Belakang
     private fun jalankanMesinInjeksiOtonom(jalurFileJson: String) {
@@ -1037,14 +1104,12 @@ private fun eksekusiLogikaPencarian(kataKunciMentah: String?) {
     proyektorBuku.setCurrentItem(posisiRelatif, false)
 }
     private fun muatDataAwalKeSasis(daftarArsipGlobal: List<ArsipEntity>) {
+    // Pastikan loading dimatikan jika pemrosesan selesai
+    loadingPencarian.visibility = View.GONE
+    
     if (daftarArsipGlobal.isNotEmpty()) {
-        // Ambil bagian tanggal saja (tanpa jam)
         val tglMentah = daftarArsipGlobal.first().tanggalBaca.substringBefore(" ")
-        
-        // Pecah string "YYYY-MM-DD" menjadi array
         val elemen = tglMentah.split("-")
-        
-        // Ubah urutan menjadi "DD/MM/YYYY" jika format mentahnya valid (3 segmen)
         val tanggalTerbaruFormatted = if (elemen.size == 3) {
             "${elemen[2]}/${elemen[1]}/${elemen[0]}"
         } else {
@@ -1052,16 +1117,15 @@ private fun eksekusiLogikaPencarian(kataKunciMentah: String?) {
         }
 
         val totalVolume = daftarArsipGlobal.size
-
-        panelStatusPencarian.visibility = View.VISIBLE
-        loadingPencarian.visibility = View.GONE
-        
-        // Render akhir menggunakan format DD/MM/YYYY
         txtStatusPencarian.text = "Arsip 24/03/2014 s.d $tanggalTerbaruFormatted Total $totalVolume Status"
     } else {
-        panelStatusPencarian.visibility = View.GONE
+        // INSTRUKSI LAMA: panelStatusPencarian.visibility = View.GONE (Dihapus sepenuhnya)
+        
+        // Gantikan dengan pelaporan status hampa data
+        txtStatusPencarian.text = "Sistem Telemetri: 0 Arsip Terdeteksi"
     }
 }
+
 
 }
 
