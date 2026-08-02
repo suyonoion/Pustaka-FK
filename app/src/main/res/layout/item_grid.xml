@@ -32,7 +32,7 @@
                 android:layout_height="22dp"
                 android:src="@drawable/profil_abah"
                 android:scaleType="centerCrop"
-                app:shapeAppearanceOverlay="@style/ShapeAppearance.MaterialComponents.Users.Circle" />
+                app:shapeAppearanceOverlay="@style/ShapeAppearance.PustakaFK.Circle" />
 
             <LinearLayout
                 android:layout_width="0dp"
