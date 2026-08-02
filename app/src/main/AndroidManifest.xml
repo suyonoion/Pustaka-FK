@@ -3,6 +3,9 @@
 
     <uses-permission android:name="android.permission.INTERNET" />
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
+    <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE" 
+    android:maxSdkVersion="28" />
+    
 
   <application
     android:allowBackup="true"
@@ -11,7 +14,7 @@
     android:roundIcon="@drawable/ic_launcher_fk"
     android:supportsRtl="true"
     android:largeHeap="true" 
-    android:theme="@style/Theme.AppCompat.Light.NoActionBar">
+    android:theme="@style/Theme.PustakaFK">
         
         <activity
             android:name=".MainActivity"
@@ -23,7 +26,19 @@
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
-        <activity android:name=".AboutActivity" android:theme="@style/Theme.AppCompat.Light.NoActionBar" />
+         <activity android:name=".AboutActivity" android:theme="@style/Theme.PustakaFK" />
+        <activity
+    android:name=".BiografiActivity"
+    android:exported="false"
+    android:label=""
+    android:theme="@style/Theme.PustakaFK" />
+        <activity android:name=".LetnanActivity" />
+          <activity android:name=".SosmedActivity" />
+        <activity
+    android:name=".GaleriActivity"
+    android:exported="false"
+    android:label="Galeri Foto"
+    android:theme="@style/Theme.MaterialComponents.DayNight.NoActionBar" />
         
     </application>
 </manifest>

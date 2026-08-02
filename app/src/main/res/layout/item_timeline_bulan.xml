@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="utf-8"?>
+<FrameLayout 
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="wrap_content"
+    android:layout_height="wrap_content"
+    android:layout_gravity="center"
+    android:layout_marginLeft="2dp"
+    android:layout_marginRight="2dp">
+
+    <TextView
+        android:id="@+id/txtLabelTimeline"
+        android:layout_width="wrap_content"
+        android:layout_height="20dp"
+        android:text="Jul"
+        android:textSize="9sp"
+        android:textStyle="bold"
+       android:textColor="@color/primary"
+        android:gravity="center"
+        android:background="@drawable/bg_timeline_bulan"
+        android:minWidth="34dp"/>
+
+</FrameLayout>

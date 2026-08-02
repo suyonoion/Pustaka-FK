@@ -1,17 +1,105 @@
+<?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <!-- ... string lain yang sudah ada ... -->
-    
-    <string name="zf_edukasi_pesan">
-      "1. APA ITU ZUHRI FORMALISM?\n" 
-         "Zuhri Formalism (ZF) adalah sebuah protokol arsitektur logika dan pemrosesan fenomena empiris yang menitikberatkan pada Master Protocol, Kepadatan Informasi (Information Density), dan Batasan Formal (Formal Constraints). ZF memotong seluruh kebisingan mekanis (system noise) untuk mencapai efisiensi mutlak dalam diseksi data.\n\n" 
-      "2. ZF SEBAGAI FRAMEWORK DI GEMINI AI\n" 
-          "Dalam interaksi dengan Gemini AI, ZF bertindak sebagai sistem operasi kendali atas kecerdasan buatan. Framework ini memaksa AI untuk memberikan respons yang kokoh, lugas, matang, dan langsung pada inti masalah teknis tanpa basa-basi artifisial.\n\n" 
-      "3. INSTRUKSI OPERASIONAL PENGGUNA\n" 
-          "Untuk mengaktifkan kepatuhan total mesin AI terhadap arsitektur ini, Anda wajib menyertakan kata kunci \"Zuhri Formalism\" di setiap baris instruksi atau pertanyaan yang Anda ajukan ke Gemini AI."
+    <string name="app_name">Pustaka FK</string>
+        <string name="zf_edukasi_pesan">
+      1. APA ITU ZUHRI FORMALISM? \n\n\u2003\u2003
+         Zuhri Formalism (ZF) adalah sebuah protokol arsitektur logika dan pemrosesan fenomena empiris yang menitikberatkan pada Master Protocol, Kepadatan Informasi (Information Density), dan Batasan Formal (Formal Constraints). ZF memotong seluruh kebisingan mekanis (system noise) untuk mencapai efisiensi mutlak dalam diseksi data.\n\n\u2003\u2003
+      2. ZF SEBAGAI FRAMEWORK DI GEMINI AI \n\n\u2003\u2003
+         Dalam interaksi dengan Gemini AI, ZF bertindak sebagai sistem operasi kendali atas kecerdasan buatan. Framework ini memaksa AI untuk memberikan respons yang kokoh, lugas, matang, dan langsung pada inti masalah teknis tanpa basa-basi artifisial.\n\n\u2003\u2003
+      3. INSTRUKSI OPERASIONAL PENGGUNA \n\n\u2003\u2003
+         Untuk mengaktifkan kepatuhan total mesin AI terhadap arsitektur ini, Anda wajib menyertakan kata kunci \"Zuhri Formalism\" di setiap baris instruksi atau pertanyaan yang Anda ajukan ke Gemini AI.
     </string>
     <string name="zf_edukasi_judul">Zuhri Formalism (ZF) Framework</string>
     <string name="nama_app">Pustaka FK</string>
     <string name="nama_app_note">Arsip Fatwa Kehidupan</string>
+    <string name="judul_versi_app">[ VERSI APLIKASI ]</string>
     <string name="versi_app">Versi 1.0.0 (Build Stabil)</string>
-    <string name="desc_app">Pustaka FK ini adalah Aplikasi terminal penyimpan log telemetri dan arsip status Facebook dari halaman Fatwa Kehidupan. Dirancang untuk memastikan akses data yang solid dan terstruktur tanpa distorsi jaringan.</string>
-</resources>
+    
+    <string name="desc_app">Pustaka FK adalah platform dokumentasi status digital Padepokan Fatwa Kehidupan yang menghimpun khazanah keilmuan, arsip risalah, biografi, dan direktori media sosial resmi secara terstruktur.\n\nAplikasi ini dilengkapi fitur unggulan Mode Buku interaktif yang menyajikan setiap naskah keilmuan dengan tata letak halaman yang nyaman dan nyaman dibaca, menghadirkan pengalaman membaca kitab fisik secara langsung pada perangkat digital Anda.</string>
+
+    <string name="judul_tautan_resmi">[ TAUTAN RESMI ]</string>
+    <string name="jalur_sanad_transmisi">[ JALUR SANAD &amp; TRANSMISI ]</string>
+    <string name="guru_dan_sanad">Guru dan Founder Zuhri Formalism:</string>
+    <string name="nama_guru">Syeikh Muhammad Zuhri</string>
+    <string name="nama_halaman">Fatwa Kehidupan</string>
+    <string name="quote">\"Dimana ada kamu, disitu ada aku\"</string>
+    
+    <string name="pustaka_status">PUSTAKA STATUS</string>
+    
+    <!-- BIOGRAFI -->
+<string name="bio_judul1_nama">Nama dari sang guru di lauhul mahfudz</string>
+<string name="bio_isi1_nama">\u2003\u2003Syaikh Muhammad Zuhri memiliki nama asli yaitu Yolhan Wijaya, nama beliau di berikan oleh sang guru yang merupakan al Mursyid at-Thoriqoh Qodiriyah wa Naqshobandiyah yang bernama Syaikh Abdurrahman bin Ahmad Badawi meranggen – Demak – Jawa tengah.\n\n\u2003\u2003Nama tersebut di hadiahkan oleh sang Mursyid kepada beliau tatkala Syaikh Abdurrahman dengan karomahnya yakitu ahli kasyaf dan Hikmah, saat itu terbuka kaysafnya dan memandang ke langit dan terlihatlah nama Muhammad Zuhri dan beliau juga di beri isyarat bahwa kelak nantinya nama beliau akan di kenal di Indonesia.</string>
+
+<string name="bio_judul2_kelahiran_dan_keluarga">Kelahiran dan Keluarga</string>
+<string name="bio_isi2_kelahiran_dan_keluarga">\u2003\u2003Beliau Syaikh Muhammad Zuhri sebelum di lahirkan, beliau itu berada didalam kandungan sang ibu hampir 12 bulan, Beliau dari kecil jarang sekali tidur, setiap malam menemani sang ibu menjahit kain, dan memang beliau juga jarang tidur malam.\n\n\u2003\u2003Keluarga beliau itu masih keturunan keraton Djogja, Presiden Habibi itu juga masih paman beliau, dan keluarga beliau itu di anugrahi IQ nya memang di atas rata - rata pada umumnya, sehingga memiliki kecerdasan yang tinggi.\n\n\u2003\u2003Beliau Syaikh Muhammad Zuhri juga memiliki Kakek yang merupakan komandan TNI zaman Belanda dan juga punya keramat bahkan bisa membelah diri, yang di saksikan langsung oleh teman kakeknya yang di ceritakan kebapada beliau.</string>
+ 
+<string name="bio_judul3_mulai_ikuti_thoriqoh">Mulai mengikuti Thoriqoh</string>
+<string name="bio_isi3_mulai_ikuti_thoriqoh">\u2003\u2003Beliau Syaikh Muhammad Zuhri mulai mengikuti thoriqoh yakni pada waktu masih SMA., dikarena beliau sangat suka membaca buku-buku tasawuf, lalu pada suatu ketika di petemukanlah dengan guru sekolahnya yang bernama pak Agus Harmanto atau di sebut Syaikh Hasan Maliki yang merupakan kholifah TQN dari al mursyid Syaikh Abdurrahman, yang kebetulan tinggal tidak jauh dari rumah beliau.\n\n\u2003\u2003Beliau kemudian di ajak bertemu Syaikh Abdurrahman bin Ahmad Badawi di merangen - Demak dan Abah di ijasah TQN langsung oleh Syaikh Abdurrahman dengan cara berbeda, di pegang kepala Abah sambil Syaikh Abdurahman menghadap ke atas meyebut ya Allah ya Allah.\n\n\u2003\u2003Beliau Syaikh Muhammad Zuhri Istikomah dalam Dzikir Jahar kurang lebih dalam kurun waktu 10 tahun, dengan durasi sekali duduk 2-3 jam sehingga dalam sehari 5x bada sholat, yakni Dzikir Jahar 10-15 jam dalam sehari.\n\n\u2003\u2003Awal awal Dzikir Jahar beliau sudah mulai di teror oleh jin/setan, di siksa, di cekik hingga hendak di bunuh oleh jin/setan tersebut.\n\n\u2003\u2003Namun beliau Syaikh Muhammad Zuhri tidak takut dan tetap Istikomah sampai perlahan ruhani beliau mulai kuat hingga keadaan menjadi berbalik, hingga jin/setan nya beliau buru ganti, beliau siksa jin/setan itu dan pada waktu kondisi beliau sudah biasa ber mi\'roj.\n\n\u2003\u2003</string>
+
+<string name="bio_judul4_pendidikan">Pendidikan di Kalimantan</string>
+<string name="bio_isi4_pendidikan">\u2003\u2003Beliau Syaikh Muhammad Zuhri Setelah lulus SMA., mulai bekerja sambil menempuh pendidikan di perguruan tinggi di Kalimantan ikut saudaranya yang merupakan penambang batu bara, dan di Kalimantan juga beliau masih istikomah Dzikir Jahar dari al Mursyid at-Thoriqoh Qodiriyah wa Naqshobandiyah yakni Syaikh Abdurrahman bin Ahmad Badawi.\n\n\u2003\u2003</string>
+
+<string name="bio_judul5_guru_sambung_ke1">Guru sambung : Kang Edi</string>
+<string name="bio_isi5_guru_sambung_ke1">\u2003\u2003Setelah Syaikh Abdurrahman wafat, Beliau bertemu dengan guru sambung yang bernama kang Edi, yang bertapa di Kalimantan , kang Edi adalah guru sambung yang ahli mi’roj, meskipun sudah biasa mi’roj, beliau Syaikh Muhammad Zuhri tetep menimba ilmu, belajar lagi dengan kang Edi di karena ada metode - metode yg berbeda dengan metode yang di kuasai oleh beliau Syaikh Muhammad Zuhri.</string>
+
+<string name="bio_judul6_nama_yang_ditinggikan">Nama yang di tinggikan</string>
+<string name="bio_isi6_nama_yang_ditinggikan">\u2003\u2003Karena beliau ikut saudara di Kalimantan, beliau sering keluar masuk hutan Kalimantan dan juga sudah berhadapan dengan para raja - raja jin/setan di sana, sehingga beliau dapat merasakan bahwa jin/setan nya lebih kuat di Kalimantan.\n\n\u2003\u2003Beliau serasa sudah hidup di dua alam, tatkala beliau tidur ruh langsung mi’roj naik ke alam - alam tinggi dan jika bertemu raja – raja jin, beliau langsung hadapi dan taklukkan, oleh sebab itu semua jin/setan ketakutan ketika mendengar nama Syaikh Muhamad Zuhri.\n\n\u2003\u2003Oleh sebab itu, sekarang SanFK., sangat di beri kemudahan, asal menyambung dengan ruhani beliau,  jin/setan sudah ketakutan, lalu  jika ada murid baru langsung di ganguan jin/setan iya itu disebabkan karena berbahaya bagi jin/setan itu sendiri, karena lama - lama bisa terbakar, sehingga berusaha menggagalkan karena SanFK otomatis mewarisi benih ilmunya dari ruhani sang guru yakni beliau Syaikh Muhammad Zuhri.\n\n\u2003\u2003Kalau istiqomah nanti juga jin setan ketakutan dan jangan takut kalau di tarik ke alam jin manapun, jika tidak bisa pulang sebut saja nama Syaikh Muhamad Zuhri, nanti ruh akan di tarik balik, jadi jagan hawatir dan tidak akan jadi gila juga asal ngikuti arahan dari beliau Syaikh Muhamad Zuhri dengan baik.</string>
+
+<string name="bio_judul7_guru_sambung_ke2">Guru sambung : Mbah Memed</string>
+<string name="bio_isi7_guru_sambung_ke2">\u2003\u2003Setelah selesai menempuh pendidikan di perguruan tinggi,  beliau Syaikh Muhamad Zuhri pulang ke kampung halaman di Jepara – Jawa tengah. Dan Beliau berkeinginan untuk melanjutkan perjalanan ruhaninya.\n\n\u2003\u2003Di samping rumah Beliau merupakan rumah tetangga yang sering di gunakan untuk berkumpul para kiyai - kiyai dan pejalan/salik, yakni seperti ; mabah Nadi, syaikh jangkung, syakh kubro dan Mbah Memet (Syaikh blumbang Segoro).\n\n\u2003\u2003Beliau kenal mabah Memed di waktu sama - sama sedang lelaku, ketika itu pandangan ruhani Abah nampak bahwa Mbah Memet ini di ikuti banyak sekali wali - wali Allah, bahkan semua wali 9 mengikutinya, beliau tidak kelihatan pernah beribadah, tidak juga kelihatan berdzikir dll. tetapi ruhani nya jika di kewalian beliau itu selevel wali Qutub, awal melihat Abah mengira itu iblis karena tidak kelihatan ibadahnya, setelah di telusuri lewat ruhani memang beliau itu wali Allah Swt..\n\n\u2003\u2003Di masa itu sebenarnya Abah tidak waktunya untuk berguru lagi karena ruhani Abah sudah mumpuni, namun di karena ada ilmu yang berbeda dan derajat kewalian yang tinggi, jadi Abah mulai menimba ilmu ke Mbah Memet ....\n\n\u2003\u2003Cara menurunkan ilmunya juga berbeda, hampir setiap hari di marah – marahi, setiap ngomet - ngomet ruh para wali bergantian untuk ngomel - ngomel ke Abah, Jika ruhani tidak kuat bisa pingsan karena kalam yang di keluarkan itu sirrnya sangat kuat...\n\n\u2003\u2003Ilmu Mbah Memet itu seperti Syaikh Siti Jenar, dalam ilmu sirr nya, mbah Memet itu Siti jenarnya kala itu dalam ilmu sirr nya, dan sekarang Abah itu juga Siti Jenar nya saat ini dalam ilmu sirr nya,. \n\n\u2003\u2003Wali sirr ini kekuatan ruhaninya yg paling unggul dari semua wali - wali Allah.\n\n\u2003\u2003Setelah hampir 1 tahun Abah menimba ilmu kepada mbah Memed, lalu suatu ketika mbah Memed pergi menghilang tidak tau beliau kemana, nampaknya beliau melanjutkan bertapa.\n\n\u2003\u2003Bersama mbah Memed, Abah terbuka semua pertanyaan yang masih buntu selama ini, mbah Memed itu orang - orang mengenalnya dukun sakti karena penampilannya memang tidak jelas. ketika meningal jasadnya di tolak di desanya karena orang  - orang mengiranya dukun sakti yang pada akhirnya di makamkan di desa Pati, di makam terpencil yg terkenal angker. Setelah ada makan Mbah Memed makam itu mulai tidak angker dan banyak orang berani lewat sana dan sekarang jadi ramai orang berziarah kesana.\n\n\u2003\u2003Abah dulu cita - citanya ingin mukso, sampai pada suatu keadaan diaman ketika abah berdzikir Sudah mengeluarkan energi listrik kecil - kecil di tubuhnya, yang harusnya setelah keluar energi listrik ini akan naik lagi menjadi Nur dan mukso ...\n\n\u2003\u2003Tetapi takdir berkehendak lain, Allah Swt. mulai datangkan murid yang ingin menimba ilmu dg Abah, yang pada awalnya Abah menolak, sampai suatu ketika ada yang dari luar negri yaitu dari hogkong ingin berguru dan karena beliau merupakan pekerja rumah tangga minta lah amalan dari Abah, Namun Abah tidak mau memberikan, namun pada akhirnya Abah memberikan amalan tetapi Abah tidak mau membimbing, hanya di kasih begitu saja, namun setelah di amalkan orang itu selalu di teror jin setan dan akhirnya Abah memutuskan untuk membimbing langsung karena kasian jika sampai gila sebab di teror jin setan.</string>
+
+<string name="bio_judul8_lahirnya_shirot">Kelahiran Shiroth Fatwa Kehidupan</string>
+<string name="bio_isi8_lahirnya_shirot">\u2003\u2003Lahirnya Shiroth di FK saat ini.\nDari situlah awalmula fk lahir, dan mulai berkembang sampai ribuan murid saat ini.\nAbah tidak melanjutkan cita citanya untuk mukso, karena di paksa Allah Swt. dengan di datangkan murid – murid untuk di bombing, itu lebih mulia daripada hanya meyelamatkan diri sendiri tegas Abah ...\n\n\u2003\u2003Mulai dari situ beliau Syaikh Muhammad Zuhri merangkai sendiri susunan dzikir, dan membuat jalan sendiri, jalan tercepat sesuai pengalaman ruhani beliau, yang di kenal hingga kini dengan sebutan Shiroth.\n\n\u2003\u2003yang tidak mengunakan bendera thoriqoh, untuk menghormati tradisi dan adat dari Thoriqoh itu sendiri. \n\n\u2003\u2003Jadi murid fk. itu sudah di beri kemudahan, langsung di lewatkan jalan tercepat ...</string>
+
+<string name="bio_judul9_kaitan_nama_dengan_dj">Apa ada kaitannya nama Abah dengan dzikir jahar?</string>
+<string name="bio_isi9_kaitannya_nama_dengan_dj">Ada…\nNama Muhammad Zuhri itu pemberian guru saya.\nWaktu itu guru saya terbuka kasyafnya dan memandang ke langit, nama Muhammad zuhri itu nama saya yang ada di langit, dan nantinya di FK., akan lebih dikenal dzikir jaharnya. Jahar atau zahar itu yah zuhri, guru saya juga sudah kasih isyarat sejak dulu, kelak saya akan dikenal di indonesia ini.\n\n\u2003\u2003Guru saya itu ahli kasyaf dan ahli hikmah yang bisa ilmu cling - cling itu, dia ahli hikmah, bisa tahu - tahu cling, munculin sesuatu tiba - tiba ada di depan mata, dia juga ahli kasyaf, dia bisa tahu rahasia takdir masa depan, bahkan rahasia umur seseorang.\n\n\u2003\u2003Jadi saya itu dulu berguru langsung ke guru yang ahli kasyaf dan hikmah, lalu saya berguru lagi ke guru yang ahli mi\'roj, lalu saya berguru lagi ke guru yang ahli sirr.\n\n\u2003\u2003Alhamdulillah, saya dipertemukan sama guru - guru yang hebat, yang memang ahli - ahli dalam bab – bab nya.</string>
+<string name="bio_quote_isi" formatted="true">\"Di mana ada kamu, di situ ada aku\"\n\n\u2003\u2003\"Siapa saja yang bermimpi bertemu denganku, sesungguhnya ruhaninya telah bersambung denganku.......\"\n\n\u2003\u2003\"Di alam ruhani, aku adalah pengembara, diantara jiwa murid - murid ku...... aku hadir dalam mimpi - mimpi mereka........ \"</string>
+<string name="bio_quote_sumber">- Syaikh Muhammad Zuhri</string>
+    
+    <!-- SANAD 1 -->
+    <string name="sanad1_tanggal">24 Maret 2014 • 01:36</string>
+    <string name="sanad1_kategori">DAFTAR LETNAN</string>
+    <string name="sanad1_isi">NAMA-NAMA LETNAN:\n\nUntuk bimbingan dzikir jahar dsb, silahkan hubungi salah satu dari mereka:\n\n1. http://www.facebook.com/muiz.abdulism?fref=ts\n\n2. http://www.facebook.com/ibnu.ibnu.378?fref=ts\n\n3. http://www.facebook.com/ahmad.f.ulum?fref=ts\n\nP/S:-\nTidak boleh sembarangan mensharing metode dzikir FK, sangat berbahaya tanpa bimbingan, orang bisa salah arah bahkan gila, maka semua dosanya menjadi tanggung jawabmu. Itu bukanlah mainan anak2, jangan sekali kali sembrono. Saya telah mengatakannya, saya harap semua bisa mengerti. Harus dewasa memahami. Ilmu itu bukan sembarangan. Ini bukan bermaksud menyombongkan diri, tapi pesan yang sangat serius........(</string>
+    <string name="sanad1_indeks">#1</string>
+
+    <!-- SANAD 2 -->
+    <string name="sanad2_tanggal">25 Mei 2023• 08:12</string>
+    <string name="sanad2_kategori">SYARAT IJAZAH &amp; MAHAR</string>
+    <string name="sanad2_isi">Bagi yang ingin menjadi murid FK dan mengamalkan dzikir jahar FK, bisa menghubungi letnan2 saya: letnan fatih atau letnan ibnu.... yang sering online.... bisa tanya2 ke murid2 FK yg lain kalau kurang jelas....\n\nUntuk menerima ilmu ijazah dzikir jahar FK, kalian harus membayar maharnya, maharnya adalah puasa 7 hari berturut2 dulu....\n\nKalau menerima ilmu ini harus dibersihkan dulu wadahmu dengan puasa 7 hari berturut.... \n\nBaru bisa menerima ijazah dzikir jahar FK....\n\nSelanjutnya selalu konsultasikan perkembangan2mu kepada letnan pembimbingmu secara berkala....\n\nIlmu ini ada kramatnya, setelah mengamalkannya maka:\n\n1. Jaga bicaramu, jangan berkata2 buruk dan sia2....\n2. Jaga akhlak prilakumu dan jaga hatimu jangan sampai dikotori sifat2 buruk\n3. Jauhi maksiyat\n4. Perbanyak amal sholeh\n\nSemoga selamat sampai akherat</string>
+    <string name="sanad2_indeks">#2</string>
+
+    <!-- SOSIAL MEDIA DIRECTORY -->
+    <!-- 1. GURU -->
+    <string name="sosmed_guru_pribadi_nama">Yolhan Wijaya</string>
+    <string name="sosmed_guru_pribadi_desc">Akun pribadi Abah Sheikh Muhammad Zuhri. Admin Fatwa Kehidupan</string>
+    <string name="sosmed_guru_pribadi_link">https://www.facebook.com/fatwa.kehidupan/</string>
+
+    <string name="sosmed_guru_halaman_nama">Fatwa Kehidupan</string>
+    <string name="sosmed_guru_halaman_desc">Halaman Facebook Resmi untuk Fatwa Kehidupan. Untuk pertanyaan lebih lanjut silakan kunjungi Akun FB Pribadi</string>
+    <string name="sosmed_guru_halaman_link">https://www.facebook.com/FK.FatwaKehidupan</string>
+
+    <!-- 2. PARA LETNAN -->
+    <string name="sosmed_letnan_muiz_nama">Letnan Muiz Abdulism</string>
+    <string name="sosmed_letnan_muiz_desc">Pembimbing Para Murid. Taliwang, NTB, Indonesia.</string>
+    <string name="sosmed_letnan_muiz_link">http://www.facebook.com/muiz.abdulism</string>
+
+    <string name="sosmed_letnan_ibnu_nama">Letnan Ibnu Athoillah</string>
+    <string name="sosmed_letnan_ibnu_desc">Pembimbing Para Murid. Martapura, Kalimantan.</string>
+    <string name="sosmed_letnan_ibnu_link">http://www.facebook.com/ibnu.ibnu.378</string>
+
+    <string name="sosmed_letnan_fatih_nama">Letnan Ahmad Fatih Basitul \'ulum</string>
+    <string name="sosmed_letnan_fatih_desc">Pembimbing Para Murid. Jawa Tengah.</string>
+    <string name="sosmed_letnan_fatih_link">http://www.facebook.com/ahmad.f.ulum</string>
+
+    <!-- 3. GRUB & YAYASAN -->
+    <string name="sosmed_grup_nama">Padepokan FB Fatwa Kehidupan</string>
+    <string name="sosmed_grup_desc">BISMILLAHIRROHMANIRROHIM\nASSALAMUALAIKUM WARAHMATULLAHI WABARAKATUH\nGROUP INI SEKEDAR GROUP SILATURAHMI SAJA, DAN SHARING SAJA.... AGAR SALING TA\'ARUF, SALING KENAL..... UMPAMA SEBUAH SAPU LIDI, AKAN KUAT JIKA BERSATU...... DAN TETAP SAJA ORA ONO OPO-OPO.\n\nWASSALAM...</string>
+    <string name="sosmed_grup_link">https://facebook.com/groups/padepokanFatwa</string>
+
+    <string name="sosmed_yayasan_nama">Yayasan Padepokan Fatwa Kehidupan</string>
+    <string name="sosmed_yayasan_desc">Yayasan PDFK adalah akun resmi yang membagikan informasi seputar Padepokan Fatwa Kehidupan\nLokasi: Tangerang, Ciputat, Indonesia\nNo. Telepon: 0838-0657-8999\nEmail: yayasanpdfk@gmail.com</string>    
+    <string name="sosmed_yayasan_link">https://www.facebook.com/profile.php?id=100093088929824</string>
+
+
+
+    </resources>

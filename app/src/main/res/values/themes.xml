@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <style name="Theme.PustakaFK" parent="Theme.MaterialComponents.Light.NoActionBar">
+        <item name="colorPrimary">@color/primary</item>
+        <item name="colorPrimaryDark">@color/primary_dark</item>
+        <item name="colorAccent">@color/accent_teal</item>
+        <item name="android:windowBackground">@color/bg_main</item>
+        <item name="colorOnPrimary">@color/text_on_dark</item>
+        <item name="colorSurface">@color/timeline_pil_bg</item>
+        <item name="colorOnSurface">@color/text_primary</item>
+        <item name="android:statusBarColor">@color/primary_dark</item>
+        <item name="android:windowLightStatusBar">false</item>
+    </style>
+
+    <style name="ShapeAppearance.PustakaFK.Circle" parent="ShapeAppearance.MaterialComponents.SmallComponent">
+        <item name="cornerSize">50%</item>
+    </style>
+    <style name="ThemeOverlay.App.MaterialAlertDialog" parent="ThemeOverlay.MaterialComponents.MaterialAlertDialog">    
+    <item name="buttonBarPositiveButtonStyle">@style/Widget.App.Button.Dialog</item>
+</style>
+
+<style name="Widget.App.Button.Dialog" parent="Widget.MaterialComponents.Button.TextButton">
+    <item name="android:textColor">@color/accent_teal</item>
+</style>
+    
+    <!-- STYLE SHAPE APPEARANCE UNTUK CARD FOTO -->
+    <style name="ShapeAppearance.PustakaFK.Card" parent="ShapeAppearance.MaterialComponents.SmallComponent">
+        <item name="cornerFamily">rounded</item>
+        <item name="cornerSize">4dp</item>
+    </style>
+
+    
+</resources>

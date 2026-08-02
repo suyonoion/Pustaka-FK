@@ -377,11 +377,47 @@ private fun perbaruiPanelTelemetri(fase: FaseInjeksi, persentase: Int, volumeSel
     }    
     
     private fun inisialisasiSirkuitAppDrawer() {
-        findViewById<TextView>(R.id.menuBiografi).setOnClickListener { eksekusiSaringanKategori("Biografi") }
-        findViewById<TextView>(R.id.menuSosmed).setOnClickListener { eksekusiSaringanKategori("Sosial Media") }
-        findViewById<TextView>(R.id.menuLetnan).setOnClickListener { eksekusiSaringanKategori("Letnan") }
-        findViewById<TextView>(R.id.menuYayasan).setOnClickListener { eksekusiSaringanKategori("Yayasan") }
-        inisialisasiKategoriDrawer()
+        val menuBiografi = findViewById<TextView>(R.id.menuBiografi)
+    val menuSosmed = findViewById<TextView>(R.id.menuSosmed)
+    val menuLetnan = findViewById<TextView>(R.id.menuLetnan)
+    val menuYayasan = findViewById<TextView>(R.id.menuYayasan)
+    val menuGaleriFoto = findViewById<TextView>(R.id.menuGaleriFoto)
+    
+
+    menuBiografi.setOnClickListener {
+        sorotMenuTerpilih(menuBiografi) // biar ada efek highlight
+        drawerLayout.closeDrawer(GravityCompat.START) // tutup drawer dulu
+        val intent = Intent(this, BiografiActivity::class.java)
+        startActivity(intent)
+    }
+
+    menuSosmed.setOnClickListener {
+        sorotMenuTerpilih(menuSosmed)
+        drawerLayout.closeDrawer(GravityCompat.START)
+        val intent = Intent(this, SosmedActivity::class.java)
+        startActivity(intent)
+    }
+
+    menuLetnan.setOnClickListener {
+        sorotMenuTerpilih(menuLetnan)
+        drawerLayout.closeDrawer(GravityCompat.START)
+        val intent = Intent(this, LetnanActivity::class.java)
+        startActivity(intent)
+    }
+
+    menuYayasan.setOnClickListener {
+        sorotMenuTerpilih(menuYayasan)
+        drawerLayout.closeDrawer(GravityCompat.START)
+        Toast.makeText(this, "Halaman Yayasan", Toast.LENGTH_SHORT).show()
+    }
+    
+    menuGaleriFoto.setOnClickListener {
+    sorotMenuTerpilih(menuGaleriFoto)
+    drawerLayout.closeDrawer(GravityCompat.START)    
+    val intent = Intent(this, GaleriActivity::class.java)
+    startActivity(intent)
+}
+    
     }
 
         // Variabel penampung View yang sedang aktif/terpilih

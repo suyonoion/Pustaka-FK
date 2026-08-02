@@ -1,99 +1,105 @@
 package com.fk.arsip
 
 import android.graphics.Color
+import android.graphics.Typeface
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
 import android.widget.TextView
+import androidx.core.content.ContextCompat
 import androidx.recyclerview.widget.RecyclerView
 
 class TimelineAdapter(
     private val daftarTitik: List<TitikNavigasi>,
     private val pemicuLompat: (Int) -> Unit
-) : RecyclerView.Adapter<TimelineAdapter.TitikViewHolder>() {
+) : RecyclerView.Adapter<RecyclerView.ViewHolder>() {
 
-    // Variabel penyimpan posisi item bulan yang sedang aktif dipilih
     private var posisiTerpilih: Int = -1
 
-    class TitikViewHolder(view: View) : RecyclerView.ViewHolder(view) {
+    companion object {
+        const val TIPE_TAHUN = 0
+        const val TIPE_BULAN = 1
+    }
+
+    class TahunViewHolder(view: View) : RecyclerView.ViewHolder(view) {
         val txtLabel: TextView = view.findViewById(R.id.txtLabelTimeline)
     }
 
-    override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): TitikViewHolder {
-        val view = LayoutInflater.from(parent.context).inflate(R.layout.item_timeline, parent, false)
-        return TitikViewHolder(view)
+    class BulanViewHolder(view: View) : RecyclerView.ViewHolder(view) {
+        val txtLabel: TextView = view.findViewById(R.id.txtLabelTimeline)
     }
 
-    override fun onBindViewHolder(holder: TitikViewHolder, position: Int) {
-        val titik = daftarTitik[position]
-        holder.txtLabel.text = titik.teks
-val skala = holder.itemView.context.resources.displayMetrics.density
+    override fun getItemViewType(position: Int): Int {
+        return daftarTitik[position].tipe
+    }
 
-if (titik.tipe == 0) {
-    // TAHUN
-    holder.txtLabel.textSize = 12f
-    holder.txtLabel.setTextColor(android.graphics.Color.parseColor("#004D40")) 
-    holder.txtLabel.setTypeface(null, android.graphics.Typeface.BOLD)
-    holder.txtLabel.setBackgroundResource(R.drawable.bg_timeline_tahun)
-    
-    // Injeksi Ruang Vektor Lancip: Kiri ekstra lebar untuk menghindari tabrakan dengan moncong lancip
-    holder.txtLabel.setPadding(
-        (12 * skala).toInt(), 
-        (4 * skala).toInt(), 
-        (8 * skala).toInt(), 
-        (4 * skala).toInt()
-    )
-    
-    holder.itemView.setOnClickListener(null)
-    holder.itemView.isClickable = false
-} else {
-    // BULAN
-    holder.txtLabel.textSize = 10f
-    holder.txtLabel.setTypeface(null, android.graphics.Typeface.BOLD)
-    
-    // Injeksi Ruang Kapsul Normal (Menggantikan fungsi padding di XML lama)
-    holder.txtLabel.setPadding(
-        (2 * skala).toInt(), 
-        (5 * skala).toInt(), 
-        (2 * skala).toInt(), 
-        (5 * skala).toInt()
-    )
-
-    // Evaluasi Status Aktif/Pasif
-    if (position == posisiTerpilih) {
-        holder.txtLabel.setBackgroundResource(R.drawable.bg_timeline_aktif)
-        holder.txtLabel.setTextColor(android.graphics.Color.WHITE)
-    } else {
-        if (titik.warnaGenap) {
-            holder.txtLabel.setBackgroundResource(R.drawable.bg_timeline_genap)
-            holder.txtLabel.setTextColor(android.graphics.Color.parseColor("#004D40"))
+    override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): RecyclerView.ViewHolder {
+        return if (viewType == TIPE_TAHUN) {
+            val view = LayoutInflater.from(parent.context).inflate(R.layout.item_timeline, parent, false)
+            TahunViewHolder(view)
         } else {
-            holder.txtLabel.setBackgroundResource(R.drawable.bg_timeline_ganjil)
-            holder.txtLabel.setTextColor(android.graphics.Color.parseColor("#424242"))
+            val view = LayoutInflater.from(parent.context).inflate(R.layout.item_timeline_bulan, parent, false)
+            BulanViewHolder(view)
         }
     }
 
-        // KATUP EKSEKUSI KLIK
-    holder.itemView.setOnClickListener {
-        val posisiLama = posisiTerpilih
-        
-        // Gunakan adapterPosition sebagai substitusi mesin lama
-        val posisiBaru = holder.adapterPosition
-        
-        // Katup pengaman: cegah transmisi jika item sudah tidak ada di lintasan
-        if (posisiBaru != RecyclerView.NO_POSITION) {
-            posisiTerpilih = posisiBaru
-            
-            // Refresh visual item lama dan item baru
-            notifyItemChanged(posisiLama)
-            notifyItemChanged(posisiTerpilih)
-            
-            pemicuLompat(titik.indeksTujuan)
-        }
-    }
-    holder.itemView.isClickable = true
-}
+    override fun onBindViewHolder(holder: RecyclerView.ViewHolder, position: Int) {
+        val titik = daftarTitik[position]
+        val ctx = holder.itemView.context
+        val skala = ctx.resources.displayMetrics.density
 
+        if (holder is TahunViewHolder && titik.tipe == TIPE_TAHUN) {
+            holder.txtLabel.text = titik.teks
+            holder.txtLabel.textSize = 11f
+            holder.txtLabel.setTextColor(Color.parseColor("#FFFFFF"))
+            holder.txtLabel.setTypeface(null, Typeface.BOLD)
+            holder.txtLabel.setBackgroundResource(R.drawable.bg_timeline_tahun)
+
+            holder.itemView.isClickable = false
+            holder.itemView.setOnClickListener(null)
+
+        } else if (holder is BulanViewHolder && titik.tipe == TIPE_BULAN) {
+            holder.txtLabel.text = titik.teks
+            holder.txtLabel.textSize = 10f
+            holder.txtLabel.setTypeface(null, Typeface.BOLD)
+
+            holder.txtLabel.setPadding(
+                (2 * skala).toInt(),
+                (5 * skala).toInt(),
+                (2 * skala).toInt(),
+                (5 * skala).toInt()
+            )
+
+            if (position == posisiTerpilih) {
+                // Aktif: pakai warna clickable kita tadi #B2DFDB
+                holder.txtLabel.setBackgroundResource(R.drawable.bg_timeline_aktif)
+                holder.txtLabel.setTextColor(ContextCompat.getColor(ctx, R.color.timeline_pil_aktif_text)) // #263238
+
+            } else {
+                if (titik.warnaGenap) {
+                    // Genap: #E0F2F1
+                    holder.txtLabel.setBackgroundResource(R.drawable.bg_timeline_genap)
+                    holder.txtLabel.setTextColor(ContextCompat.getColor(ctx, R.color.text_primary))
+                } else {
+                    // Ganjil: #F0FDFD
+                    holder.txtLabel.setBackgroundResource(R.drawable.bg_timeline_ganjil)
+                    holder.txtLabel.setTextColor(ContextCompat.getColor(ctx, R.color.text_primary))
+                }
+            }
+
+            holder.itemView.setOnClickListener {
+                val posisiLama = posisiTerpilih
+                val posisiBaru = holder.bindingAdapterPosition
+
+                if (posisiBaru!= RecyclerView.NO_POSITION) {
+                    posisiTerpilih = posisiBaru
+                    notifyItemChanged(posisiLama)
+                    notifyItemChanged(posisiTerpilih)
+                    pemicuLompat(titik.indeksTujuan)
+                }
+            }
+            holder.itemView.isClickable = true
+        }
     }
 
     override fun getItemCount(): Int = daftarTitik.size

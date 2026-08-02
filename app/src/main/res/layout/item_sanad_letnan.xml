@@ -1,0 +1,199 @@
+<?xml version="1.0" encoding="utf-8"?>
+<com.google.android.material.card.MaterialCardView 
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:layout_marginHorizontal="16dp"
+    android:layout_marginTop="8dp"
+    android:layout_marginBottom="8dp"
+    app:cardBackgroundColor="#FFFFFF"
+    app:cardCornerRadius="12dp"
+    app:cardElevation="2dp"
+    app:strokeColor="#004D40"
+    app:strokeWidth="1.5dp"
+    android:theme="@style/Theme.MaterialComponents.Light">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical">
+
+        <!-- HEADER HIJAU DENGAN BUNGKUSAN SEPERTI LETNAN -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:background="#004D40"
+            android:orientation="horizontal"
+            android:gravity="center_vertical"
+            android:paddingHorizontal="12dp"
+            android:paddingVertical="8dp">
+
+            <com.google.android.material.imageview.ShapeableImageView
+                android:id="@+id/imgProfilSanad"
+                android:layout_width="28dp"
+                android:layout_height="28dp"
+                android:src="@drawable/profil_abah"
+                android:scaleType="centerCrop"
+                app:shapeAppearanceOverlay="@style/ShapeAppearance.PustakaFK.Circle" />
+
+            <LinearLayout
+                android:layout_width="0dp"
+                android:layout_weight="1"
+                android:layout_height="wrap_content"
+                android:orientation="vertical"
+                android:layout_marginStart="10dp">
+
+                <TextView
+                    android:id="@+id/txtNamaPengirim"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="STATUS SANAD ABAH"
+                    android:textStyle="bold"
+                    android:textColor="#FFFFFF"
+                    android:textSize="11sp"
+                    android:letterSpacing="0.05" />
+
+                <LinearLayout
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:orientation="horizontal"
+                    android:gravity="center_vertical"
+                    android:layout_marginTop="1dp">
+
+                    <TextView
+                        android:id="@+id/txtTanggalSanad"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="2014-03-24 • 01:36:07"
+                        android:textSize="8.5sp"
+                        android:textColor="#B2DFDB" />
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text=" • "
+                        android:textSize="8.5sp"
+                        android:textColor="#80CBC4" />
+
+                    <TextView
+                        android:id="@+id/txtKategoriSanad"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="Kategori"
+                        android:textColor="#80CBC4"
+                        android:textStyle="bold|italic"
+                        android:textSize="8.5sp" />
+                </LinearLayout>
+            </LinearLayout>
+
+            <TextView
+                android:id="@+id/txtIndeksSanad"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="#1"
+                android:textSize="14sp"
+                android:textStyle="bold"
+                android:textColor="@color/text_emas" />
+        </LinearLayout>
+
+        <!-- KONTEN UTAMA KARTU -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:padding="12dp">
+
+            <!-- ISI STATUS SANAD -->
+            <TextView
+                android:id="@+id/txtIsiSanad"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="Isi status sanad..."
+                android:textSize="12sp"
+                android:textColor="#37474F"
+                android:lineSpacingExtra="3dp"
+                android:autoLink="web"
+                android:linksClickable="true"
+                android:textColorLink="#004D40" />
+             <!-- BARIS LINK SUMBER POSTINGAN FACEBOOK -->
+            <LinearLayout
+                android:id="@+id/btnSumberFb"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal"
+                android:gravity="center_vertical"
+                android:layout_marginTop="10dp"
+                android:paddingVertical="4dp"
+                android:paddingHorizontal="8dp"
+                android:background="?attr/selectableItemBackground"
+                android:clickable="true"
+                android:focusable="true">
+
+                <!-- ICON/LOGO FB -->
+                <ImageView
+                    android:id="@+id/imgLogoFb"
+                    android:layout_width="14dp"
+                    android:layout_height="14dp"
+                    android:src="@drawable/logo_fb"
+                    app:tint="#1877F2" />
+
+                <TextView
+                    android:id="@+id/txtSumberFb"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginStart="6dp"
+                    android:text="Sumber : Status Facebook"
+                    android:textColor="#1877F2"
+                    android:textSize="10.5sp"
+                    android:textStyle="bold" />
+            </LinearLayout>
+
+            <View 
+                android:layout_width="match_parent" 
+                android:layout_height="1dp" 
+                android:background="#E0E0E0"
+                android:layout_marginTop="10dp"
+                android:layout_marginBottom="8dp"/>
+
+            <!-- FOOTER STATUS -->
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal"
+                android:gravity="center">
+
+                <LinearLayout
+                    android:layout_width="0dp"
+                    android:layout_weight="1"
+                    android:layout_height="wrap_content"
+                    android:orientation="horizontal"
+                    android:gravity="center_vertical">
+                    <ImageView android:layout_width="12dp" android:layout_height="12dp" android:src="@android:drawable/ic_menu_mylocation" app:tint="#B0BEC5"/>
+                    <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="SanFK" android:textColor="#90A4AE" android:textSize="9sp" android:layout_marginStart="3dp"/>
+                </LinearLayout>
+
+                <LinearLayout
+                    android:layout_width="0dp"
+                    android:layout_weight="1"
+                    android:layout_height="wrap_content"
+                    android:orientation="horizontal"
+                    android:gravity="center">
+                    <ImageView android:layout_width="12dp" android:layout_height="12dp" app:srcCompat="@drawable/logo_saung" app:tint="#B0BEC5"/>
+                    <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Saung" android:textColor="#90A4AE" android:textSize="9sp" android:layout_marginStart="3dp"/>
+                </LinearLayout>
+
+                <LinearLayout
+                    android:layout_width="0dp"
+                    android:layout_weight="1"
+                    android:layout_height="wrap_content"
+                    android:orientation="horizontal"
+                    android:gravity="center">
+                    <ImageView android:layout_width="12dp" android:layout_height="12dp" app:srcCompat="@drawable/ic_launcher_zf" app:tint="#B0BEC5"/>
+                    <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="ZF" android:textColor="#90A4AE" android:textSize="9sp" android:layout_marginStart="3dp"/>
+                </LinearLayout>
+            </LinearLayout>
+
+        </LinearLayout>
+    </LinearLayout>
+</com.google.android.material.card.MaterialCardView>

@@ -1,0 +1,145 @@
+<?xml version="1.0" encoding="utf-8"?>
+<com.google.android.material.card.MaterialCardView 
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:layout_marginBottom="10dp"
+    app:cardBackgroundColor="#004D40"
+    app:cardCornerRadius="10dp"
+    app:cardElevation="2dp"
+    app:strokeColor="#004D40"
+    app:strokeWidth="1.2dp"
+    android:theme="@style/Theme.MaterialComponents.Light">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical">
+
+        <!-- HEADER KATEGORI -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:background="#004D40"
+            android:orientation="horizontal"
+            android:gravity="center_vertical"
+            android:paddingHorizontal="12dp"
+            android:paddingVertical="7dp">
+
+            <TextView
+                android:id="@+id/tvKategoriSosmed"
+                android:layout_width="0dp"
+                android:layout_weight="1"
+                android:layout_height="wrap_content"
+                android:text="KATEGORI AKUN"
+                android:textColor="#FFFFFF"
+                android:textSize="10sp"
+                android:textStyle="bold"
+                android:letterSpacing="0.05" />
+
+            <ImageView
+                android:layout_width="14dp"
+                android:layout_height="14dp"
+                android:src="@drawable/logo_fb"
+                app:tint="#FFFFFF" />
+        </LinearLayout>
+
+        <!-- KONTEN UTAMA (FOTO PROFIL, NAMA, DESKRIPSI) -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:padding="12dp" android:background="@drawable/bg_isi_card_putih">
+
+            <!-- WADAH FOTO PROFIL + NAMA & DESKRIPSI -->
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal"
+                android:gravity="top">
+
+                <!-- FOTO PROFIL / IKON WADAH -->
+                <com.google.android.material.imageview.ShapeableImageView
+                    android:id="@+id/imgFotoSosmed"
+                    android:layout_width="48dp"
+                    android:layout_height="48dp"
+                    android:src="@drawable/ic_launcher_fk"
+                    android:scaleType="centerCrop"
+                    app:shapeAppearanceOverlay="@style/ShapeAppearance.PustakaFK.Circle" />
+
+                <!-- INFORMASI TULISAN -->
+                <LinearLayout
+                    android:layout_width="0dp"
+                    android:layout_weight="1"
+                    android:layout_height="wrap_content"
+                    android:orientation="vertical"
+                    android:layout_marginStart="12dp">
+
+                    <TextView
+                        android:id="@+id/tvNamaSosmed"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:text="Nama Akun / Halaman"
+                        android:textColor="#004D40"
+                        android:textSize="13sp"
+                        android:textStyle="bold" />
+
+                    <TextView
+                        android:id="@+id/tvDeskripsiSosmed"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="4dp"
+                        android:text="Deskripsi singkat mengenai peruntukan akun atau halaman..."
+                        android:textColor="#455A64"
+                        android:textSize="11sp"
+                        android:lineSpacingExtra="2dp" />
+                    <LinearLayout
+    android:id="@+id/btnBukaTautanSosmed"
+    android:layout_width="wrap_content"
+    android:layout_height="wrap_content"
+    android:layout_marginTop="10dp"
+    android:orientation="horizontal"
+    android:gravity="center_vertical"
+    android:clickable="true"
+    android:focusable="true">
+
+    <!-- IKON PROPORSIONAL TERHADAP TEKS 10.5sp -->
+    <ImageView
+        android:id="@+id/imgIconLink"
+        android:layout_width="12dp"
+        android:layout_height="12dp"
+        android:scaleType="fitCenter"
+        android:src="@android:drawable/ic_menu_share" />
+
+    <TextView
+        android:id="@+id/tvTautanSosmed"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginStart="5dp"
+        android:text="http://facebook.com/..."
+        android:textColor="@color/text_emas"
+        android:textSize="10.5sp"
+        android:textStyle="bold|italic"
+        android:includeFontPadding="false"
+        android:autoLink="web"
+        android:linksClickable="true"
+        android:textColorLink="@color/text_emas" />
+</LinearLayout>
+
+
+                </LinearLayout>
+            </LinearLayout>
+
+            <View
+                android:layout_width="match_parent"
+                android:layout_height="1dp"
+                android:background="#ECEFF1"
+                android:layout_marginTop="10dp"
+                android:layout_marginBottom="8dp" />
+
+          
+
+        </LinearLayout>
+    </LinearLayout>
+</com.google.android.material.card.MaterialCardView>

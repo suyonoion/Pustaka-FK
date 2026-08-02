@@ -1,23 +1,24 @@
-<?xml version="1.0" encoding="utf-8"?>
-<LinearLayout 
-    xmlns:android="http://schemas.android.com/apk/res/android"
-    android:layout_width="match_parent"
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="wrap_content"
     android:layout_height="wrap_content"
-    android:gravity="center"
-    android:orientation="horizontal"
-    android:paddingVertical="3dp"
-    android:paddingHorizontal="4dp">
+    android:clipChildren="false"
+    android:clipToPadding="false"
+    android:layout_gravity="center_vertical|end"
+    android:layout_marginStart="-8dp">
 
-    <!-- TextView berfungsi sebagai sasis utama pengangkut teks -->
     <TextView
         android:id="@+id/txtLabelTimeline"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:layout_marginEnd="4dp" 
+        android:layout_width="wrap_content"
+        android:layout_height="30dp"
+        android:background="@drawable/bg_timeline_tahun"
         android:gravity="center"
-        android:text="Jan\n'25"
-        android:textSize="10sp"
-        android:textStyle="bold"
-        android:lineSpacingExtra="-2dp" />
+        android:paddingStart="10dp"
+        android:layout_marginBottom="2dp"
+        android:paddingEnd="4dp"
+        android:textColor="#FFFFFF"
+        android:textSize="12sp"
+        android:text="2026"
+        android:elevation="3dp"
+        android:textStyle="bold"/>
 
-</LinearLayout>
+</FrameLayout>

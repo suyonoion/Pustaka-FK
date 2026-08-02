@@ -2,24 +2,23 @@
 <vector xmlns:android="http://schemas.android.com/apk/res/android"
     android:width="60dp"
     android:height="28dp"
-    android:viewportWidth="100"
+    android:viewportWidth="120"
     android:viewportHeight="100">
     
     <!-- 
-      Mekanisme Jalur (PathData):
-      Mulai dari atas (M), tarik garis ke kanan (L), lengkungkan sudut kanan (Q), 
-      tarik ke bawah (L), lengkungkan sudut bawah (Q), tarik ke kiri bawah (L), 
-      ekstrusi lancip ke tengah kiri (L), lalu tutup jalur (Z).
+      Mekanisme Jalur Terbalik (Moncong Lancip di Sisi Kiri):
+      - Ujung lancip ditarik keluar menembus batas kiri (X = 5, Y = 50)
+      - Badan kotak utama membentang ke arah kanan (X = 25 sampai X = 115)
     -->
     <path
-        android:fillColor="#FFFFFF"
-        android:strokeColor="#E0E0E0"
+        android:fillColor="@color/accent_teal"
+        android:strokeColor="@color/bg_clickable"
         android:strokeWidth="3"
         android:pathData="M 25,5 
-                          L 90,5 
-                          Q 95,5 95,10 
-                          L 95,90 
-                          Q 95,95 90,95 
+                          L 110,5 
+                          Q 115,5 115,10 
+                          L 115,90 
+                          Q 115,95 110,95 
                           L 25,95 
                           L 5,50 
                           Z" />

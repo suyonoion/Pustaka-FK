@@ -3,8 +3,8 @@
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
     android:orientation="vertical"
-    android:layout_marginTop="12dp"
-    android:layout_marginBottom="4dp">
+    android:layout_marginTop="4dp"
+    android:layout_marginBottom="2dp"> 
 
     <TextView
         android:id="@+id/txtHeaderWaktu"
@@ -14,11 +14,12 @@
         android:textStyle="bold"
         android:textSize="14sp"
         android:textColor="#004D40"
-        android:paddingHorizontal="8dp" />
+        android:paddingHorizontal="8dp"
+        android:paddingVertical="2dp" /> 
 
     <View
         android:layout_width="match_parent"
         android:layout_height="1dp"
         android:background="#B2DFDB"
-        android:layout_marginTop="4dp" />
+        android:layout_marginTop="2dp" /> 
 </LinearLayout>

@@ -1,0 +1,41 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout 
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="#FAF8F5"
+    android:orientation="vertical">
+
+    <!-- TOOLBAR HEADER PUSTAKA -->
+    <com.google.android.material.appbar.AppBarLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:background="#2C1D11">
+
+        <com.google.android.material.appbar.MaterialToolbar
+            android:id="@+id/toolbarGaleri"
+            android:layout_width="match_parent"
+            android:layout_height="?attr/actionBarSize"
+            app:navigationIcon="?attr/homeAsUpIndicator"
+            app:navigationIconTint="#D4AF37"
+            app:title="ARSIP GALERI FOTO"
+            app:titleCentered="true"
+            app:titleTextAppearance="@style/TextAppearance.MaterialComponents.Headline6"
+            app:titleTextColor="#D4AF37" />
+    </com.google.android.material.appbar.AppBarLayout>
+
+    <!-- INCLUDE FILTER TAB SUB KATEGORI -->
+    <include 
+        android:id="@+id/layoutFilter"
+        layout="@layout/layout_filter_galeri" />
+
+    <!-- RECYCLERVIEW UNTUK MENAMPILKAN FOTO -->
+    <androidx.recyclerview.widget.RecyclerView
+        android:id="@+id/rvGaleri"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:clipToPadding="false"
+        android:paddingVertical="8dp" />
+
+</LinearLayout>

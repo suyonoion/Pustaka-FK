@@ -1,0 +1,58 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout 
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:background="#2C1D11"
+    android:orientation="vertical"
+    android:padding="12dp">
+
+    <TextView
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:fontFamily="serif"
+        android:text="DIREKTORI ARSIP FOTO"
+        android:textColor="#D4AF37"
+        android:textSize="11sp"
+        android:textStyle="bold"
+        android:letterSpacing="0.08" />
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:layout_marginTop="8dp">
+
+        <!-- TAB SUB KATEGORI: GURU -->
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/btnTabGuru"
+            style="@style/Widget.MaterialComponents.Button.UnelevatedButton"
+            android:layout_width="0dp"
+            android:layout_height="38dp"
+            android:layout_weight="1"
+            android:layout_marginEnd="6dp"
+            android:text="Sub: Guru"
+            android:textSize="11sp"
+            android:textColor="#2C1D11"
+            android:fontFamily="serif"
+            app:backgroundTint="#D4AF37"
+            app:cornerRadius="4dp" />
+
+        <!-- TAB SUB KATEGORI: UMUM -->
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/btnTabUmum"
+            style="@style/Widget.MaterialComponents.Button.OutlinedButton"
+            android:layout_width="0dp"
+            android:layout_height="38dp"
+            android:layout_weight="1"
+            android:layout_marginStart="6dp"
+            android:text="Sub: Umum"
+            android:textSize="11sp"
+            android:textColor="#E8D8C8"
+            android:fontFamily="serif"
+            app:strokeColor="#8C6D46"
+            app:strokeWidth="1dp"
+            app:cornerRadius="4dp" />
+    </LinearLayout>
+</LinearLayout>
