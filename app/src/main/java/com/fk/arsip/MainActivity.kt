@@ -46,13 +46,7 @@ import androidx.work.OneTimeWorkRequestBuilder
 import androidx.work.WorkManager
 import androidx.work.workDataOf
 import androidx.work.WorkInfo
-
-data class TitikNavigasi(
-    val tipe: Int, 
-    val teks: String,
-    val indeksTujuan: Int = -1,
-    val warnaGenap: Boolean = false
-)
+import androidx.core.view.GravityCompat
 
 enum class FaseInjeksi(val pesan: String, val idGambar: Int) {
     FASE_1("Memulai aplikasi pertama kali...", R.drawable.img_1),
