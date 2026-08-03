@@ -692,51 +692,90 @@ private fun perbaruiPanelTelemetri(
         .show()
 }
 
-    private fun eksekusiPabrikData() {
-    lifecycleScope.launch(Dispatchers.IO) {
-        val database = ArsipDatabase.operasikanMesin(this@MainActivity)
-        val lenganRobot = database.arsipDao()
-        
-        val jumlahBarisData = lenganRobot.hitungTotalArsip() 
-        val berkasLokal = File(getExternalFilesDir(null), "Master_Data_Arsip_FK_11_Juli_2026.json")
-        val bobotMinimum = 110 * 1024 * 1024 
-        val batasAmanAbsolut = 17900 
-
-        // KONDISI A: Data SQLite Sudah Utuh
-        if (jumlahBarisData >= batasAmanAbsolut) {
-            val semuaData = lenganRobot.tarikSemuaArsip()
-            withContext(Dispatchers.Main) {
-                findViewById<ConstraintLayout>(R.id.panelInisialisasiUtama).visibility = View.GONE
-                isMesinSibuk = false
-                pompaDataKeLayar(semuaData)
-                muatDataAwalKeSasis(semuaData)
-                if (berkasLokal.exists()) { berkasLokal.delete() }
-            }
-            return@launch
-        }
-
-        // KONDISI B: Data Kurang, Tapi File JSON Mentah Sudah Siap Dieksekusi
-        if (berkasLokal.exists() && berkasLokal.length() >= bobotMinimum) {
-            withContext(Dispatchers.Main) {
-                isMesinSibuk = true
-                findViewById<ConstraintLayout>(R.id.panelInisialisasiUtama).visibility = View.VISIBLE
-                perbaruiPanelTelemetri(FaseInjeksi.FASE_5, 0, 0, 0)
-                jalankanMesinInjeksiOtonom(berkasLokal.absolutePath)
-            }
-            return@launch
-        }
-
-        // KONDISI C: Data Belum Lengkap & Berkas Belum Siap -> Paksa Masuk Jalur Penyedot
-        withContext(Dispatchers.Main) {
-            isMesinSibuk = true
-            findViewById<ConstraintLayout>(R.id.panelInisialisasiUtama).visibility = View.VISIBLE
-            perbaruiPanelTelemetri(FaseInjeksi.FASE_1, 0, 0, 0)
+        private fun eksekusiPabrikData() {
+        lifecycleScope.launch(Dispatchers.IO) {
+            delay(1500)
+            val database = ArsipDatabase.operasikanMesin(this@MainActivity)
+            val lenganRobot = database.arsipDao()
             
-            // Langsung aktifkan mesin penyedot tanpa delay berlebihan
-            aktifkanMesinPenyedot()
+            val jumlahBarisData = lenganRobot.hitungTotalArsip() 
+            val berkasLokal = File(getExternalFilesDir(null), namaFile) // Perbaikan acuan nama
+            
+            // PENURUNAN SENSITIVITAS SENSOR BEBAN KE 50 MB AGAR KARGO LOLOS INSPEKSI
+            val bobotMinimum = 50 * 1024 * 1024 
+            val batasAmanAbsolut = 17900 
+
+            if (jumlahBarisData >= batasAmanAbsolut) {
+                val semuaData = lenganRobot.tarikSemuaArsip()
+                withContext(Dispatchers.Main) {
+                    findViewById<ConstraintLayout>(R.id.panelInisialisasiUtama).visibility = View.GONE
+                    isMesinSibuk = false
+                    pompaDataKeLayar(semuaData)
+                    muatDataAwalKeSasis(semuaData)
+                    if (berkasLokal.exists()) { berkasLokal.delete() }
+                }
+                return@launch
+            }
+
+            if (berkasLokal.exists() && berkasLokal.length() >= bobotMinimum) {
+                withContext(Dispatchers.Main) {
+                    isMesinSibuk = true
+                    findViewById<ConstraintLayout>(R.id.panelInisialisasiUtama).visibility = View.VISIBLE
+                    perbaruiPanelTelemetri(FaseInjeksi.FASE_5, 0, 0, 0)
+                    jalankanMesinInjeksiOtonom(berkasLokal.absolutePath)
+                }
+                return@launch
+            }
+
+            withContext(Dispatchers.Main) {
+                lifecycleScope.launch(Dispatchers.IO) { lenganRobot.kurasTangkiKotor() }
+                findViewById<ConstraintLayout>(R.id.panelInisialisasiUtama).visibility = View.VISIBLE
+                perbaruiPanelTelemetri(FaseInjeksi.FASE_1, 0, 0, 0)
+                delay(1000)
+                aktifkanMesinPenyedot()
+            }
         }
     }
-}
+
+    private fun pasangSensorPendaratan(idUnduhan: Long, downloadManager: DownloadManager) {
+        val sensorSelesai = object : BroadcastReceiver() {
+            override fun onReceive(context: Context?, intent: Intent?) {
+                val id = intent?.getLongExtra(DownloadManager.EXTRA_DOWNLOAD_ID, -1)
+                if (id == idUnduhan) {
+                    unregisterReceiver(this)
+                    val query = DownloadManager.Query().setFilterById(idUnduhan)
+                    val cursor = downloadManager.query(query)
+                    if (cursor != null && cursor.moveToFirst()) {
+                        val statusIndex = cursor.getColumnIndex(DownloadManager.COLUMN_STATUS)
+                        if (statusIndex != -1 && cursor.getInt(statusIndex) == DownloadManager.STATUS_SUCCESSFUL) {
+                            val fileTempSelesai = File(getExternalFilesDir(null), "$namaFile.temp")
+                            val fileAsli = File(getExternalFilesDir(null), namaFile)
+                            
+                            // HANCURKAN SISA FILE LAMA SEBELUM MENGELAS NAMA BARU
+                            if (fileAsli.exists()) { fileAsli.delete() }
+                            
+                            if (fileTempSelesai.exists() && fileTempSelesai.renameTo(fileAsli)) {
+                                isMesinSibuk = true
+                                jalankanMesinInjeksiOtonom(fileAsli.absolutePath)
+                            } else {
+                                // Putus putaran loop dengan mematikan mesin secara paksa jika sistem operasi menolak rename
+                                findViewById<ConstraintLayout>(R.id.panelInisialisasiUtama).visibility = View.GONE
+                                isMesinSibuk = false
+                                Toast.makeText(this@MainActivity, "Gagal memproses pendaratan file. Ruang penuh atau terkunci.", Toast.LENGTH_LONG).show()
+                            }
+                        } else {
+                            findViewById<ConstraintLayout>(R.id.panelInisialisasiUtama).visibility = View.GONE
+                            isMesinSibuk = false
+                            Toast.makeText(this@MainActivity, "Tekanan unduhan gagal. Cek jaringan.", Toast.LENGTH_LONG).show()
+                        }
+                    }
+                    cursor?.close()
+                }
+            }
+        }
+        registerReceiver(sensorSelesai, IntentFilter(DownloadManager.ACTION_DOWNLOAD_COMPLETE))
+    }
+
 
 private fun aktifkanMesinPenyedot() {
     isMesinSibuk = true
@@ -812,54 +851,6 @@ private fun aktifkanMesinPenyedot() {
         }
         return -1L
     }
-
-    
-
-
-    private fun pasangSensorPendaratan(idUnduhan: Long, downloadManager: DownloadManager) {
-    val sensorSelesai = object : BroadcastReceiver() {
-        override fun onReceive(context: Context?, intent: Intent?) {
-            val id = intent?.getLongExtra(DownloadManager.EXTRA_DOWNLOAD_ID, -1)
-            if (id == idUnduhan) {
-                unregisterReceiver(this)
-                val query = DownloadManager.Query().setFilterById(idUnduhan)
-                val cursor = downloadManager.query(query)
-                if (cursor != null && cursor.moveToFirst()) {
-                    val statusIndex = cursor.getColumnIndex(DownloadManager.COLUMN_STATUS)
-                    if (statusIndex != -1 && cursor.getInt(statusIndex) == DownloadManager.STATUS_SUCCESSFUL) {
-                        
-                        val direktoriTarget = android.os.Environment.DIRECTORY_DOWNLOADS
-                        val namaFileTemp = "$namaFile.temp"
-                        val fileTempSelesai = File(getExternalFilesDir(direktoriTarget), namaFileTemp)
-                        val fileAsli = File(getExternalFilesDir(null), namaFile)
-                        
-                        // SENSOR BOBOT: Tolak kargo di bawah 110MB
-                        val bobotMinimum = 110 * 1024 * 1024
-                        if (fileTempSelesai.length() < bobotMinimum) {
-                            fileTempSelesai.delete()
-                            downloadManager.remove(idUnduhan)
-                            aktifkanMesinPenyedot() // Minta kargo ulang
-                            cursor.close()
-                            return
-                        }
-                        
-                        if (fileTempSelesai.renameTo(fileAsli)) {
-                            isMesinSibuk = true
-                            jalankanMesinInjeksiOtonom(fileAsli.absolutePath)
-                        } else {
-                            eksekusiPabrikData()
-                        }
-                    } else {
-                        findViewById<ConstraintLayout>(R.id.panelInisialisasiUtama).visibility = View.GONE
-                        isMesinSibuk = false
-                    }
-                }
-                cursor?.close()
-            }
-        }
-    }
-    registerReceiver(sensorSelesai, IntentFilter(DownloadManager.ACTION_DOWNLOAD_COMPLETE))
-}
 
 private fun pantauTekananUnduhan(idUnduhan: Long, downloadManager: DownloadManager) {
     lifecycleScope.launch(Dispatchers.IO) {

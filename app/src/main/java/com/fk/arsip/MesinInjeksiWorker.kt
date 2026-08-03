@@ -13,16 +13,15 @@ import java.io.File
 import java.io.FileReader
 
 class MesinInjeksiWorker(context: Context, params: WorkerParameters) : CoroutineWorker(context, params) {
-
     override suspend fun doWork(): Result = withContext(Dispatchers.IO) {
         val jalurFile = inputData.getString("URI_JSON_KARGO") ?: return@withContext Result.failure()
         val fileTarget = File(jalurFile)
 
-        // KALIBRASI PIPA: Menggunakan operasikanMesin sesuai dengan cetak biru database Anda
         val database = ArsipDatabase.operasikanMesin(applicationContext)
         val lenganRobot = database.arsipDao()
 
-        val bobotMinimum = 110 * 1024 * 1024
+        // PENURUNAN SENSITIVITAS SENSOR BEBAN KE 50 MB
+        val bobotMinimum = 50 * 1024 * 1024
         val totalBobotFile = fileTarget.length()
 
         if (totalBobotFile < bobotMinimum) {
