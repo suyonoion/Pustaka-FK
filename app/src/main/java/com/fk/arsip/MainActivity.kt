@@ -48,6 +48,13 @@ import androidx.work.workDataOf
 import androidx.work.WorkInfo
 import androidx.core.view.GravityCompat
 
+data class TitikNavigasi(
+    val tipe: Int, 
+    val teks: String,
+    val indeksTujuan: Int = -1,
+    val warnaGenap: Boolean = false // Setel nilai default di sini
+)
+
 enum class FaseInjeksi(val pesan: String, val idGambar: Int) {
     FASE_1("Memulai aplikasi pertama kali...", R.drawable.img_1),
     FASE_2("Menghubungkan ke server...", R.drawable.img_2),
@@ -828,15 +835,23 @@ wadahAnak.addView(wadahTeksAnak)
                         perbaruiPanelTelemetri(FaseInjeksi.FASE_4, 0, 0, 0)
                     }
                     delay(2000)
-                } else if (status == DownloadManager.STATUS_FAILED) {
-                    isMengunduh = false
-                    withContext(Dispatchers.Main) {
-                        // Tolak antarmuka kosong, paksa kunci di FASE_4
-                        perbaruiPanelTelemetri(FaseInjeksi.FASE_4, 0, 0, 0)
-                        delay(3000)
-                        eksekusiPabrikData() // Picu ulang engine starter
-                    }
-                } else {
+               } else if (status == DownloadManager.STATUS_FAILED) {
+    isMengunduh = false
+    
+    // 1. Cabut sisa pipa unduhan yang gagal dari sistem antrean agar tidak terjadi penyumbatan
+    downloadManager.remove(idUnduhan)
+    
+    withContext(Dispatchers.Main) {
+        // 2. Kunci layar pada indikator isolasi (Menunggu Jaringan Stabil)
+        perbaruiPanelTelemetri(FaseInjeksi.FASE_4, 0, 0, 0)
+        
+        // 3. Jeda pendinginan rotor
+        delay(3000)
+        
+        // 4. INJEKSI PERBAIKAN: Picu ulang hanya modul penyedot, jangan sentuh eksekusiPabrikData()
+        aktifkanMesinPenyedot() 
+    }
+} else {
                     // BLOK KALKULASI TELEMETRI KECEPATAN (SPEED METER)
                     val bytesDownloadedIndex = cursor.getColumnIndex(DownloadManager.COLUMN_BYTES_DOWNLOADED_SO_FAR)
                     val bytesTotalIndex = cursor.getColumnIndex(DownloadManager.COLUMN_TOTAL_SIZE_BYTES)
