@@ -45,7 +45,7 @@
         app:layout_constraintTop_toBottomOf="@id/indikatorVisualMesin"
         android:layout_marginTop="8dp"/>
 
-    <!-- PROGRESS BAR & TELEMETRI -->
+    <!-- PROGRESS BAR & TELEMETRI (KOREKSI PERSENTASE LEBAR) -->
     <ProgressBar
         android:id="@+id/progressBarInisialisasi"
         style="?android:attr/progressBarStyleHorizontal"
@@ -53,7 +53,7 @@
         android:layout_height="8dp"
         android:max="100"
         android:progress="0"
-        app:layout_widthPercent="0.8"
+        app:layout_constraintWidth_percent="0.8"
         app:layout_constraintTop_toBottomOf="@id/teksStatusInisialisasi"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintEnd_toEndOf="parent"
@@ -70,7 +70,7 @@
         app:layout_constraintTop_toBottomOf="@id/progressBarInisialisasi"
         android:layout_marginTop="4dp"/>
 
-    <!-- TEKS NASEHAT DINAMIS -->
+    <!-- TEKS NASEHAT DINAMIS (KOREKSI PERSENTASE LEBAR) -->
     <TextView
         android:id="@+id/teksNasehatInisialisasi"
         android:layout_width="0dp"
@@ -81,7 +81,7 @@
         android:textSize="11sp"
         android:textStyle="italic"
         tools:text="Mencari ilmu adalah proses menata pemahaman..."
-        app:layout_widthPercent="0.9"
+        app:layout_constraintWidth_percent="0.9"
         app:layout_constraintTop_toBottomOf="@id/teksDetailProgress"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintEnd_toEndOf="parent"
