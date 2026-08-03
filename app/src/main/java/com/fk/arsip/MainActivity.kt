@@ -38,6 +38,8 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import kotlinx.coroutines.Job
+import android.database.Cursor
 import java.io.File
 import android.os.Handler
 import android.os.Looper
@@ -55,18 +57,39 @@ data class TitikNavigasi(
     val warnaGenap: Boolean = false // Setel nilai default di sini
 )
 
-enum class FaseInjeksi(val pesan: String, val idGambar: Int) {
-    FASE_1("Memulai aplikasi pertama kali...", R.drawable.img_1),
-    FASE_2("Menghubungkan ke server...", R.drawable.img_2),
-    FASE_3("Mengunduh data status...", R.drawable.img_3),
-    FASE_4("Menunggu jaringan stabil...", R.drawable.img_4), 
-    FASE_5("Mengelas blok data ke memori...", R.drawable.img_5),
-    FASE_6("Injeksi baris data ke SQLite...", R.drawable.img_6),
-    FASE_7("Proses selesai.", R.drawable.img_7)
+object KoleksiNasehat {
+    val DAFTAR_TEKS = listOf(
+        "Mencari ilmu adalah proses menata pemahaman, sebagaimana sistem ini sedang menata data untuk Anda.",
+        "Proses ini hanya dilakukan 1 kali di awal agar aplikasi bisa diakses secara cepat dan offline tanpa internet.",
+        "Kesabaran dalam menunggu adalah bagian dari adab menuntut ilmu.",
+        "Setiap data yang tersusun rapi akan memudahkan Anda menemukan jawaban dengan cepat.",
+        "Mohon tidak menutup aplikasi saat penyusunan database berlangsung agar data tidak rusak."
+    )
+}
+
+enum class FaseInjeksi(val kode: Int, val deskripsiMekanis: String) {
+    FASE_1(1, "Mempersiapkan Jalur Data"),
+    FASE_2(2, "Menghubungkan ke Server Data"),
+    FASE_3(3, "Mengunduh Paket Data"),
+    FASE_4(4, "Koneksi Terputus"),
+    FASE_5(5, "Membongkar & Menyusun Data"),
+    FASE_6(6, "Checking Keutuhan Data"),
+    FASE_7(7, "Data Siap Digunakan");
+
+    companion object {
+        fun dariKode(kode: Int): FaseInjeksi {
+            return values().find { it.kode == kode } ?: FASE_1
+        }
+    }
 }
 
 class MainActivity : AppCompatActivity() {
 
+private var jobRotasiNasehat: Job? = null
+// Variable global/pribadi untuk menyimpan status kalkulasi kecepatan sebelumnya
+private var waktuTerakhirMs: Long = 0L
+private var byteTerakhirDownloaded: Long = 0L
+private var kecepatanEmaBytesPerSec: Double = 0.0 // Filter perata gerakan
     private val namaFile = "Master_Data_Arsip_FK_11_Juli_2026.json"
     private val urlKargo = "https://github.com/suyonoion/Pustaka-FK/releases/download/v1.0.0/Master_Data_Arsip_FK_11_Juli_2026.json"
 
@@ -320,54 +343,89 @@ private fun eksekusiSaringanKombinasi(kategori: String, urutTerlama: Boolean) {
 }
 
     
-private fun perbaruiPanelTelemetri(fase: FaseInjeksi, persentase: Int, volumeSelesai: Int, volumeTotal: Int, metrikKhusus: String = "") {
-    val panelUtama = findViewById<ConstraintLayout>(R.id.panelInisialisasiUtama)
-    val teksStatus = findViewById<TextView>(R.id.teksStatusFase)
-    val indikatorVisual = findViewById<ImageView>(R.id.indikatorVisualMesin)
-    val lingkarProgres = findViewById<ProgressBar>(R.id.lingkarPersentaseUtama)
-    val teksPersen = findViewById<TextView>(R.id.teksPersentaseSentral)
-    val teksTelemetri = findViewById<TextView>(R.id.teksTelemetriData)
-    
-    // Matikan FASE 5 dari sistem enum jika Anda mau, atau cukup setel FASE 6 sebagai poros operasi
-    val teksPesan = if (fase == FaseInjeksi.FASE_6) "Mengelas blok data ke memori..." else fase.pesan
-    
-    if (fase == FaseInjeksi.FASE_1 || fase == FaseInjeksi.FASE_7) {
-        lingkarProgres.visibility = View.GONE
-        teksPersen.visibility = View.GONE
-    } else {
-        lingkarProgres.visibility = View.VISIBLE
-        teksPersen.visibility = View.VISIBLE
+// 3. FUNGSI UNTUK MENJALANKAN ROTASI TEKS SECARA OTOMATIS
+private fun jalankanRotasiNasehat(vTeksNasehat: TextView) {
+    jobRotasiNasehat?.cancel() // Hentikan rotasi lama jika ada
+    jobRotasiNasehat = lifecycleScope.launch {
+        var indeks = 0
+        while (isMesinSibuk) {
+            vTeksNasehat.text = KoleksiNasehat.DAFTAR_TEKS[indeks]
+            indeks = (indeks + 1) % KoleksiNasehat.DAFTAR_TEKS.size
+            delay(6000) // Berganti setiap 6 detik
+        }
     }
-    
-    teksStatus.text = teksPesan
-    indikatorVisual.setImageResource(fase.idGambar)
+}
+
+private fun hentikanRotasiNasehat() {
+    jobRotasiNasehat?.cancel()
+    jobRotasiNasehat = null
+}
+
+// 4. PERBAIKAN FUNGSI TELEMETRI (Menampilkan Bahasa Ramah & Rotasi Nasehat)
+private fun perbaruiPanelTelemetri(
+    fase: FaseInjeksi, 
+    itemTerproses: Int = 0, 
+    totalItem: Int = 0, 
+    persenProgress: Int = 0
+) {
+    val panelUtama = findViewById<ConstraintLayout>(R.id.panelInisialisasiUtama)
+    val vTeksStatus = findViewById<TextView>(R.id.teksStatusInisialisasi)
+    val vTeksDetail = findViewById<TextView>(R.id.teksDetailProgress)
+    val vTeksNasehat = findViewById<TextView>(R.id.teksNasehatInisialisasi) // ID TextView untuk nasehat
+    val progressBar = findViewById<ProgressBar>(R.id.progressBarInisialisasi)
+
+    panelUtama.visibility = View.VISIBLE
+
+    // Mulai rotasi nasehat jika mesin sedang sibuk
+    if (jobRotasiNasehat == null || !jobRotasiNasehat!!.isActive) {
+        jalankanRotasiNasehat(vTeksNasehat)
+    }
 
     when (fase) {
-        FaseInjeksi.FASE_1, FaseInjeksi.FASE_2, FaseInjeksi.FASE_4 -> {
-            lingkarProgres.isIndeterminate = true
-            teksPersen.text = "---"
-            teksTelemetri.text = "Sistem sedang menginisialisasi modul ..."
+        FaseInjeksi.FASE_1 -> {
+            vTeksStatus.text = "Mempersiapkan Jalur Data..."
+            vTeksDetail.text = "Pemeriksaan awal sistem"
+            progressBar.isIndeterminate = true
+        }
+        FaseInjeksi.FASE_2 -> {
+            vTeksStatus.text = "Menghubungkan ke Server Data..."
+            vTeksDetail.text = "Menginisialisasi jalur kargo..."
+            progressBar.isIndeterminate = true
         }
         FaseInjeksi.FASE_3 -> {
-            lingkarProgres.isIndeterminate = false
-            lingkarProgres.progress = persentase
-            teksPersen.text = "$persentase%"
-            teksTelemetri.text = "Arsip Status Digital Fatwa Kehidupan\n$metrikKhusus\nSistem bekerja stabil..."
+            vTeksStatus.text = "Mengunduh Paket Data..."
+            vTeksDetail.text = "Progres: $persenProgress%"
+            progressBar.isIndeterminate = false
+            progressBar.progress = persenProgress
+        }
+        FaseInjeksi.FASE_4 -> {
+            vTeksStatus.text = "Koneksi Terputus"
+            vTeksDetail.text = "Menunggu sinyal internet kembali..."
+            progressBar.isIndeterminate = true
+        }
+        FaseInjeksi.FASE_5 -> {
+            vTeksStatus.text = "Membongkar & Menyusun Data..."
+            if (totalItem > 0) {
+                vTeksDetail.text = "Menata $itemTerproses dari $totalItem arsip"
+                progressBar.isIndeterminate = false
+                progressBar.max = totalItem
+                progressBar.progress = itemTerproses
+            } else {
+                vTeksDetail.text = "Mengekstrak berkas ke database..."
+                progressBar.isIndeterminate = true
+            }
         }
         FaseInjeksi.FASE_6 -> {
-            lingkarProgres.isIndeterminate = false
-            lingkarProgres.progress = persentase
-            teksPersen.text = "$persentase%"
-            teksTelemetri.text = "Arsip Status Digital Fatwa Kehidupan\nProses injeksi baris data ($volumeSelesai / $volumeTotal baris)\nSistem bekerja stabil..."
+            vTeksStatus.text = "Checking Keutuhan Data..."
+            vTeksDetail.text = "Membersihkan berkas sisa..."
+            progressBar.isIndeterminate = true
         }
         FaseInjeksi.FASE_7 -> {
-            lingkarProgres.isIndeterminate = false
-            lingkarProgres.progress = 100
-            teksPersen.text = "100%"
-            teksTelemetri.text = "Seluruh blok data berhasil dilas ke dalam memori SQLite."
-            Handler(Looper.getMainLooper()).postDelayed({ panelUtama.visibility = View.GONE }, 1500)
+            hentikanRotasiNasehat()
+            vTeksStatus.text = "Data Siap Digunakan!"
+            vTeksDetail.text = "Selesai"
+            panelUtama.visibility = View.GONE
         }
-        else -> {}
     }
 }
 
@@ -635,40 +693,15 @@ private fun perbaruiPanelTelemetri(fase: FaseInjeksi, persentase: Int, volumeSel
 
     private fun eksekusiPabrikData() {
     lifecycleScope.launch(Dispatchers.IO) {
-        // SENSOR 0: Pindai Radar Mesin Latar Belakang
-        val manajerKerja = androidx.work.WorkManager.getInstance(this@MainActivity)
-        val statusPekerja = manajerKerja.getWorkInfosForUniqueWork("INJEKSI_MASTER_DATA").get()
-        
-        // Deteksi apakah ada rotor mesin yang masih berputar (RUNNING) atau mengantre (ENQUEUED)
-        val isMesinMenyala = statusPekerja.any { 
-            it.state == androidx.work.WorkInfo.State.RUNNING || 
-            it.state == androidx.work.WorkInfo.State.ENQUEUED 
-        }
-        
-        val berkasLokal = java.io.File(getExternalFilesDir(null), "Master_Data_Arsip_FK_11_Juli_2026.json")
-
-        if (isMesinMenyala) {
-            // SAKELAR PENGUNCI: Cegah tumbukan ganda. 
-            // Jika mesin lama sedang mengelas, JANGAN sentuh SQLite dan JANGAN unduh ulang.
-            // Langsung hubungkan kembali panel telemetri layar ke mesin tersebut.
-            withContext(Dispatchers.Main) {
-                isMesinSibuk = true
-                findViewById<ConstraintLayout>(R.id.panelInisialisasiUtama).visibility = View.VISIBLE
-                jalankanMesinInjeksiOtonom(berkasLokal.absolutePath)
-            }
-            return@launch // Putus arus ke bawah
-        }
-
-        // PROSEDUR STANDAR: Dieksekusi murni hanya jika mesin latar belakang sedang mati
-        delay(1500)
         val database = ArsipDatabase.operasikanMesin(this@MainActivity)
         val lenganRobot = database.arsipDao()
         
         val jumlahBarisData = lenganRobot.hitungTotalArsip() 
+        val berkasLokal = File(getExternalFilesDir(null), "Master_Data_Arsip_FK_11_Juli_2026.json")
         val bobotMinimum = 110 * 1024 * 1024 
         val batasAmanAbsolut = 17900 
 
-        // KONDISI A: Kapasitas Tangki Data Terpenuhi (Normal)
+        // KONDISI A: Data SQLite Sudah Utuh
         if (jumlahBarisData >= batasAmanAbsolut) {
             val semuaData = lenganRobot.tarikSemuaArsip()
             withContext(Dispatchers.Main) {
@@ -676,12 +709,12 @@ private fun perbaruiPanelTelemetri(fase: FaseInjeksi, persentase: Int, volumeSel
                 isMesinSibuk = false
                 pompaDataKeLayar(semuaData)
                 muatDataAwalKeSasis(semuaData)
-                if (berkasLokal.exists()) { berkasLokal.delete() } // Hancurkan residu kargo
+                if (berkasLokal.exists()) { berkasLokal.delete() }
             }
             return@launch
         }
 
-        // KONDISI B: Tangki SQLite Kurang, Tapi Kargo Bahan Baku Tersedia
+        // KONDISI B: Data Kurang, Tapi File JSON Mentah Sudah Siap Dieksekusi
         if (berkasLokal.exists() && berkasLokal.length() >= bobotMinimum) {
             withContext(Dispatchers.Main) {
                 isMesinSibuk = true
@@ -692,18 +725,71 @@ private fun perbaruiPanelTelemetri(fase: FaseInjeksi, persentase: Int, volumeSel
             return@launch
         }
 
-        // KONDISI C: Tangki SQLite Kurang & Kargo Mentah Tidak Ada / Cacat (Bobot Rendah)
+        // KONDISI C: Data Belum Lengkap & Berkas Belum Siap -> Paksa Masuk Jalur Penyedot
         withContext(Dispatchers.Main) {
-            // Kuras residu data kotor untuk menghindari kemacetan dan duplikasi ID
-            lifecycleScope.launch(Dispatchers.IO) { lenganRobot.kurasTangkiKotor() }
-            
+            isMesinSibuk = true
             findViewById<ConstraintLayout>(R.id.panelInisialisasiUtama).visibility = View.VISIBLE
             perbaruiPanelTelemetri(FaseInjeksi.FASE_1, 0, 0, 0)
-            delay(1000)
+            
+            // Langsung aktifkan mesin penyedot tanpa delay berlebihan
             aktifkanMesinPenyedot()
         }
     }
 }
+
+private fun aktifkanMesinPenyedot() {
+    isMesinSibuk = true
+    findViewById<ConstraintLayout>(R.id.panelInisialisasiUtama).visibility = View.VISIBLE
+
+    // Sensor Jaringan
+    if (!isJaringanTersedia()) {
+        perbaruiPanelTelemetri(FaseInjeksi.FASE_4, 0, 0, 0)
+        lifecycleScope.launch(Dispatchers.IO) {
+            while (!isJaringanTersedia()) {
+                delay(3000)
+            }
+            withContext(Dispatchers.Main) {
+                aktifkanMesinPenyedot()
+            }
+        }
+        return
+    }
+    
+    val downloadManager = getSystemService(Context.DOWNLOAD_SERVICE) as DownloadManager
+    val idPipaAktif = cariPipaAktif(downloadManager)
+    
+    // IF 1: Jika Unduhan Sedang Berjalan di Latar Belakang (Pasca Recent Apps Closed)
+    if (idPipaAktif != -1L) {
+        // PERALIHAN INSTAN KE FASE 3
+        perbaruiPanelTelemetri(FaseInjeksi.FASE_3, 0, 0, 100)
+        pantauTekananUnduhan(idPipaAktif, downloadManager)
+        pasangSensorPendaratan(idPipaAktif, downloadManager)
+        return
+    }
+
+    // IF 2: Inisialisasi Pipa Baru -> TRANSISI KE FASE 2
+    perbaruiPanelTelemetri(FaseInjeksi.FASE_2, 0, 0, 100)
+
+    val namaFileTemp = "$namaFile.temp"
+    val fileTempLama = File(getExternalFilesDir(null), namaFileTemp)
+    if (fileTempLama.exists()) fileTempLama.delete()
+
+    val request = DownloadManager.Request(Uri.parse(urlKargo))
+        .setTitle("Arsip Fatwa Kehidupan")
+        .setDescription("Mengunduh file data arsip...")
+        .setNotificationVisibility(DownloadManager.Request.VISIBILITY_VISIBLE_NOTIFY_COMPLETED)
+        .setDestinationInExternalFilesDir(this, null, namaFileTemp)
+        .setAllowedOverMetered(true)
+        .setAllowedOverRoaming(true)
+
+    val idUnduhan = downloadManager.enqueue(request)
+    
+    // PERALIHAN KANTONG VISUAL KE FASE 3 (MEMANTAU TRANSMISI)
+    perbaruiPanelTelemetri(FaseInjeksi.FASE_3, 0, 0, 100)
+    pantauTekananUnduhan(idUnduhan, downloadManager)
+    pasangSensorPendaratan(idUnduhan, downloadManager)
+}
+
 
 
     private fun cariPipaAktif(downloadManager: DownloadManager): Long {
@@ -726,66 +812,7 @@ private fun perbaruiPanelTelemetri(fase: FaseInjeksi, persentase: Int, volumeSel
         return -1L
     }
 
-    private fun aktifkanMesinPenyedot() {
-    isMesinSibuk = true
-    val panelUtama = findViewById<ConstraintLayout>(R.id.panelInisialisasiUtama)
-    panelUtama.visibility = View.VISIBLE
-
-    // SENSOR 1: Verifikasi Kapasitas Tangki Memori
-    if (!cekKapasitasTangkiMemadai(this)) {
-        perbaruiPanelTelemetri(FaseInjeksi.FASE_4, 0, 0, 0)
-        findViewById<TextView>(R.id.teksStatusFase).text = "Gagal: Memori Internal Penuh"
-        findViewById<TextView>(R.id.teksTelemetriData).text = "Sisa ruang di bawah 150MB. Harap bersihkan penyimpanan perangkat Anda lalu muat ulang aplikasi."
-        isMesinSibuk = false
-        return // Hentikan operasi absolut
-    }
-
-    // SENSOR 2: Verifikasi Aliran Jaringan
-    if (!isJaringanTersedia()) {
-        perbaruiPanelTelemetri(FaseInjeksi.FASE_4, 0, 0, 0)
-        lifecycleScope.launch(Dispatchers.IO) {
-            while (!isJaringanTersedia()) {
-                delay(3000)
-            }
-            withContext(Dispatchers.Main) {
-                aktifkanMesinPenyedot()
-            }
-        }
-        return
-    }
     
-    val downloadManager = getSystemService(Context.DOWNLOAD_SERVICE) as DownloadManager
-    val idPipaAktif = cariPipaAktif(downloadManager)
-    
-    if (idPipaAktif != -1L) {
-        perbaruiPanelTelemetri(FaseInjeksi.FASE_3, 0, 0, 100)
-        pantauTekananUnduhan(idPipaAktif, downloadManager)
-        pasangSensorPendaratan(idPipaAktif, downloadManager)
-        return
-    }
-
-    perbaruiPanelTelemetri(FaseInjeksi.FASE_2, 0, 0, 100)
-
-    val namaFileTemp = "$namaFile.temp"
-    val direktoriTarget = android.os.Environment.DIRECTORY_DOWNLOADS
-    val fileTempLama = File(getExternalFilesDir(direktoriTarget), namaFileTemp)
-    if (fileTempLama.exists()) fileTempLama.delete()
-
-    // KALIBRASI PIPA PENGUNDUHAN
-    val request = DownloadManager.Request(Uri.parse(urlKargo.trim()))
-        .setTitle("Arsip Fatwa Kehidupan")
-        .setDescription("Mengunduh file master data (115MB)...")
-        .setNotificationVisibility(DownloadManager.Request.VISIBILITY_VISIBLE_NOTIFY_COMPLETED)
-        .setAllowedNetworkTypes(DownloadManager.Request.NETWORK_WIFI or DownloadManager.Request.NETWORK_MOBILE)
-        .setAllowedOverMetered(true)
-        .setAllowedOverRoaming(true)
-        .setDestinationInExternalFilesDir(this, direktoriTarget, namaFileTemp)
-
-    val idUnduhan = downloadManager.enqueue(request)
-    
-    pantauTekananUnduhan(idUnduhan, downloadManager)
-    pasangSensorPendaratan(idUnduhan, downloadManager)
-}
 
 
     private fun pasangSensorPendaratan(idUnduhan: Long, downloadManager: DownloadManager) {
@@ -833,117 +860,96 @@ private fun perbaruiPanelTelemetri(fase: FaseInjeksi, persentase: Int, volumeSel
     registerReceiver(sensorSelesai, IntentFilter(DownloadManager.ACTION_DOWNLOAD_COMPLETE))
 }
 
-
-    private fun pantauTekananUnduhan(idUnduhan: Long, downloadManager: DownloadManager) {
+private fun pantauTekananUnduhan(idUnduhan: Long, downloadManager: DownloadManager) {
     lifecycleScope.launch(Dispatchers.IO) {
-        var isMengunduh = true
-        var beradaDiFaseGagalJaringan = false
-        var waktuTerakhir = System.currentTimeMillis()
-        var byteTerakhir = 0L
-        
-        while (isMengunduh) {
-            if (!isJaringanTersedia()) {
-                beradaDiFaseGagalJaringan = true
-                withContext(Dispatchers.Main) {
-                    perbaruiPanelTelemetri(FaseInjeksi.FASE_4, 0, 0, 0)
-                }
-                delay(3000)
-                continue
-            }
+        // Inisialisasi awal kalkulasi
+        waktuTerakhirMs = System.currentTimeMillis()
+        byteTerakhirDownloaded = 0L
+        kecepatanEmaBytesPerSec = 0.0
 
-            if (beradaDiFaseGagalJaringan) {
-                beradaDiFaseGagalJaringan = false
-                withContext(Dispatchers.Main) {
-                    perbaruiPanelTelemetri(FaseInjeksi.FASE_3, 0, 0, 0)
-                }
-            }
+        var sedangMengunduh = true
 
+        while (sedangMengunduh && isMesinSibuk) {
             val query = DownloadManager.Query().setFilterById(idUnduhan)
-            val cursor = downloadManager.query(query)
-            
-            if (cursor != null && cursor.moveToFirst()) {
-                val statusIndex = cursor.getColumnIndex(DownloadManager.COLUMN_STATUS)
-                val status = cursor.getInt(statusIndex)
-                
-                if (status == DownloadManager.STATUS_SUCCESSFUL) {
-                    isMengunduh = false 
-                } else if (status == DownloadManager.STATUS_PAUSED) {
-                    // JANGAN hentikan mesin. Biarkan OS menyambung ulang.
-                    withContext(Dispatchers.Main) {
-                        perbaruiPanelTelemetri(FaseInjeksi.FASE_4, 0, 0, 0)
-                    }
-                } else if (status == DownloadManager.STATUS_FAILED) {
-                    isMengunduh = false
-                    val alasanIndex = cursor.getColumnIndex(DownloadManager.COLUMN_REASON)
-                    val alasanGagal = if (alasanIndex != -1) cursor.getInt(alasanIndex) else -1
-                    
-                    // Cabut pipa gagal dari antrean sistem
-                    downloadManager.remove(idUnduhan)
-                    
-                    withContext(Dispatchers.Main) {
-                        if (alasanGagal == DownloadManager.ERROR_INSUFFICIENT_SPACE) {
-                            perbaruiPanelTelemetri(FaseInjeksi.FASE_4, 0, 0, 0)
-                            findViewById<TextView>(R.id.teksStatusFase).text = "Mesin Berhenti: Memori Penuh"
-                            findViewById<TextView>(R.id.teksTelemetriData).text = "OS memblokir masuknya kargo akibat tangki kepenuhan. Kosongkan memori perangkat."
-                            isMesinSibuk = false
+            val cursor: Cursor = downloadManager.query(query)
+
+            if (cursor.moveToFirst()) {
+                val indexBytesSoFar = cursor.getColumnIndex(DownloadManager.COLUMN_BYTES_DOWNLOADED_SO_FAR)
+                val indexTotalBytes = cursor.getColumnIndex(DownloadManager.COLUMN_TOTAL_SIZE_BYTES)
+                val indexStatus = cursor.getColumnIndex(DownloadManager.COLUMN_STATUS)
+
+                if (indexBytesSoFar != -1 && indexTotalBytes != -1 && indexStatus != -1) {
+                    val bytesDownloaded = cursor.getLong(indexBytesSoFar)
+                    val totalBytes = cursor.getLong(indexTotalBytes)
+                    val status = cursor.getInt(indexStatus)
+
+                    val waktuSekarangMs = System.currentTimeMillis()
+                    val selisihWaktuSec = (waktuSekarangMs - waktuTerakhirMs) / 1000.0
+
+                    // Kalkulasi kecepatan instan jika jeda waktu cukup (> 0.2 detik)
+                    if (selisihWaktuSec >= 0.2) {
+                        val selisihByte = bytesDownloaded - byteTerakhirDownloaded
+                        val kecepatanInstan = if (selisihByte > 0) (selisihByte / selisihWaktuSec) else 0.0
+
+                        // PENGERING/FILTER EMA: Alpha 0.25 memuluskan penurunan angka agar tidak mengagetkan (Soft Drop)
+                        val alpha = 0.25 
+                        kecepatanEmaBytesPerSec = if (kecepatanEmaBytesPerSec == 0.0) {
+                            kecepatanInstan
                         } else {
-                            perbaruiPanelTelemetri(FaseInjeksi.FASE_4, 0, 0, 0)
-                            delay(3000)
-                            // Retri penyedotan, bukan retri pabrik
-                            aktifkanMesinPenyedot() 
+                            (alpha * kecepatanInstan) + ((1 - alpha) * kecepatanEmaBytesPerSec)
                         }
+
+                        waktuTerakhirMs = waktuSekarangMs
+                        byteTerakhirDownloaded = bytesDownloaded
                     }
-                } else {
-                    // KALKULASI SPEED METER
-                    val bytesDownloadedIndex = cursor.getColumnIndex(DownloadManager.COLUMN_BYTES_DOWNLOADED_SO_FAR)
-                    val bytesTotalIndex = cursor.getColumnIndex(DownloadManager.COLUMN_TOTAL_SIZE_BYTES)
-                    
-                    if (bytesDownloadedIndex != -1 && bytesTotalIndex != -1) {
-                        val downloaded = cursor.getLong(bytesDownloadedIndex)
-                        val total = cursor.getLong(bytesTotalIndex)
-                        
-                        if (total > 0) {
-                            val persentase = ((downloaded * 100L) / total).toInt()
-                            val waktuSekarang = System.currentTimeMillis()
-                            val selisihWaktu = waktuSekarang - waktuTerakhir
-                            var metrikUnduhan = "Menghitung aliran kargo..."
-                            
-                            if (selisihWaktu > 0 && byteTerakhir > 0) {
-                                val kecepatanBps = ((downloaded - byteTerakhir) * 1000) / selisihWaktu
-                                val sisaByte = total - downloaded
-                                val sisaDetik = if (kecepatanBps > 0) sisaByte / kecepatanBps else 0
-                                
-                                val kecepatanMbps = String.format("%.2f", kecepatanBps / (1024.0 * 1024.0))
-                                val mbSelesai = String.format("%.1f", downloaded / (1024.0 * 1024.0))
-                                val mbTotal = String.format("%.1f", total / (1024.0 * 1024.0))
-                                
-                                metrikUnduhan = "$sisaDetik detik tersisa • $kecepatanMbps Mbps | $mbSelesai MB / $mbTotal MB"
-                            }
-                            
-                            waktuTerakhir = waktuSekarang
-                            byteTerakhir = downloaded
-                            
-                            withContext(Dispatchers.Main) {
-                                perbaruiPanelTelemetri(FaseInjeksi.FASE_3, persentase, 0, 0, metrikUnduhan)
-                            }
-                        }
+
+                    // Hitung Persentase
+                    val persen = if (totalBytes > 0) ((bytesDownloaded * 100) / totalBytes).toInt() else 0
+
+                    // Format Teks Kecepatan (Kondisional KB/s vs MB/s)
+                    val teksKecepatan = formatKecepatanPersisi(kecepatanEmaBytesPerSec)
+
+                    withContext(Dispatchers.Main) {
+                        // Perbarui UI Telemetri
+                        perbaruiDetailKecepatan(persen, bytesDownloaded, totalBytes, teksKecepatan)
                     }
-                }
-            } else {
-                isMengunduh = false
-                withContext(Dispatchers.Main) {
-                    findViewById<ConstraintLayout>(R.id.panelInisialisasiUtama).visibility = View.GONE
-                    isMesinSibuk = false
+
+                    if (status == DownloadManager.STATUS_SUCCESSFUL || status == DownloadManager.STATUS_FAILED) {
+                        sedangMengunduh = false
+                    }
                 }
             }
-            cursor?.close()
-            delay(1000)
+            cursor.close()
+            delay(500) // Polling interval 500ms
         }
     }
 }
 
+// FUNGSI KONVERSI UNIT DENGAN SKALA PRESISI (KB/s vs MB/s)
+private fun formatKecepatanPersisi(bytesPerSec: Double): String {
+    val kbps = bytesPerSec / 1024.0
+    val mbps = kbps / 1024.0
 
+    return when {
+        mbps >= 1.0 -> String.format("%.2f MB/s", mbps)
+        kbps >= 1.0 -> String.format("%.1f KB/s", kbps)
+        bytesPerSec > 0 -> String.format("%.0f B/s", bytesPerSec)
+        else -> "0 KB/s"
+    }
+}
 
+// FUNGSI PENJAGA TAMPILAN PANEL TELEMETRI DENGAN RINCIAN SPEED METER
+private fun perbaruiDetailKecepatan(persen: Int, byteDiterima: Long, totalByte: Long, kecepatanTeks: String) {
+    val vTeksDetail = findViewById<TextView>(R.id.teksDetailProgress)
+    val progressBar = findViewById<ProgressBar>(R.id.progressBarInisialisasi)
+
+    val mbDiterima = String.format("%.1f", byteDiterima / (1024.0 * 1024.0))
+    val mbTotal = String.format("%.1f", totalByte / (1024.0 * 1024.0))
+
+    vTeksDetail.text = "Progres: $persen% ($mbDiterima MB / $mbTotal MB) • $kecepatanTeks"
+    progressBar.isIndeterminate = false
+    progressBar.progress = persen
+}
     // SIRKUIT BARU: Antena Pemantau Sinyal Kerja WorkManager Latar Belakang
     private fun jalankanMesinInjeksiOtonom(jalurFileJson: String) {
     val kargo = workDataOf("URI_JSON_KARGO" to jalurFileJson)
