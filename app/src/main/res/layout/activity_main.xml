@@ -290,7 +290,8 @@
     android:layout_marginStart="20dp"
     android:clipChildren="false" />
         </FrameLayout>
-
+        <!-- Layar Kaca Pengaman (Letakkan di atas pelat utama) -->
+        <include layout="@layout/layout_inisialisasi_mesin" />
     </FrameLayout>
 
     <!-- KOMPARTEMEN 2: LACI NAVIGASI -->
