@@ -381,7 +381,6 @@ private fun perbaruiPanelTelemetri(fase: FaseInjeksi, persentase: Int, volumeSel
         val menuBiografi = findViewById<TextView>(R.id.menuBiografi)
     val menuSosmed = findViewById<TextView>(R.id.menuSosmed)
     val menuLetnan = findViewById<TextView>(R.id.menuLetnan)
-    val menuYayasan = findViewById<TextView>(R.id.menuYayasan)
     val menuGaleriFoto = findViewById<TextView>(R.id.menuGaleriFoto)
     
 
@@ -406,12 +405,6 @@ private fun perbaruiPanelTelemetri(fase: FaseInjeksi, persentase: Int, volumeSel
         startActivity(intent)
     }
 
-    menuYayasan.setOnClickListener {
-        sorotMenuTerpilih(menuYayasan)
-        drawerLayout.closeDrawer(GravityCompat.START)
-        Toast.makeText(this, "Halaman Yayasan", Toast.LENGTH_SHORT).show()
-    }
-    
     menuGaleriFoto.setOnClickListener {
     sorotMenuTerpilih(menuGaleriFoto)
     drawerLayout.closeDrawer(GravityCompat.START)    
@@ -432,13 +425,20 @@ private fun perbaruiPanelTelemetri(fase: FaseInjeksi, persentase: Int, volumeSel
     val padHorizontal = (16 * scale).toInt()
     val padVerticalInduk = (10 * scale).toInt()
     val padVerticalAnak = (8 * scale).toInt()
-    val padLeftAnak = (48 * scale).toInt() 
+    
+    // INJEKSI PROTOKOL DIMENSI: Kunci sasis agar tidak kolaps menjadi 0x0
+    val parameterSasisPenuh = LinearLayout.LayoutParams(
+        LinearLayout.LayoutParams.MATCH_PARENT, 
+        LinearLayout.LayoutParams.WRAP_CONTENT
+    )
 
     for (kategori in CetakBiruKategori.MATRIKS_UTAMA) {
         val namaInduk = kategori.first
         val daftarCabang = kategori.second
 
+        // 1. Eksekusi Sasis Induk
         val barisInduk = TextView(this).apply {
+            layoutParams = parameterSasisPenuh // Kunci dimensi
             text = namaInduk
             textSize = 13f
             setTextColor(android.graphics.Color.parseColor("#212121"))
@@ -464,70 +464,66 @@ private fun perbaruiPanelTelemetri(fase: FaseInjeksi, persentase: Int, volumeSel
                 R.drawable.ic_kategori_induk, 0, android.R.drawable.arrow_down_float, 0
             )
             
-            // Ganti blok inisialisasi wadahAnak sebelumnya dengan sasis baru ini:
-val wadahAnak = LinearLayout(this).apply {
-    orientation = LinearLayout.HORIZONTAL // Ubah orientasi induk untuk menampung rel utama
-    visibility = View.GONE
-    setBackgroundColor(android.graphics.Color.TRANSPARENT)
-}
+            // 2. Eksekusi Sasis Anak (Wadah Pembungkus)
+            val wadahAnak = LinearLayout(this).apply {
+                layoutParams = parameterSasisPenuh // Kunci dimensi
+                orientation = LinearLayout.HORIZONTAL 
+                visibility = View.GONE
+                setBackgroundColor(android.graphics.Color.TRANSPARENT)
+            }
 
-// Rel Vertikal Utama (Trunk/Batang penghubung kontinu)
-val relVertikal = View(this).apply {
-    layoutParams = LinearLayout.LayoutParams((1.5f * scale).toInt(), LinearLayout.LayoutParams.MATCH_PARENT).apply {
-        // Sejajarkan rel tepat di bawah ikon folder induk
-        setMargins((24 * scale).toInt(), 0, 0, 0) 
-    }
-    setBackgroundColor(android.graphics.Color.parseColor("#B0BEC5"))
-}
+            // Rel Vertikal Utama (Trunk)
+            val relVertikal = View(this).apply {
+                layoutParams = LinearLayout.LayoutParams((1.5f * scale).toInt(), LinearLayout.LayoutParams.MATCH_PARENT).apply {
+                    setMargins((24 * scale).toInt(), 0, 0, 0) 
+                }
+                setBackgroundColor(android.graphics.Color.parseColor("#B0BEC5"))
+            }
 
-val wadahTeksAnak = LinearLayout(this).apply {
-    orientation = LinearLayout.VERTICAL
-    layoutParams = LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f)
-}
+            val wadahTeksAnak = LinearLayout(this).apply {
+                orientation = LinearLayout.VERTICAL
+                layoutParams = LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f)
+            }
 
-for (cabang in daftarCabang) {
-    val namaAnak = cabang.first
-    
-    // Sasis untuk masing-masing baris item (Pelat Sensor Utama)
-    val barisAnak = LinearLayout(this).apply {
-        orientation = LinearLayout.HORIZONTAL
-        layoutParams = LinearLayout.LayoutParams(
-            LinearLayout.LayoutParams.MATCH_PARENT, 
-            LinearLayout.LayoutParams.WRAP_CONTENT
-        )
-        gravity = android.view.Gravity.CENTER_VERTICAL
-        setBackgroundResource(android.R.drawable.list_selector_background)
-        isClickable = true
-        isFocusable = true
-    }
+            for (cabang in daftarCabang) {
+                val namaAnak = cabang.first
+                
+                // 3. Eksekusi Sasis Baris Anak (Elemen Klik)
+                val barisAnak = LinearLayout(this).apply {
+                    layoutParams = parameterSasisPenuh // Kunci dimensi
+                    orientation = LinearLayout.HORIZONTAL
+                    gravity = android.view.Gravity.CENTER_VERTICAL
+                    setBackgroundResource(android.R.drawable.list_selector_background)
+                    isClickable = true
+                    isFocusable = true
+                }
 
-    // Rel Horizontal Penghubung
-    val relHorizontal = View(this).apply {
-        layoutParams = LinearLayout.LayoutParams((12 * scale).toInt(), (1.5f * scale).toInt())
-        setBackgroundColor(android.graphics.Color.parseColor("#B0BEC5"))
-    }
+                // Rel Horizontal Penghubung
+                val relHorizontal = View(this).apply {
+                    layoutParams = LinearLayout.LayoutParams((12 * scale).toInt(), (1.5f * scale).toInt())
+                    setBackgroundColor(android.graphics.Color.parseColor("#B0BEC5"))
+                }
 
-    val teksAnak = TextView(this).apply {
-        text = namaAnak 
-        textSize = 12f
-        setTextColor(android.graphics.Color.parseColor("#555555"))
-        setPadding((8 * scale).toInt(), padVerticalAnak, padHorizontal, padVerticalAnak)
-        // Bebankan pembentangan penuh ke teks agar mengisi sasis
-        layoutParams = LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f)
-    }
-    
-    // Kunci event listener pada kontainer barisUtama, bukan hanya teks
-    barisAnak.setOnClickListener {
-        sorotMenuTerpilih(barisAnak)
-        eksekusiSaringanKategori(namaAnak)
-    }
-    
-    barisAnak.addView(relHorizontal)
-    barisAnak.addView(teksAnak)
-    wadahTeksAnak.addView(barisAnak)
-}
-wadahAnak.addView(relVertikal)
-wadahAnak.addView(wadahTeksAnak)
+                val teksAnak = TextView(this).apply {
+                    text = namaAnak 
+                    textSize = 12f
+                    setTextColor(android.graphics.Color.parseColor("#555555"))
+                    setPadding((8 * scale).toInt(), padVerticalAnak, padHorizontal, padVerticalAnak)
+                    layoutParams = LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f)
+                }
+                
+                barisAnak.setOnClickListener {
+                    sorotMenuTerpilih(barisAnak)
+                    eksekusiSaringanKategori(namaAnak)
+                }
+                
+                barisAnak.addView(relHorizontal)
+                barisAnak.addView(teksAnak)
+                wadahTeksAnak.addView(barisAnak)
+            }
+            
+            wadahAnak.addView(relVertikal)
+            wadahAnak.addView(wadahTeksAnak)
 
             barisInduk.setOnClickListener {
                 if (wadahAnak.visibility == View.VISIBLE) {
@@ -547,6 +543,7 @@ wadahAnak.addView(wadahTeksAnak)
         }
     }
 }
+
     // FUNGSI INJEKSI WARNA AKTIF PADA MENU YANG DITEKAN
     private fun sorotMenuTerpilih(viewBaru: View) {
         // Reset warna item sebelumnya
