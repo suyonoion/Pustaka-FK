@@ -368,6 +368,7 @@ private fun perbaruiPanelTelemetri(
     totalItem: Int = 0, 
     persenProgress: Int = 0
 ) {
+    perbaruiVisualStepper(fase.kode)
     val panelUtama = findViewById<ConstraintLayout>(R.id.panelInisialisasiUtama)
     val vTeksStatus = findViewById<TextView>(R.id.teksStatusInisialisasi)
     val vTeksDetail = findViewById<TextView>(R.id.teksDetailProgress)
@@ -1258,6 +1259,37 @@ private fun cekKapasitasTangkiMemadai(konteks: Context): Boolean {
     val sisaRuangByte = tangki?.freeSpace ?: 0L
     val sisaRuangMB = sisaRuangByte / (1024 * 1024)
     return sisaRuangMB > batasAmanMB
+}
+
+private fun perbaruiVisualStepper(faseAktif: Int) {
+    val warnaInaktifTeks = android.graphics.Color.parseColor("#8892B0")
+    val warnaAktifTeks = android.graphics.Color.parseColor("#64FFDA")
+    val warnaRelAktif = android.graphics.Color.parseColor("#00BCD4")
+    val warnaRelInaktif = android.graphics.Color.parseColor("#233554")
+
+    for (i in 1..7) {
+        val idNum = resources.getIdentifier("numFase$i", "id", packageName)
+        val idLbl = resources.getIdentifier("lblFase$i", "id", packageName)
+        val idRel = resources.getIdentifier("relFase$i", "id", packageName)
+
+        val vNum = findViewById<TextView>(idNum)
+        val vLbl = findViewById<TextView>(idLbl)
+        val vRel = if (idRel != 0) findViewById<View>(idRel) else null
+
+        if (i <= faseAktif) {
+            // FASE AKTIF ATAU SUDAH DILEWATI
+            vNum?.setBackgroundResource(R.drawable.bg_fase_aktif)
+            vNum?.setTextColor(android.graphics.Color.BLACK)
+            vLbl?.setTextColor(warnaAktifTeks)
+            vRel?.setBackgroundColor(warnaRelAktif)
+        } else {
+            // FASE BELUM TERCAPAI
+            vNum?.setBackgroundResource(R.drawable.bg_fase_inaktif)
+            vNum?.setTextColor(warnaInaktifTeks)
+            vLbl?.setTextColor(warnaInaktifTeks)
+            vRel?.setBackgroundColor(warnaRelInaktif)
+        }
+    }
 }
 
 
