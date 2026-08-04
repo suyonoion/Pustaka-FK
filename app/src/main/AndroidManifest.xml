@@ -10,7 +10,7 @@
   <application
     android:allowBackup="true"
     android:icon="@drawable/ic_launcher_fk"
-    android:label="Pustaka FK - Arsip Fatwa Kehidupan"
+    android:label="Pustaka FK"
     android:roundIcon="@drawable/ic_launcher_fk"
     android:supportsRtl="true"
     android:largeHeap="true" 
@@ -20,7 +20,8 @@
             android:name=".MainActivity"
             android:exported="true"
             android:windowSoftInputMode="stateAlwaysHidden"
-            android:configChanges="orientation|screenSize|keyboardHidden">
+            android:configChanges="orientation|screenSize|keyboardHidden"
+            android:launchMode="singleTask">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />

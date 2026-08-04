@@ -360,110 +360,111 @@ private fun hentikanRotasiNasehat() {
 }
 
 // 2. ROMBAK TOTAL FUNGSI PANEL TELEMETRI
+private var faseVisualAktif: FaseInjeksi? = null
+
 private fun perbaruiPanelTelemetri(
-    fase: FaseInjeksi, 
+    faseAsli: FaseInjeksi, 
     persentase: Int, 
     volumeSelesai: Int, 
     volumeTotal: Int, 
     metrikKhusus: String = ""
 ) {
-    // A. PENYELARASAN TERMINAL PORT
-    val panelUtama = findViewById<ConstraintLayout>(R.id.panelInisialisasiUtama) ?: return
-    val teksStatus = findViewById<TextView>(R.id.teksStatusInisialisasi)
-    val indikatorVisual = findViewById<ImageView>(R.id.indikatorVisualMesin)
-    val lingkarProgres = findViewById<ProgressBar>(R.id.progressBarInisialisasi)
-    val teksTelemetri = findViewById<TextView>(R.id.teksDetailProgress)
-    
-    val numFase1 = findViewById<TextView>(R.id.numFase1)
-    val lblFase1 = findViewById<TextView>(R.id.lblFase1)
-    val numFase2 = findViewById<TextView>(R.id.numFase2)
-    val lblFase2 = findViewById<TextView>(R.id.lblFase2)
-    val numFase3 = findViewById<TextView>(R.id.numFase3)
-    val lblFase3 = findViewById<TextView>(R.id.lblFase3)
-    val numFase5 = findViewById<TextView>(R.id.numFase5) // Stepper 4 di XML
-    val lblFase5 = findViewById<TextView>(R.id.lblFase5)
-    val numFase6 = findViewById<TextView>(R.id.numFase6) // Stepper 5 di XML
-    val lblFase6 = findViewById<TextView>(R.id.lblFase6)
-    val numFase7 = findViewById<TextView>(R.id.numFase7) // Stepper 6 di XML
-    val lblFase7 = findViewById<TextView>(R.id.lblFase7)
-
-    // B. TRANSMISI VISUAL (Anti-Macet saat Reconnect)
-    // Mesin sekarang membaca ID fisik. Begitu jaringan pulih, gambar otomatis ditimpa.
-    if (idGambarAktif != fase.idGambar) {
-        indikatorVisual?.setImageResource(fase.idGambar)
-        idGambarAktif = fase.idGambar
-    }
-
-    // C. MEKANISME JEJAK REL STEPPER (Cascade System)
-    val warnaInaktif = android.graphics.Color.parseColor("#8892B0")
-    val warnaAktif = android.graphics.Color.parseColor("#64FFDA")
-    
-    // Konversi fase ke level operasional (1 sampai 6)
-    val levelMesin = when (fase) {
-        FaseInjeksi.FASE_1 -> 1
-        FaseInjeksi.FASE_2 -> 2
-        FaseInjeksi.FASE_3, FaseInjeksi.FASE_4 -> 3 // Fase 4 menahan posisi di rel ke-3
-        FaseInjeksi.FASE_5 -> 4 // Stepper 4
-        FaseInjeksi.FASE_6 -> 5 // Stepper 5
-        FaseInjeksi.FASE_7 -> 6 // Stepper 6
-    }
-
-    // Fungsi mekanis internal untuk mengelas arus ke saklar aktif/inaktif
-    fun setelArusStepper(num: TextView?, lbl: TextView?, levelRel: Int) {
-        if (levelMesin >= levelRel) {
-            // Rel sudah dilewati atau sedang berjalan (Arus tersambung)
-            lbl?.setTextColor(warnaAktif)
-            num?.setBackgroundResource(R.drawable.bg_fase_aktif)
+    // Kunci seluruh eksekusi visual ke Arus Utama (UI Thread) agar tidak macet
+    runOnUiThread {
+        // 1. BYPASS KOREKSI OTONOM
+        // Jika sensor jaringan meneriakkan FASE_4 (mati) tapi ada aliran data unduhan, paksa sistem ke FASE_3.
+        val fase = if (faseAsli == FaseInjeksi.FASE_4 && metrikKhusus.isNotBlank()) {
+            FaseInjeksi.FASE_3
         } else {
-            // Rel belum tersentuh (Arus terputus)
-            lbl?.setTextColor(warnaInaktif)
-            num?.setBackgroundResource(R.drawable.bg_fase_inaktif)
+            faseAsli
         }
-    }
 
-    // Tembakkan arus secara berurutan ke 6 fisik stepper di XML
-    setelArusStepper(numFase1, lblFase1, 1)
-    setelArusStepper(numFase2, lblFase2, 2)
-    setelArusStepper(numFase3, lblFase3, 3)
-    setelArusStepper(numFase5, lblFase5, 4)
-    setelArusStepper(numFase6, lblFase6, 5)
-    setelArusStepper(numFase7, lblFase7, 6)
+        // 2. PENYELARASAN TERMINAL PORT
+        val panelUtama = findViewById<ConstraintLayout>(R.id.panelInisialisasiUtama) ?: return@runOnUiThread
+        val teksStatus = findViewById<TextView>(R.id.teksStatusInisialisasi)
+        val indikatorVisual = findViewById<ImageView>(R.id.indikatorVisualMesin)
+        val lingkarProgres = findViewById<ProgressBar>(R.id.progressBarInisialisasi)
+        val teksTelemetri = findViewById<TextView>(R.id.teksDetailProgress)
+        
+        val numFase1 = findViewById<TextView>(R.id.numFase1); val lblFase1 = findViewById<TextView>(R.id.lblFase1)
+        val numFase2 = findViewById<TextView>(R.id.numFase2); val lblFase2 = findViewById<TextView>(R.id.lblFase2)
+        val numFase3 = findViewById<TextView>(R.id.numFase3); val lblFase3 = findViewById<TextView>(R.id.lblFase3)
+        val numFase5 = findViewById<TextView>(R.id.numFase5); val lblFase5 = findViewById<TextView>(R.id.lblFase5)
+        val numFase6 = findViewById<TextView>(R.id.numFase6); val lblFase6 = findViewById<TextView>(R.id.lblFase6)
+        val numFase7 = findViewById<TextView>(R.id.numFase7); val lblFase7 = findViewById<TextView>(R.id.lblFase7)
 
-    // D. KONTROL VISIBILITAS ROTOR PROGRES
-    if (fase == FaseInjeksi.FASE_1 || fase == FaseInjeksi.FASE_7) {
-        lingkarProgres?.visibility = View.GONE
-    } else {
-        lingkarProgres?.visibility = View.VISIBLE
-    }
-    
-    teksStatus?.text = fase.pesan
+        // 3. TRANSMISI VISUAL UTAMA (Hanya dieksekusi jika fase benar-benar berubah)
+        if (faseVisualAktif != fase) {
+            indikatorVisual?.setImageResource(fase.idGambar)
+            teksStatus?.text = fase.pesan
+            faseVisualAktif = fase
+        }
 
-    // E. DISTRIBUSI DATA TELEMETRI
-    when (fase) {
-        FaseInjeksi.FASE_1, FaseInjeksi.FASE_2, FaseInjeksi.FASE_4 -> {
-            lingkarProgres?.isIndeterminate = true
-            teksTelemetri?.text = "Progres: --- • Menginisialisasi modul sistem..."
+        // 4. MEKANISME JEJAK REL STEPPER (Cascade System)
+        val warnaInaktif = android.graphics.Color.parseColor("#8892B0")
+        val warnaAktif = android.graphics.Color.parseColor("#64FFDA")
+        val warnaNumAktif = android.graphics.Color.parseColor("#004D40")
+        
+        val levelMesin = when (fase) {
+            FaseInjeksi.FASE_1 -> 1
+            FaseInjeksi.FASE_2 -> 2
+            FaseInjeksi.FASE_3, FaseInjeksi.FASE_4 -> 3
+            FaseInjeksi.FASE_5 -> 4
+            FaseInjeksi.FASE_6 -> 5
+            FaseInjeksi.FASE_7 -> 6
         }
-        FaseInjeksi.FASE_3 -> {
-            lingkarProgres?.isIndeterminate = false
-            lingkarProgres?.progress = persentase
-            teksTelemetri?.text = "Progres: $persentase% • $metrikKhusus\nSistem bekerja stabil..."
+
+        fun setelArusStepper(num: TextView?, lbl: TextView?, levelRel: Int) {
+            if (levelMesin >= levelRel) {
+                lbl?.setTextColor(warnaAktif)
+                num?.setBackgroundResource(R.drawable.bg_fase_aktif)
+                num?.setTextColor(warnaNumAktif)
+            } else {
+                lbl?.setTextColor(warnaInaktif)
+                num?.setBackgroundResource(R.drawable.bg_fase_inaktif)
+            }
         }
-        FaseInjeksi.FASE_5, FaseInjeksi.FASE_6 -> {
-            lingkarProgres?.isIndeterminate = false
-            lingkarProgres?.progress = persentase
-            teksTelemetri?.text = "Progres: $persentase% • Injeksi baris data ($volumeSelesai / $volumeTotal)\nSistem bekerja stabil..."
+
+        setelArusStepper(numFase1, lblFase1, 1)
+        setelArusStepper(numFase2, lblFase2, 2)
+        setelArusStepper(numFase3, lblFase3, 3)
+        setelArusStepper(numFase5, lblFase5, 4)
+        setelArusStepper(numFase6, lblFase6, 5)
+        setelArusStepper(numFase7, lblFase7, 6)
+
+        // 5. KONTROL VISIBILITAS ROTOR PROGRES
+        if (fase == FaseInjeksi.FASE_1 || fase == FaseInjeksi.FASE_7) {
+            lingkarProgres?.visibility = View.GONE
+        } else {
+            lingkarProgres?.visibility = View.VISIBLE
         }
-        FaseInjeksi.FASE_7 -> {
-            lingkarProgres?.isIndeterminate = false
-            lingkarProgres?.progress = 100
-            teksTelemetri?.text = "Progres: 100% • Seluruh blok data berhasil dilas ke memori."
-            Handler(Looper.getMainLooper()).postDelayed({ panelUtama.visibility = View.GONE }, 1500)
+        
+        // 6. DISTRIBUSI DATA TELEMETRI
+        when (fase) {
+            FaseInjeksi.FASE_1, FaseInjeksi.FASE_2, FaseInjeksi.FASE_4 -> {
+                lingkarProgres?.isIndeterminate = true
+                teksTelemetri?.text = "Progres: --- • Menginisialisasi modul sistem..."
+            }
+            FaseInjeksi.FASE_3 -> {
+                lingkarProgres?.isIndeterminate = false
+                lingkarProgres?.progress = persentase
+                // Disesuaikan presisi dengan keluaran pada bukti visual 
+                teksTelemetri?.text = "Progres: $persentase% $metrikKhusus"
+            }
+            FaseInjeksi.FASE_5, FaseInjeksi.FASE_6 -> {
+                lingkarProgres?.isIndeterminate = false
+                lingkarProgres?.progress = persentase
+                teksTelemetri?.text = "Progres: $persentase% • Injeksi baris data ($volumeSelesai / $volumeTotal)"
+            }
+            FaseInjeksi.FASE_7 -> {
+                lingkarProgres?.isIndeterminate = false
+                lingkarProgres?.progress = 100
+                teksTelemetri?.text = "Progres: 100% • Seluruh blok data berhasil dilas ke memori."
+                Handler(Looper.getMainLooper()).postDelayed({ panelUtama.visibility = View.GONE }, 1500)
+            }
         }
     }
 }
-
-
 
     override fun onConfigurationChanged(newConfig: android.content.res.Configuration) {
         super.onConfigurationChanged(newConfig)
