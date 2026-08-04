@@ -67,21 +67,16 @@ object KoleksiNasehat {
     )
 }
 
-enum class FaseInjeksi(val kode: Int, val deskripsiMekanis: String) {
-    FASE_1(1, "Mempersiapkan Jalur Data"),
-    FASE_2(2, "Menghubungkan ke Server Data"),
-    FASE_3(3, "Mengunduh Paket Data"),
-    FASE_4(4, "Koneksi Terputus"),
-    FASE_5(5, "Membongkar & Menyusun Data"),
-    FASE_6(6, "Checking Keutuhan Data"),
-    FASE_7(7, "Data Siap Digunakan");
-
-    companion object {
-        fun dariKode(kode: Int): FaseInjeksi {
-            return values().find { it.kode == kode } ?: FASE_1
-        }
-    }
+enum class FaseInjeksi(val pesan: String, val idGambar: Int) {
+    FASE_1("Memulai aplikasi pertama kali...", R.drawable.img_1),
+    FASE_2("Menghubungkan ke server...", R.drawable.img_2),
+    FASE_3("Mengunduh data status...", R.drawable.img_3),
+    FASE_4("Menunggu jaringan stabil...", R.drawable.img_4), 
+    FASE_5("Mengelas blok data ke memori...", R.drawable.img_5),
+    FASE_6("Injeksi baris data ke SQLite...", R.drawable.img_6),
+    FASE_7("Proses selesai.", R.drawable.img_7)
 }
+
 
 class MainActivity : AppCompatActivity() {
 
@@ -366,60 +361,68 @@ private fun hentikanRotasiNasehat() {
 
 // 4. PERBAIKAN FUNGSI TELEMETRI (Menampilkan Bahasa Ramah & Rotasi Nasehat)
 // REVISI FUNGSI perbaruiPanelTelemetri:
-private fun perbaruiPanelTelemetri(fase: FaseInjeksi, persentase: Int, volumeSelesai: Int, volumeTotal: Int, metrikKhusus: String = "") {
-    val panelUtama = findViewById<ConstraintLayout>(R.id.panelInisialisasiUtama)
+
+private fun perbaruiPanelTelemetri(
+    fase: FaseInjeksi, 
+    persentase: Int, 
+    volumeSelesai: Int, 
+    volumeTotal: Int, 
+    metrikKhusus: String = ""
+) {
+    // Inisialisasi eksplisit seluruh komponen dari layout_inisialisasi_mesin.xml
+    val panelUtama = findViewById<ConstraintLayout>(R.id.panelInisialisasiUtama) ?: return
     val teksStatus = findViewById<TextView>(R.id.teksStatusFase)
     val indikatorVisual = findViewById<ImageView>(R.id.indikatorVisualMesin)
     val lingkarProgres = findViewById<ProgressBar>(R.id.lingkarPersentaseUtama)
     val teksPersen = findViewById<TextView>(R.id.teksPersentaseSentral)
     val teksTelemetri = findViewById<TextView>(R.id.teksTelemetriData)
     
-    // 1. HAPUS SABOTASE LOGIKA TEKS FASE_6
     val teksPesan = fase.pesan 
     
-    // 2. KUNCI TRANSMISI GAMBAR (Hanya perbarui jika fase berubah untuk mencegah lag render)
+    // Kunci transmisi visual agar tidak flicker/lag
     if (faseVisualAktif != fase) {
-        indikatorVisual.setImageResource(fase.idGambar)
+        indikatorVisual?.setImageResource(fase.idGambar)
         faseVisualAktif = fase
     }
 
     if (fase == FaseInjeksi.FASE_1 || fase == FaseInjeksi.FASE_7) {
-        lingkarProgres.visibility = View.GONE
-        teksPersen.visibility = View.GONE
+        lingkarProgres?.visibility = View.GONE
+        teksPersen?.visibility = View.GONE
     } else {
-        lingkarProgres.visibility = View.VISIBLE
-        teksPersen.visibility = View.VISIBLE
+        lingkarProgres?.visibility = View.VISIBLE
+        teksPersen?.visibility = View.VISIBLE
     }
     
-    teksStatus.text = teksPesan
+    teksStatus?.text = teksPesan
 
     when (fase) {
         FaseInjeksi.FASE_1, FaseInjeksi.FASE_2, FaseInjeksi.FASE_4 -> {
-            lingkarProgres.isIndeterminate = true
-            teksPersen.text = "---"
-            teksTelemetri.text = "Sistem sedang menginisialisasi modul ..."
+            lingkarProgres?.isIndeterminate = true
+            teksPersen?.text = "---"
+            teksTelemetri?.text = "Sistem sedang menginisialisasi modul ..."
         }
         FaseInjeksi.FASE_3 -> {
-            lingkarProgres.isIndeterminate = false
-            lingkarProgres.progress = persentase
-            teksPersen.text = "$persentase%"
-            teksTelemetri.text = "Arsip Status Digital Fatwa Kehidupan\n$metrikKhusus\nSistem bekerja stabil..."
+            lingkarProgres?.isIndeterminate = false
+            lingkarProgres?.progress = persentase
+            teksPersen?.text = "$persentase%"
+            teksTelemetri?.text = "Arsip Status Digital Fatwa Kehidupan\n$metrikKhusus\nSistem bekerja stabil..."
         }
-        FaseInjeksi.FASE_5, FaseInjeksi.FASE_6 -> { // GABUNGKAN OPERASI FASE KERJA
-            lingkarProgres.isIndeterminate = false
-            lingkarProgres.progress = persentase
-            teksPersen.text = "$persentase%"
-            teksTelemetri.text = "Arsip Status Digital Fatwa Kehidupan\nProses injeksi baris data ($volumeSelesai / $volumeTotal baris)\nSistem bekerja stabil..."
+        FaseInjeksi.FASE_5, FaseInjeksi.FASE_6 -> {
+            lingkarProgres?.isIndeterminate = false
+            lingkarProgres?.progress = persentase
+            teksPersen?.text = "$persentase%"
+            teksTelemetri?.text = "Arsip Status Digital Fatwa Kehidupan\nProses injeksi baris data ($volumeSelesai / $volumeTotal baris)\nSistem bekerja stabil..."
         }
         FaseInjeksi.FASE_7 -> {
-            lingkarProgres.isIndeterminate = false
-            lingkarProgres.progress = 100
-            teksPersen.text = "100%"
-            teksTelemetri.text = "Seluruh blok data berhasil dilas ke dalam memori SQLite."
+            lingkarProgres?.isIndeterminate = false
+            lingkarProgres?.progress = 100
+            teksPersen?.text = "100%"
+            teksTelemetri?.text = "Seluruh blok data berhasil dilas ke dalam memori SQLite."
             Handler(Looper.getMainLooper()).postDelayed({ panelUtama.visibility = View.GONE }, 1500)
         }
     }
 }
+
 
 
 
