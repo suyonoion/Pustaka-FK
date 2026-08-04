@@ -371,25 +371,19 @@ private fun perbaruiPanelTelemetri(
     persenProgress: Int = 0
 ) {
     val nomorLangkahVisual = getNomorVisualUrut(fase)
-    
-    // Periksa apakah fungsi perbaruiVisualStepper tersedia di sirkuit Anda
-    // perbaruiVisualStepper(nomorLangkahVisual) 
 
     val panelUtama = findViewById<ConstraintLayout>(R.id.panelInisialisasiUtama)
-    val vTeksStatus = findViewById<TextView>(R.id.teksStatusFase) // Menyesuaikan ID dari XML Anda
-    val vTeksDetail = findViewById<TextView>(R.id.teksTelemetriData) // Menyesuaikan ID dari XML Anda
-    val vTeksNasehat = findViewById<TextView>(R.id.teksNasehatInisialisasi) // Pastikan ID ini ada di XML jika ingin diaktifkan
     
-    // Tuas komponen persentase bawah (ProgressBar & TextView Sentral)
-    val progressBar = findViewById<ProgressBar>(R.id.lingkarPersentaseUtama)
-    val teksPersenSentral = findViewById<TextView>(R.id.teksPersentaseSentral)
+    // Sesuaikan ID dengan layout_inisialisasi_mesin.xml yang valid
+    val vTeksStatus = findViewById<TextView>(R.id.teksStatusInisialisasi)
+    val vTeksDetail = findViewById<TextView>(R.id.teksDetailProgress)
+    val vTeksNasehat = findViewById<TextView>(R.id.teksNasehatInisialisasi)
+    val progressBar = findViewById<ProgressBar>(R.id.progressBarInisialisasi)
     
-    // Inisialisasi komponen visual gambar bagian atas
     val indikatorVisualMesin = findViewById<ImageView>(R.id.indikatorVisualMesin)
 
     panelUtama.visibility = View.VISIBLE
 
-    // Sirkuit rotasi nasehat tetap dipertahankan
     if (vTeksNasehat != null && (jobRotasiNasehat == null || !jobRotasiNasehat!!.isActive)) {
         jalankanRotasiNasehat(vTeksNasehat)
     }
@@ -400,16 +394,14 @@ private fun perbaruiPanelTelemetri(
             vTeksStatus.text = "Mempersiapkan Jalur Data..."
             vTeksDetail.text = "Pemeriksaan awal sistem (Langkah $nomorLangkahVisual dari 6)"
             progressBar.isIndeterminate = true
-            progressBar.visibility = View.GONE
-            teksPersenSentral.visibility = View.GONE
+            progressBar.visibility = View.VISIBLE
         }
         FaseInjeksi.FASE_2 -> {
             indikatorVisualMesin.setImageResource(R.drawable.img_2) 
             vTeksStatus.text = "Menghubungkan ke Server Data..."
             vTeksDetail.text = "Menginisialisasi jalur kargo... (Langkah $nomorLangkahVisual dari 6)"
             progressBar.isIndeterminate = true
-            progressBar.visibility = View.GONE
-            teksPersenSentral.visibility = View.GONE
+            progressBar.visibility = View.VISIBLE
         }
         FaseInjeksi.FASE_3 -> {
             indikatorVisualMesin.setImageResource(R.drawable.img_3) 
@@ -418,38 +410,31 @@ private fun perbaruiPanelTelemetri(
             progressBar.isIndeterminate = false
             progressBar.progress = persenProgress
             progressBar.visibility = View.VISIBLE
-            teksPersenSentral.visibility = View.VISIBLE
-            teksPersenSentral.text = "$persenProgress%"
         }
         FaseInjeksi.FASE_4 -> {
-            // Kopling Netral (Tertahan di stasiun visual 3/stabilisasi jaringan)
-            indikatorVisualMesin.setImageResource(R.drawable.img_3) 
+            indikatorVisualMesin.setImageResource(R.drawable.img_4) 
             progressBar.isIndeterminate = true
-            progressBar.visibility = View.GONE
-            teksPersenSentral.visibility = View.GONE
+            progressBar.visibility = View.VISIBLE
             vTeksStatus.text = "Koneksi Terputus"
             vTeksDetail.text = "Menunggu sinyal internet kembali..."
         }
         FaseInjeksi.FASE_5 -> {
-            indikatorVisualMesin.setImageResource(R.drawable.img_4) // Mengisi Visual Stasiun 4
+            indikatorVisualMesin.setImageResource(R.drawable.img_5) 
             progressBar.isIndeterminate = true
             progressBar.visibility = View.VISIBLE
-            teksPersenSentral.visibility = View.GONE
             vTeksStatus.text = "Mengelas Data"
             vTeksDetail.text = "Sistem sedang mengelas blok data JSON ke memori... (Langkah $nomorLangkahVisual dari 6)"
         }
         FaseInjeksi.FASE_6 -> {
-            indikatorVisualMesin.setImageResource(R.drawable.img_5) // Mengisi Visual Stasiun 5
+            indikatorVisualMesin.setImageResource(R.drawable.img_6) 
             progressBar.isIndeterminate = false
             progressBar.progress = persenProgress
             progressBar.visibility = View.VISIBLE
-            teksPersenSentral.visibility = View.VISIBLE
-            teksPersenSentral.text = "$persenProgress%"
             vTeksStatus.text = "Injeksi $persenProgress%"
             vTeksDetail.text = "Proses injeksi baris data ($itemTerproses / $totalItem) — (Langkah $nomorLangkahVisual dari 6)"
         }
         FaseInjeksi.FASE_7 -> {
-            indikatorVisualMesin.setImageResource(R.drawable.img_6) // Mengisi Visual Stasiun 6 (Selesai)
+            indikatorVisualMesin.setImageResource(R.drawable.img_7) 
             if (::hentikanRotasiNasehat.isInitialized) {
                 hentikanRotasiNasehat()
             }
@@ -459,6 +444,7 @@ private fun perbaruiPanelTelemetri(
         }
     }
 }
+
 
 
     override fun onConfigurationChanged(newConfig: android.content.res.Configuration) {
