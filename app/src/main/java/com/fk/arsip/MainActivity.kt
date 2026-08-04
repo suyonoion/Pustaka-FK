@@ -433,15 +433,14 @@ private fun perbaruiPanelTelemetri(
             vTeksStatus.text = "Injeksi $persenProgress%"
             vTeksDetail.text = "Proses injeksi baris data ($itemTerproses / $totalItem) — (Langkah $nomorLangkahVisual dari 6)"
         }
-        FaseInjeksi.FASE_7 -> {
+                FaseInjeksi.FASE_7 -> {
             indikatorVisualMesin.setImageResource(R.drawable.img_7) 
-            if (::hentikanRotasiNasehat.isInitialized) {
-                hentikanRotasiNasehat()
-            }
+            hentikanRotasiNasehat()
             vTeksStatus.text = "Data Siap Digunakan!"
             vTeksDetail.text = "Selesai"
             panelUtama.visibility = View.GONE
         }
+
     }
 }
 
