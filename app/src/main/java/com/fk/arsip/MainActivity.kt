@@ -80,7 +80,6 @@ enum class FaseInjeksi(val pesan: String, val idGambar: Int) {
 
 class MainActivity : AppCompatActivity() {
 
-private var faseVisualAktif: FaseInjeksi? = null
 private var jobRotasiNasehat: Job? = null
 // Variable global/pribadi untuk menyimpan status kalkulasi kecepatan sebelumnya
 private var waktuTerakhirMs: Long = 0L
@@ -359,8 +358,8 @@ private fun hentikanRotasiNasehat() {
     jobRotasiNasehat = null
 }
 
-// 4. PERBAIKAN FUNGSI TELEMETRI (Menampilkan Bahasa Ramah & Rotasi Nasehat)
-// REVISI FUNGSI perbaruiPanelTelemetri:
+private var faseVisualAktif: FaseInjeksi? = null
+
 private fun perbaruiPanelTelemetri(
     fase: FaseInjeksi, 
     persentase: Int, 
@@ -368,7 +367,7 @@ private fun perbaruiPanelTelemetri(
     volumeTotal: Int, 
     metrikKhusus: String = ""
 ) {
-    // INSIALISASI EKSPLISIT SELURUH VARIABEL KOMPONEN XML
+    // 1. INSIALISASI VARIABEL LOKAL KELUARAN KOMPONEN XML
     val panelUtama = findViewById<ConstraintLayout>(R.id.panelInisialisasiUtama) ?: return
     val teksStatusFase = findViewById<TextView>(R.id.teksStatusFase)
     val indikatorVisual = findViewById<ImageView>(R.id.indikatorVisualMesin)
@@ -378,12 +377,13 @@ private fun perbaruiPanelTelemetri(
     
     val teksPesan = fase.pesan 
     
-    // Kunci transmisi visual agar tidak flicker/lag
+    // 2. TRANSMISI VISUAL (Kunci perubahan fase agar tidak berkedip)
     if (faseVisualAktif != fase) {
         indikatorVisual?.setImageResource(fase.idGambar)
         faseVisualAktif = fase
     }
 
+    // 3. VISIBILITAS KONTROL PROGRES
     if (fase == FaseInjeksi.FASE_1 || fase == FaseInjeksi.FASE_7) {
         lingkarPersentaseUtama?.visibility = View.GONE
         teksPersentaseSentral?.visibility = View.GONE
@@ -394,6 +394,7 @@ private fun perbaruiPanelTelemetri(
     
     teksStatusFase?.text = teksPesan
 
+    // 4. METRIK STATUS OPERASIONAL
     when (fase) {
         FaseInjeksi.FASE_1, FaseInjeksi.FASE_2, FaseInjeksi.FASE_4 -> {
             lingkarPersentaseUtama?.isIndeterminate = true
