@@ -367,57 +367,97 @@ private fun perbaruiPanelTelemetri(
     volumeTotal: Int, 
     metrikKhusus: String = ""
 ) {
-    // 1. INSIALISASI VARIABEL LOKAL KELUARAN KOMPONEN XML
+    // 1. PENYELARASAN TERMINAL PORT UTAMA
     val panelUtama = findViewById<ConstraintLayout>(R.id.panelInisialisasiUtama) ?: return
-    val teksStatusFase = findViewById<TextView>(R.id.teksStatusFase)
+    val teksStatus = findViewById<TextView>(R.id.teksStatusInisialisasi)
     val indikatorVisual = findViewById<ImageView>(R.id.indikatorVisualMesin)
-    val lingkarPersentaseUtama = findViewById<ProgressBar>(R.id.lingkarPersentaseUtama)
-    val teksPersentaseSentral = findViewById<TextView>(R.id.teksPersentaseSentral)
-    val teksTelemetriData = findViewById<TextView>(R.id.teksTelemetriData)
+    val lingkarProgres = findViewById<ProgressBar>(R.id.progressBarInisialisasi)
+    val teksTelemetri = findViewById<TextView>(R.id.teksDetailProgress)
     
-    val teksPesan = fase.pesan 
+    // 2. PENYELARASAN TERMINAL REL STEPPER (Fase 1-6)
+    val numFase1 = findViewById<TextView>(R.id.numFase1)
+    val lblFase1 = findViewById<TextView>(R.id.lblFase1)
+    val numFase2 = findViewById<TextView>(R.id.numFase2)
+    val lblFase2 = findViewById<TextView>(R.id.lblFase2)
+    val numFase3 = findViewById<TextView>(R.id.numFase3)
+    val lblFase3 = findViewById<TextView>(R.id.lblFase3)
+    val numFase5 = findViewById<TextView>(R.id.numFase5) // Stepper 4 di XML
+    val lblFase5 = findViewById<TextView>(R.id.lblFase5)
+    val numFase6 = findViewById<TextView>(R.id.numFase6) // Stepper 5 di XML
+    val lblFase6 = findViewById<TextView>(R.id.lblFase6)
+    val numFase7 = findViewById<TextView>(R.id.numFase7) // Stepper 6 di XML
+    val lblFase7 = findViewById<TextView>(R.id.lblFase7)
+
+    // 3. SAKLAR RESET (Matikan semua lampu stepper ke mode inaktif)
+    val warnaInaktif = android.graphics.Color.parseColor("#8892B0")
+    val warnaAktif = android.graphics.Color.parseColor("#64FFDA") // Cyan menyala
     
-    // 2. TRANSMISI VISUAL (Kunci perubahan fase agar tidak berkedip)
+    val listLabel = listOf(lblFase1, lblFase2, lblFase3, lblFase5, lblFase6, lblFase7)
+    val listNum = listOf(numFase1, numFase2, numFase3, numFase5, numFase6, numFase7)
+
+    for (lbl in listLabel) { lbl?.setTextColor(warnaInaktif) }
+    for (num in listNum) { num?.setBackgroundResource(R.drawable.bg_fase_inaktif) }
+
+    // 4. SAKLAR AKTIVASI (Nyalakan lampu stepper sesuai fase mesin)
+    when (fase) {
+        FaseInjeksi.FASE_1 -> {
+            lblFase1?.setTextColor(warnaAktif)
+            // Ganti bg_fase_inaktif dengan bg_fase_aktif jika Anda sudah membuatnya.
+            // Jika belum ada, biarkan baris ini atau hapus komentar di bawah jika file tersedia.
+            // numFase1?.setBackgroundResource(R.drawable.bg_fase_aktif)
+        }
+        FaseInjeksi.FASE_2 -> {
+            lblFase2?.setTextColor(warnaAktif)
+        }
+        FaseInjeksi.FASE_3, FaseInjeksi.FASE_4 -> { 
+            // Fase 4 digabung ke stepper 3 karena XML Anda melompat dari 3 ke 5
+            lblFase3?.setTextColor(warnaAktif)
+        }
+        FaseInjeksi.FASE_5 -> {
+            lblFase5?.setTextColor(warnaAktif)
+        }
+        FaseInjeksi.FASE_6 -> {
+            lblFase6?.setTextColor(warnaAktif)
+        }
+        FaseInjeksi.FASE_7 -> {
+            lblFase7?.setTextColor(warnaAktif)
+        }
+    }
+
+    // 5. TRANSMISI VISUAL UTAMA (Mencegah mesin rendering macet)
     if (faseVisualAktif != fase) {
         indikatorVisual?.setImageResource(fase.idGambar)
         faseVisualAktif = fase
     }
 
-    // 3. VISIBILITAS KONTROL PROGRES
     if (fase == FaseInjeksi.FASE_1 || fase == FaseInjeksi.FASE_7) {
-        lingkarPersentaseUtama?.visibility = View.GONE
-        teksPersentaseSentral?.visibility = View.GONE
+        lingkarProgres?.visibility = View.GONE
     } else {
-        lingkarPersentaseUtama?.visibility = View.VISIBLE
-        teksPersentaseSentral?.visibility = View.VISIBLE
+        lingkarProgres?.visibility = View.VISIBLE
     }
     
-    teksStatusFase?.text = teksPesan
+    teksStatus?.text = fase.pesan
 
-    // 4. METRIK STATUS OPERASIONAL
+    // 6. DISTRIBUSI DATA TELEMETRI
     when (fase) {
         FaseInjeksi.FASE_1, FaseInjeksi.FASE_2, FaseInjeksi.FASE_4 -> {
-            lingkarPersentaseUtama?.isIndeterminate = true
-            teksPersentaseSentral?.text = "---"
-            teksTelemetriData?.text = "Sistem sedang menginisialisasi modul ..."
+            lingkarProgres?.isIndeterminate = true
+            teksTelemetri?.text = "Progres: --- • Menginisialisasi modul sistem..."
         }
         FaseInjeksi.FASE_3 -> {
-            lingkarPersentaseUtama?.isIndeterminate = false
-            lingkarPersentaseUtama?.progress = persentase
-            teksPersentaseSentral?.text = "$persentase%"
-            teksTelemetriData?.text = "Arsip Status Digital Fatwa Kehidupan\n$metrikKhusus\nSistem bekerja stabil..."
+            lingkarProgres?.isIndeterminate = false
+            lingkarProgres?.progress = persentase
+            teksTelemetri?.text = "Progres: $persentase% • $metrikKhusus\nSistem bekerja stabil..."
         }
         FaseInjeksi.FASE_5, FaseInjeksi.FASE_6 -> {
-            lingkarPersentaseUtama?.isIndeterminate = false
-            lingkarPersentaseUtama?.progress = persentase
-            teksPersentaseSentral?.text = "$persentase%"
-            teksTelemetriData?.text = "Arsip Status Digital Fatwa Kehidupan\nProses injeksi baris data ($volumeSelesai / $volumeTotal baris)\nSistem bekerja stabil..."
+            lingkarProgres?.isIndeterminate = false
+            lingkarProgres?.progress = persentase
+            teksTelemetri?.text = "Progres: $persentase% • Injeksi baris data ($volumeSelesai / $volumeTotal)\nSistem bekerja stabil..."
         }
         FaseInjeksi.FASE_7 -> {
-            lingkarPersentaseUtama?.isIndeterminate = false
-            lingkarPersentaseUtama?.progress = 100
-            teksPersentaseSentral?.text = "100%"
-            teksTelemetriData?.text = "Seluruh blok data berhasil dilas ke dalam memori SQLite."
+            lingkarProgres?.isIndeterminate = false
+            lingkarProgres?.progress = 100
+            teksTelemetri?.text = "Progres: 100% • Seluruh blok data berhasil dilas ke memori."
             Handler(Looper.getMainLooper()).postDelayed({ panelUtama.visibility = View.GONE }, 1500)
         }
     }
