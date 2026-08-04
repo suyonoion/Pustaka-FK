@@ -339,24 +339,6 @@ private fun eksekusiSaringanKombinasi(kategori: String, urutTerlama: Boolean) {
     }
 }
 
-    
-// 3. FUNGSI UNTUK MENJALANKAN ROTASI TEKS SECARA OTOMATIS
-private fun jalankanRotasiNasehat(vTeksNasehat: TextView) {
-    jobRotasiNasehat?.cancel() // Hentikan rotasi lama jika ada
-    jobRotasiNasehat = lifecycleScope.launch {
-        var indeks = 0
-        while (isMesinSibuk) {
-            vTeksNasehat.text = KoleksiNasehat.DAFTAR_TEKS[indeks]
-            indeks = (indeks + 1) % KoleksiNasehat.DAFTAR_TEKS.size
-            delay(6000) // Berganti setiap 6 detik
-        }
-    }
-}
-
-private fun hentikanRotasiNasehat() {
-    jobRotasiNasehat?.cancel()
-    jobRotasiNasehat = null
-}
 
 // 2. ROMBAK TOTAL FUNGSI PANEL TELEMETRI
 private var faseMesinTerakhir: FaseInjeksi? = null
