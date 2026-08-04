@@ -80,6 +80,7 @@ enum class FaseInjeksi(val pesan: String, val idGambar: Int) {
 
 class MainActivity : AppCompatActivity() {
 
+private var idGambarAktif: Int = -1
 private var jobRotasiNasehat: Job? = null
 // Variable global/pribadi untuk menyimpan status kalkulasi kecepatan sebelumnya
 private var waktuTerakhirMs: Long = 0L
@@ -358,8 +359,7 @@ private fun hentikanRotasiNasehat() {
     jobRotasiNasehat = null
 }
 
-private var faseVisualAktif: FaseInjeksi? = null
-
+// 2. ROMBAK TOTAL FUNGSI PANEL TELEMETRI
 private fun perbaruiPanelTelemetri(
     fase: FaseInjeksi, 
     persentase: Int, 
@@ -367,14 +367,13 @@ private fun perbaruiPanelTelemetri(
     volumeTotal: Int, 
     metrikKhusus: String = ""
 ) {
-    // 1. PENYELARASAN TERMINAL PORT UTAMA
+    // A. PENYELARASAN TERMINAL PORT
     val panelUtama = findViewById<ConstraintLayout>(R.id.panelInisialisasiUtama) ?: return
     val teksStatus = findViewById<TextView>(R.id.teksStatusInisialisasi)
     val indikatorVisual = findViewById<ImageView>(R.id.indikatorVisualMesin)
     val lingkarProgres = findViewById<ProgressBar>(R.id.progressBarInisialisasi)
     val teksTelemetri = findViewById<TextView>(R.id.teksDetailProgress)
     
-    // 2. PENYELARASAN TERMINAL REL STEPPER (Fase 1-6)
     val numFase1 = findViewById<TextView>(R.id.numFase1)
     val lblFase1 = findViewById<TextView>(R.id.lblFase1)
     val numFase2 = findViewById<TextView>(R.id.numFase2)
@@ -388,48 +387,49 @@ private fun perbaruiPanelTelemetri(
     val numFase7 = findViewById<TextView>(R.id.numFase7) // Stepper 6 di XML
     val lblFase7 = findViewById<TextView>(R.id.lblFase7)
 
-    // 3. SAKLAR RESET (Matikan semua lampu stepper ke mode inaktif)
-    val warnaInaktif = android.graphics.Color.parseColor("#8892B0")
-    val warnaAktif = android.graphics.Color.parseColor("#64FFDA") // Cyan menyala
-    
-    val listLabel = listOf(lblFase1, lblFase2, lblFase3, lblFase5, lblFase6, lblFase7)
-    val listNum = listOf(numFase1, numFase2, numFase3, numFase5, numFase6, numFase7)
-
-    for (lbl in listLabel) { lbl?.setTextColor(warnaInaktif) }
-    for (num in listNum) { num?.setBackgroundResource(R.drawable.bg_fase_inaktif) }
-
-    // 4. SAKLAR AKTIVASI (Nyalakan lampu stepper sesuai fase mesin)
-    when (fase) {
-        FaseInjeksi.FASE_1 -> {
-            lblFase1?.setTextColor(warnaAktif)
-            // Ganti bg_fase_inaktif dengan bg_fase_aktif jika Anda sudah membuatnya.
-            // Jika belum ada, biarkan baris ini atau hapus komentar di bawah jika file tersedia.
-            // numFase1?.setBackgroundResource(R.drawable.bg_fase_aktif)
-        }
-        FaseInjeksi.FASE_2 -> {
-            lblFase2?.setTextColor(warnaAktif)
-        }
-        FaseInjeksi.FASE_3, FaseInjeksi.FASE_4 -> { 
-            // Fase 4 digabung ke stepper 3 karena XML Anda melompat dari 3 ke 5
-            lblFase3?.setTextColor(warnaAktif)
-        }
-        FaseInjeksi.FASE_5 -> {
-            lblFase5?.setTextColor(warnaAktif)
-        }
-        FaseInjeksi.FASE_6 -> {
-            lblFase6?.setTextColor(warnaAktif)
-        }
-        FaseInjeksi.FASE_7 -> {
-            lblFase7?.setTextColor(warnaAktif)
-        }
-    }
-
-    // 5. TRANSMISI VISUAL UTAMA (Mencegah mesin rendering macet)
-    if (faseVisualAktif != fase) {
+    // B. TRANSMISI VISUAL (Anti-Macet saat Reconnect)
+    // Mesin sekarang membaca ID fisik. Begitu jaringan pulih, gambar otomatis ditimpa.
+    if (idGambarAktif != fase.idGambar) {
         indikatorVisual?.setImageResource(fase.idGambar)
-        faseVisualAktif = fase
+        idGambarAktif = fase.idGambar
     }
 
+    // C. MEKANISME JEJAK REL STEPPER (Cascade System)
+    val warnaInaktif = android.graphics.Color.parseColor("#8892B0")
+    val warnaAktif = android.graphics.Color.parseColor("#64FFDA")
+    
+    // Konversi fase ke level operasional (1 sampai 6)
+    val levelMesin = when (fase) {
+        FaseInjeksi.FASE_1 -> 1
+        FaseInjeksi.FASE_2 -> 2
+        FaseInjeksi.FASE_3, FaseInjeksi.FASE_4 -> 3 // Fase 4 menahan posisi di rel ke-3
+        FaseInjeksi.FASE_5 -> 4 // Stepper 4
+        FaseInjeksi.FASE_6 -> 5 // Stepper 5
+        FaseInjeksi.FASE_7 -> 6 // Stepper 6
+    }
+
+    // Fungsi mekanis internal untuk mengelas arus ke saklar aktif/inaktif
+    fun setelArusStepper(num: TextView?, lbl: TextView?, levelRel: Int) {
+        if (levelMesin >= levelRel) {
+            // Rel sudah dilewati atau sedang berjalan (Arus tersambung)
+            lbl?.setTextColor(warnaAktif)
+            num?.setBackgroundResource(R.drawable.bg_fase_aktif)
+        } else {
+            // Rel belum tersentuh (Arus terputus)
+            lbl?.setTextColor(warnaInaktif)
+            num?.setBackgroundResource(R.drawable.bg_fase_inaktif)
+        }
+    }
+
+    // Tembakkan arus secara berurutan ke 6 fisik stepper di XML
+    setelArusStepper(numFase1, lblFase1, 1)
+    setelArusStepper(numFase2, lblFase2, 2)
+    setelArusStepper(numFase3, lblFase3, 3)
+    setelArusStepper(numFase5, lblFase5, 4)
+    setelArusStepper(numFase6, lblFase6, 5)
+    setelArusStepper(numFase7, lblFase7, 6)
+
+    // D. KONTROL VISIBILITAS ROTOR PROGRES
     if (fase == FaseInjeksi.FASE_1 || fase == FaseInjeksi.FASE_7) {
         lingkarProgres?.visibility = View.GONE
     } else {
@@ -438,7 +438,7 @@ private fun perbaruiPanelTelemetri(
     
     teksStatus?.text = fase.pesan
 
-    // 6. DISTRIBUSI DATA TELEMETRI
+    // E. DISTRIBUSI DATA TELEMETRI
     when (fase) {
         FaseInjeksi.FASE_1, FaseInjeksi.FASE_2, FaseInjeksi.FASE_4 -> {
             lingkarProgres?.isIndeterminate = true
@@ -462,6 +462,7 @@ private fun perbaruiPanelTelemetri(
         }
     }
 }
+
 
 
     override fun onConfigurationChanged(newConfig: android.content.res.Configuration) {
