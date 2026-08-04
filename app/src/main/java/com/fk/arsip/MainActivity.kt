@@ -85,6 +85,7 @@ enum class FaseInjeksi(val kode: Int, val deskripsiMekanis: String) {
 
 class MainActivity : AppCompatActivity() {
 
+private var faseVisualAktif: FaseInjeksi? = null
 private var jobRotasiNasehat: Job? = null
 // Variable global/pribadi untuk menyimpan status kalkulasi kecepatan sebelumnya
 private var waktuTerakhirMs: Long = 0L
@@ -364,83 +365,59 @@ private fun hentikanRotasiNasehat() {
 }
 
 // 4. PERBAIKAN FUNGSI TELEMETRI (Menampilkan Bahasa Ramah & Rotasi Nasehat)
-private fun perbaruiPanelTelemetri(
-    fase: FaseInjeksi, 
-    itemTerproses: Int = 0, 
-    totalItem: Int = 0, 
-    persenProgress: Int = 0
-) {
-    val nomorLangkahVisual = getNomorVisualUrut(fase)
-
+// REVISI FUNGSI perbaruiPanelTelemetri:
+private fun perbaruiPanelTelemetri(fase: FaseInjeksi, persentase: Int, volumeSelesai: Int, volumeTotal: Int, metrikKhusus: String = "") {
     val panelUtama = findViewById<ConstraintLayout>(R.id.panelInisialisasiUtama)
+    val teksStatus = findViewById<TextView>(R.id.teksStatusFase)
+    val indikatorVisual = findViewById<ImageView>(R.id.indikatorVisualMesin)
+    val lingkarProgres = findViewById<ProgressBar>(R.id.lingkarPersentaseUtama)
+    val teksPersen = findViewById<TextView>(R.id.teksPersentaseSentral)
+    val teksTelemetri = findViewById<TextView>(R.id.teksTelemetriData)
     
-    // Sesuaikan ID dengan layout_inisialisasi_mesin.xml yang valid
-    val vTeksStatus = findViewById<TextView>(R.id.teksStatusInisialisasi)
-    val vTeksDetail = findViewById<TextView>(R.id.teksDetailProgress)
-    val vTeksNasehat = findViewById<TextView>(R.id.teksNasehatInisialisasi)
-    val progressBar = findViewById<ProgressBar>(R.id.progressBarInisialisasi)
+    // 1. HAPUS SABOTASE LOGIKA TEKS FASE_6
+    val teksPesan = fase.pesan 
     
-    val indikatorVisualMesin = findViewById<ImageView>(R.id.indikatorVisualMesin)
-
-    panelUtama.visibility = View.VISIBLE
-
-    if (vTeksNasehat != null && (jobRotasiNasehat == null || !jobRotasiNasehat!!.isActive)) {
-        jalankanRotasiNasehat(vTeksNasehat)
+    // 2. KUNCI TRANSMISI GAMBAR (Hanya perbarui jika fase berubah untuk mencegah lag render)
+    if (faseVisualAktif != fase) {
+        indikatorVisual.setImageResource(fase.idGambar)
+        faseVisualAktif = fase
     }
 
+    if (fase == FaseInjeksi.FASE_1 || fase == FaseInjeksi.FASE_7) {
+        lingkarProgres.visibility = View.GONE
+        teksPersen.visibility = View.GONE
+    } else {
+        lingkarProgres.visibility = View.VISIBLE
+        teksPersen.visibility = View.VISIBLE
+    }
+    
+    teksStatus.text = teksPesan
+
     when (fase) {
-        FaseInjeksi.FASE_1 -> {
-            indikatorVisualMesin.setImageResource(R.drawable.img_1) 
-            vTeksStatus.text = "Mempersiapkan Jalur Data..."
-            vTeksDetail.text = "Pemeriksaan awal sistem (Langkah $nomorLangkahVisual dari 6)"
-            progressBar.isIndeterminate = true
-            progressBar.visibility = View.VISIBLE
-        }
-        FaseInjeksi.FASE_2 -> {
-            indikatorVisualMesin.setImageResource(R.drawable.img_2) 
-            vTeksStatus.text = "Menghubungkan ke Server Data..."
-            vTeksDetail.text = "Menginisialisasi jalur kargo... (Langkah $nomorLangkahVisual dari 6)"
-            progressBar.isIndeterminate = true
-            progressBar.visibility = View.VISIBLE
+        FaseInjeksi.FASE_1, FaseInjeksi.FASE_2, FaseInjeksi.FASE_4 -> {
+            lingkarProgres.isIndeterminate = true
+            teksPersen.text = "---"
+            teksTelemetri.text = "Sistem sedang menginisialisasi modul ..."
         }
         FaseInjeksi.FASE_3 -> {
-            indikatorVisualMesin.setImageResource(R.drawable.img_3) 
-            vTeksStatus.text = "Mengunduh Paket Data..."
-            vTeksDetail.text = "Progres: $persenProgress% (Langkah $nomorLangkahVisual dari 6)"
-            progressBar.isIndeterminate = false
-            progressBar.progress = persenProgress
-            progressBar.visibility = View.VISIBLE
+            lingkarProgres.isIndeterminate = false
+            lingkarProgres.progress = persentase
+            teksPersen.text = "$persentase%"
+            teksTelemetri.text = "Arsip Status Digital Fatwa Kehidupan\n$metrikKhusus\nSistem bekerja stabil..."
         }
-        FaseInjeksi.FASE_4 -> {
-            indikatorVisualMesin.setImageResource(R.drawable.img_4) 
-            progressBar.isIndeterminate = true
-            progressBar.visibility = View.VISIBLE
-            vTeksStatus.text = "Koneksi Terputus"
-            vTeksDetail.text = "Menunggu sinyal internet kembali..."
+        FaseInjeksi.FASE_5, FaseInjeksi.FASE_6 -> { // GABUNGKAN OPERASI FASE KERJA
+            lingkarProgres.isIndeterminate = false
+            lingkarProgres.progress = persentase
+            teksPersen.text = "$persentase%"
+            teksTelemetri.text = "Arsip Status Digital Fatwa Kehidupan\nProses injeksi baris data ($volumeSelesai / $volumeTotal baris)\nSistem bekerja stabil..."
         }
-        FaseInjeksi.FASE_5 -> {
-            indikatorVisualMesin.setImageResource(R.drawable.img_5) 
-            progressBar.isIndeterminate = true
-            progressBar.visibility = View.VISIBLE
-            vTeksStatus.text = "Mengelas Data"
-            vTeksDetail.text = "Sistem sedang mengelas blok data JSON ke memori... (Langkah $nomorLangkahVisual dari 6)"
+        FaseInjeksi.FASE_7 -> {
+            lingkarProgres.isIndeterminate = false
+            lingkarProgres.progress = 100
+            teksPersen.text = "100%"
+            teksTelemetri.text = "Seluruh blok data berhasil dilas ke dalam memori SQLite."
+            Handler(Looper.getMainLooper()).postDelayed({ panelUtama.visibility = View.GONE }, 1500)
         }
-        FaseInjeksi.FASE_6 -> {
-            indikatorVisualMesin.setImageResource(R.drawable.img_6) 
-            progressBar.isIndeterminate = false
-            progressBar.progress = persenProgress
-            progressBar.visibility = View.VISIBLE
-            vTeksStatus.text = "Injeksi $persenProgress%"
-            vTeksDetail.text = "Proses injeksi baris data ($itemTerproses / $totalItem) — (Langkah $nomorLangkahVisual dari 6)"
-        }
-                FaseInjeksi.FASE_7 -> {
-            indikatorVisualMesin.setImageResource(R.drawable.img_7) 
-            hentikanRotasiNasehat()
-            vTeksStatus.text = "Data Siap Digunakan!"
-            vTeksDetail.text = "Selesai"
-            panelUtama.visibility = View.GONE
-        }
-
     }
 }
 

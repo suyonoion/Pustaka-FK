@@ -29,28 +29,16 @@ class MesinInjeksiWorker(context: Context, params: WorkerParameters) : Coroutine
             return@withContext Result.failure(workDataOf("KODE_GAGAL" to "BOBOT_KURANG"))
         }
 
-        val estimasiTotalItem = (totalBobotFile / 5120).toInt()
-        
-// 1. Tembakkan Sinyal Fase 5 (Fase Pengelasan Awal)
-setProgress(workDataOf(
-    "FASE" to 5,
-    "PERSENTASE" to 0,
-    "INDEKS" to 0,
-    "TOTAL" to estimasiTotalItem
-))
+val targetPasti = 17934
+val estimasiTotalItem = if (totalBobotFile > 100_000_000) targetPasti else maxOf(1, (totalBobotFile / 5120).toInt())
 
-// 2. Katup Jeda Mekanis
-// Beri waktu 1.2 detik agar mesin UI di MainActivity sempat merender teks Fase 5 ke layar
-kotlinx.coroutines.delay(1200)
-
-// 3. Transmisi ke Fase 6 (Persiapan Injeksi Baris Data)
 setProgress(workDataOf(
     "FASE" to 6,
     "PERSENTASE" to 0,
     "INDEKS" to 0,
     "TOTAL" to estimasiTotalItem
 ))
-
+kotlinx.coroutines.delay(1200)
 // 4. Buka Katup Pipa JSON
 try {
     val reader = com.google.gson.stream.JsonReader(java.io.FileReader(fileTarget))
@@ -65,19 +53,18 @@ try {
     var indeks = 0
 
     while (reader.hasNext()) {
-        if (indeks % 500 == 0) {
-            // Katup Pengaman Persentase: Memastikan pembagi (total) bergeser secara dinamis jika jumlah indeks melebihi estimasi awal 
-            val totalRasioAman = if (estimasiTotalItem > indeks) estimasiTotalItem else (indeks + 50) 
-            val kalkulasiPersen = ((indeks.toDouble() / totalRasioAman.toDouble()) * 100).toInt().coerceAtMost(99)
-            
-            setProgress(workDataOf(
-                "FASE" to 6,
-                "PERSENTASE" to kalkulasiPersen,
-                "INDEKS" to indeks,
-                "TOTAL" to estimasiTotalItem
-            ))
-            System.gc()
-        }
+    // Naikkan frekuensi pelaporan panel agar tidak melompat patah-patah
+    if (indeks % 200 == 0 || indeks == estimasiTotalItem) {
+        // Ganti coerceAtMost dengan coerceIn untuk limit batas bawah dan atas absolut
+        val kalkulasiPersen = ((indeks.toDouble() / estimasiTotalItem.toDouble()) * 100).toInt().coerceIn(0, 100)
+        setProgress(workDataOf(
+            "FASE" to 6,
+            "PERSENTASE" to kalkulasiPersen,
+            "INDEKS" to indeks,
+            "TOTAL" to estimasiTotalItem
+        ))
+        System.gc()
+    }
 
     val elemenGson = com.google.gson.JsonParser.parseReader(reader)
     val obj = org.json.JSONObject(elemenGson.toString())
@@ -120,22 +107,20 @@ try {
         indeks++
 
         // INJEKSI TANPA DELAY UI JUMPING
-        if (muatanSementara.size >= 500) {
-            lenganRobot.injeksiMassal(muatanSementara)
-            muatanSementara.clear()
-            
-            // Katup Pengaman Persentase: Memastikan pembagi (total) bergeser secara dinamis jika jumlah indeks melebihi estimasi awal
-            val totalRasioAman = if (estimasiTotalItem > indeks) estimasiTotalItem else (indeks + 50) 
-            val kalkulasiPersen = ((indeks.toDouble() / totalRasioAman.toDouble()) * 100).toInt().coerceAtMost(99)
-            
-            setProgress(workDataOf(
-                "FASE" to 6,
-                "PERSENTASE" to kalkulasiPersen,
-                "INDEKS" to indeks,
-                "TOTAL" to estimasiTotalItem
-            ))
-        }
+if (muatanSementara.size >= 500) {
+        lenganRobot.injeksiMassal(muatanSementara)
+        muatanSementara.clear()
+        
+        val kalkulasiPersen = ((indeks.toDouble() / estimasiTotalItem.toDouble()) * 100).toInt().coerceIn(0, 100)
+        setProgress(workDataOf(
+            "FASE" to 6,
+            "PERSENTASE" to kalkulasiPersen,
+            "INDEKS" to indeks,
+            "TOTAL" to estimasiTotalItem
+        ))
     }
+}
+    
 
     if (muatanSementara.isNotEmpty()) { lenganRobot.injeksiMassal(muatanSementara) }
 reader.endArray()
