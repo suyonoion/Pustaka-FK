@@ -67,7 +67,9 @@ try {
     while (reader.hasNext()) {
         if (indeks % 500 == 0) {
             // Katup Pengaman Persentase: Memastikan pembagi (total) bergeser secara dinamis jika jumlah indeks melebihi estimasi awal 
-            val totalRasioAman = if (estimasiTotalItem > indeks) estimasiTotalItem else (indeks + 50) val kalkulasiPersen = ((indeks.toDouble() / totalRasioAman.toDouble()) * 100).toInt().coerceAtMost(99)
+            val totalRasioAman = if (estimasiTotalItem > indeks) estimasiTotalItem else (indeks + 50) 
+            val kalkulasiPersen = ((indeks.toDouble() / totalRasioAman.toDouble()) * 100).toInt().coerceAtMost(99)
+            
             setProgress(workDataOf(
                 "FASE" to 6,
                 "PERSENTASE" to kalkulasiPersen,
@@ -123,7 +125,9 @@ try {
             muatanSementara.clear()
             
             // Katup Pengaman Persentase: Memastikan pembagi (total) bergeser secara dinamis jika jumlah indeks melebihi estimasi awal
-            val totalRasioAman = if (estimasiTotalItem > indeks) estimasiTotalItem else (indeks + 50) val kalkulasiPersen = ((indeks.toDouble() / totalRasioAman.toDouble()) * 100).toInt().coerceAtMost(99)
+            val totalRasioAman = if (estimasiTotalItem > indeks) estimasiTotalItem else (indeks + 50) 
+            val kalkulasiPersen = ((indeks.toDouble() / totalRasioAman.toDouble()) * 100).toInt().coerceAtMost(99)
+            
             setProgress(workDataOf(
                 "FASE" to 6,
                 "PERSENTASE" to kalkulasiPersen,
