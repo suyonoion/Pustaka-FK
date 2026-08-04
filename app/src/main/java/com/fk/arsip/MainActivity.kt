@@ -300,6 +300,7 @@ private var kecepatanEmaBytesPerSec: Double = 0.0 // Filter perata gerakan
 private fun eksekusiSaringanKombinasi(kategori: String, urutTerlama: Boolean) {
     if (isMesinSibuk) return
     isMesinSibuk = true
+    aturKunciDrawer(true)
     
     tampilkanIndikator("Mereset jalur dan menyaring kargo...", true)
 
@@ -370,74 +371,94 @@ private fun perbaruiPanelTelemetri(
     persenProgress: Int = 0
 ) {
     val nomorLangkahVisual = getNomorVisualUrut(fase)
-    perbaruiVisualStepper(nomorLangkahVisual)
+    
+    // Periksa apakah fungsi perbaruiVisualStepper tersedia di sirkuit Anda
+    // perbaruiVisualStepper(nomorLangkahVisual) 
 
     val panelUtama = findViewById<ConstraintLayout>(R.id.panelInisialisasiUtama)
-    val vTeksStatus = findViewById<TextView>(R.id.teksStatusInisialisasi)
-    val vTeksDetail = findViewById<TextView>(R.id.teksDetailProgress)
-    val vTeksNasehat = findViewById<TextView>(R.id.teksNasehatInisialisasi)
-    val progressBar = findViewById<ProgressBar>(R.id.progressBarInisialisasi)
+    val vTeksStatus = findViewById<TextView>(R.id.teksStatusFase) // Menyesuaikan ID dari XML Anda
+    val vTeksDetail = findViewById<TextView>(R.id.teksTelemetriData) // Menyesuaikan ID dari XML Anda
+    val vTeksNasehat = findViewById<TextView>(R.id.teksNasehatInisialisasi) // Pastikan ID ini ada di XML jika ingin diaktifkan
+    
+    // Tuas komponen persentase bawah (ProgressBar & TextView Sentral)
+    val progressBar = findViewById<ProgressBar>(R.id.lingkarPersentaseUtama)
+    val teksPersenSentral = findViewById<TextView>(R.id.teksPersentaseSentral)
     
     // Inisialisasi komponen visual gambar bagian atas
     val indikatorVisualMesin = findViewById<ImageView>(R.id.indikatorVisualMesin)
 
     panelUtama.visibility = View.VISIBLE
 
-    if (jobRotasiNasehat == null || !jobRotasiNasehat!!.isActive) {
+    // Sirkuit rotasi nasehat tetap dipertahankan
+    if (vTeksNasehat != null && (jobRotasiNasehat == null || !jobRotasiNasehat!!.isActive)) {
         jalankanRotasiNasehat(vTeksNasehat)
     }
 
     when (fase) {
         FaseInjeksi.FASE_1 -> {
-            indikatorVisualMesin.setImageResource(R.drawable.img_1) // Visual reaktor 1
+            indikatorVisualMesin.setImageResource(R.drawable.img_1) 
             vTeksStatus.text = "Mempersiapkan Jalur Data..."
             vTeksDetail.text = "Pemeriksaan awal sistem (Langkah $nomorLangkahVisual dari 6)"
             progressBar.isIndeterminate = true
+            progressBar.visibility = View.GONE
+            teksPersenSentral.visibility = View.GONE
         }
         FaseInjeksi.FASE_2 -> {
-            indikatorVisualMesin.setImageResource(R.drawable.img_2) // Visual reaktor 2
+            indikatorVisualMesin.setImageResource(R.drawable.img_2) 
             vTeksStatus.text = "Menghubungkan ke Server Data..."
             vTeksDetail.text = "Menginisialisasi jalur kargo... (Langkah $nomorLangkahVisual dari 6)"
             progressBar.isIndeterminate = true
+            progressBar.visibility = View.GONE
+            teksPersenSentral.visibility = View.GONE
         }
         FaseInjeksi.FASE_3 -> {
-            indikatorVisualMesin.setImageResource(R.drawable.img_3) // Visual reaktor 3
+            indikatorVisualMesin.setImageResource(R.drawable.img_3) 
             vTeksStatus.text = "Mengunduh Paket Data..."
             vTeksDetail.text = "Progres: $persenProgress% (Langkah $nomorLangkahVisual dari 6)"
             progressBar.isIndeterminate = false
             progressBar.progress = persenProgress
+            progressBar.visibility = View.VISIBLE
+            teksPersenSentral.visibility = View.VISIBLE
+            teksPersenSentral.text = "$persenProgress%"
         }
         FaseInjeksi.FASE_4 -> {
-            indikatorVisualMesin.setImageResource(R.drawable.img_4) // Visual khusus peringatan darurat koneksi
+            // Kopling Netral (Tertahan di stasiun visual 3/stabilisasi jaringan)
+            indikatorVisualMesin.setImageResource(R.drawable.img_3) 
             progressBar.isIndeterminate = true
+            progressBar.visibility = View.GONE
+            teksPersenSentral.visibility = View.GONE
             vTeksStatus.text = "Koneksi Terputus"
             vTeksDetail.text = "Menunggu sinyal internet kembali..."
         }
         FaseInjeksi.FASE_5 -> {
-            indikatorVisualMesin.setImageResource(R.drawable.img_5) // Visual reaktor 5 (Pemanasan JSON)
+            indikatorVisualMesin.setImageResource(R.drawable.img_4) // Mengisi Visual Stasiun 4
             progressBar.isIndeterminate = true
-            progressBar.progress = 0
+            progressBar.visibility = View.VISIBLE
+            teksPersenSentral.visibility = View.GONE
             vTeksStatus.text = "Mengelas Data"
-            vTeksDetail.text = "Sistem sedang mengelas blok data JSON ke dalam memori SQLite... (Langkah $nomorLangkahVisual dari 6)"
+            vTeksDetail.text = "Sistem sedang mengelas blok data JSON ke memori... (Langkah $nomorLangkahVisual dari 6)"
         }
         FaseInjeksi.FASE_6 -> {
-            indikatorVisualMesin.setImageResource(R.drawable.img_6) // Visual reaktor 6 (Injeksi SQLite)
+            indikatorVisualMesin.setImageResource(R.drawable.img_5) // Mengisi Visual Stasiun 5
             progressBar.isIndeterminate = false
             progressBar.progress = persenProgress
+            progressBar.visibility = View.VISIBLE
+            teksPersenSentral.visibility = View.VISIBLE
+            teksPersenSentral.text = "$persenProgress%"
             vTeksStatus.text = "Injeksi $persenProgress%"
             vTeksDetail.text = "Proses injeksi baris data ($itemTerproses / $totalItem) — (Langkah $nomorLangkahVisual dari 6)"
         }
         FaseInjeksi.FASE_7 -> {
-            indikatorVisualMesin.setImageResource(R.drawable.img_7) // Visual reaktor 7 (Selesai)
-            hentikanRotasiNasehat()
+            indikatorVisualMesin.setImageResource(R.drawable.img_6) // Mengisi Visual Stasiun 6 (Selesai)
+            if (::hentikanRotasiNasehat.isInitialized) {
+                hentikanRotasiNasehat()
+            }
             vTeksStatus.text = "Data Siap Digunakan!"
             vTeksDetail.text = "Selesai"
             panelUtama.visibility = View.GONE
         }
     }
 }
-
-
 
 
     override fun onConfigurationChanged(newConfig: android.content.res.Configuration) {
@@ -637,6 +658,7 @@ private fun perbaruiPanelTelemetri(
             Toast.makeText(this, "Sistem sedang merakit data. Harap tunggu.", Toast.LENGTH_SHORT).show()
             return
         }
+        aturKunciDrawer(true)
         tampilkanIndikator("Memuat Kategori: $labelKategori...", true)
 
         lifecycleScope.launch(Dispatchers.IO) {
@@ -729,6 +751,7 @@ private fun perbaruiPanelTelemetri(
             if (berkasLokal.exists() && berkasLokal.length() >= bobotMinimum) {
                 withContext(Dispatchers.Main) {
                     isMesinSibuk = true
+                    aturKunciDrawer(true)
                     findViewById<ConstraintLayout>(R.id.panelInisialisasiUtama).visibility = View.VISIBLE
                     perbaruiPanelTelemetri(FaseInjeksi.FASE_5, 0, 0, 0)
                     jalankanMesinInjeksiOtonom(berkasLokal.absolutePath)
@@ -765,6 +788,7 @@ private fun perbaruiPanelTelemetri(
                             
                             if (fileTempSelesai.exists() && fileTempSelesai.renameTo(fileAsli)) {
                                 isMesinSibuk = true
+                                aturKunciDrawer(true)
                                 jalankanMesinInjeksiOtonom(fileAsli.absolutePath)
                             } else {
                                 // Putus putaran loop dengan mematikan mesin secara paksa jika sistem operasi menolak rename
@@ -788,6 +812,7 @@ private fun perbaruiPanelTelemetri(
 
 private fun aktifkanMesinPenyedot() {
     isMesinSibuk = true
+    aturKunciDrawer(true)
     findViewById<ConstraintLayout>(R.id.panelInisialisasiUtama).visibility = View.VISIBLE
 
     // Sensor Jaringan
@@ -991,46 +1016,57 @@ private fun perbaruiDetailKecepatan(persen: Int, byteDiterima: Long, totalByte: 
         instruksiKerja
     )
 
-    manajerKerja.getWorkInfoByIdLiveData(instruksiKerja.id).observe(this) { informasiKerja ->
-        if (informasiKerja != null) {
-            val faseAktif = informasiKerja.progress.getInt("FASE", 0)
-            val persentase = informasiKerja.progress.getInt("PERSENTASE", 0)
-            val indeks = informasiKerja.progress.getInt("INDEKS", 0)
-            val total = informasiKerja.progress.getInt("TOTAL", 0)
-            
-            when (informasiKerja.state) {
-                WorkInfo.State.RUNNING -> {
-                    if (faseAktif > 0) {
-                        val faseEnum = if (faseAktif == 6) FaseInjeksi.FASE_6 else FaseInjeksi.FASE_5
-                        perbaruiPanelTelemetri(faseEnum, persentase, indeks, total)
+            manajerKerja.getWorkInfoByIdLiveData(instruksiKerja.id).observe(this) { informasiKerja ->
+            if (informasiKerja != null) {
+                val faseAktif = informasiKerja.progress.getInt("FASE", 0)
+                val persentase = informasiKerja.progress.getInt("PERSENTASE", 0)
+                val indeks = informasiKerja.progress.getInt("INDEKS", 0)
+                val total = informasiKerja.progress.getInt("TOTAL", 0)
+                
+                when (informasiKerja.state) {
+                    WorkInfo.State.RUNNING -> {
+                        if (faseAktif > 0) {
+                            // Transmisi dinamis: Pemetaan presisi dari sinyal angka (1-7) ke Enum indikator lampu
+                            val faseEnum = when (faseAktif) {
+                                1 -> FaseInjeksi.FASE_1
+                                2 -> FaseInjeksi.FASE_2
+                                3 -> FaseInjeksi.FASE_3
+                                4 -> FaseInjeksi.FASE_4
+                                5 -> FaseInjeksi.FASE_5
+                                6 -> FaseInjeksi.FASE_6
+                                7 -> FaseInjeksi.FASE_7
+                                else -> FaseInjeksi.FASE_6 // Poros operasi default
+                            }
+                            perbaruiPanelTelemetri(faseEnum, persentase, indeks, total)
+                        }
                     }
-                }
-                WorkInfo.State.SUCCEEDED -> {
-                    perbaruiPanelTelemetri(FaseInjeksi.FASE_7, 100, indeks, indeks)
-                    lifecycleScope.launch(Dispatchers.Main) {
-                        delay(1500)
-                        val database = ArsipDatabase.operasikanMesin(this@MainActivity).arsipDao()
-                        val semuaData = withContext(Dispatchers.IO) { database.tarikSemuaArsip() }
-                        pompaDataKeLayar(semuaData)
+                    WorkInfo.State.SUCCEEDED -> {
+                        perbaruiPanelTelemetri(FaseInjeksi.FASE_7, 100, indeks, indeks)
+                        lifecycleScope.launch(Dispatchers.Main) {
+                            delay(1500)
+                            val database = ArsipDatabase.operasikanMesin(this@MainActivity).arsipDao()
+                            val semuaData = withContext(Dispatchers.IO) { database.tarikSemuaArsip() }
+                            pompaDataKeLayar(semuaData)
+                            isMesinSibuk = false
+                            aturKunciDrawer(false)
+                        }
+                    }
+                    WorkInfo.State.FAILED -> {
+                        val kodeGagal = informasiKerja.outputData.getString("KODE_GAGAL") ?: "Unknown"
+                        findViewById<ConstraintLayout>(R.id.panelInisialisasiUtama).visibility = View.GONE
                         isMesinSibuk = false
+                        aturKunciDrawer(false)
+                        if (kodeGagal == "BOBOT_KURANG") {
+                            aktifkanMesinPenyedot() 
+                        } else {
+                            Toast.makeText(this@MainActivity, "Gagal memproses data arsip.", Toast.LENGTH_LONG).show()
+                        }
                     }
+                    else -> {}
                 }
-                WorkInfo.State.FAILED -> {
-                    val kodeGagal = informasiKerja.outputData.getString("KODE_GAGAL") ?: "Unknown"
-                    val panelUtama = findViewById<ConstraintLayout>(R.id.panelInisialisasiUtama)
-                    
-                    if (kodeGagal == "BOBOT_KURANG") {
-                        aktifkanMesinPenyedot() 
-                    } else {
-                        panelUtama.visibility = View.GONE
-                        isMesinSibuk = false
-                        Toast.makeText(this@MainActivity, "Gagal mengelas data arsip.", Toast.LENGTH_LONG).show()
-                    }
-                }
-                else -> {}
             }
         }
-    }
+
 }
 
 
@@ -1325,6 +1361,19 @@ private fun getNomorVisualUrut(faseAsli: FaseInjeksi): Int {
         FaseInjeksi.FASE_5 -> 4 // Fase 5 digeser menjadi visual nomor 4
         FaseInjeksi.FASE_6 -> 5 // Fase 6 digeser menjadi visual nomor 5
         FaseInjeksi.FASE_7 -> 6 // Fase 7 digeser menjadi visual nomor 6
+    }
+}
+
+private fun aturKunciDrawer(kunci: Boolean) {
+    val drawerLayout = findViewById<DrawerLayout>(R.id.drawerLayout) // Sesuaikan ID DrawerLayout Anda
+    if (drawerLayout != null) {
+        if (kunci) {
+            // Mengunci laci agar tidak bisa ditarik (swipe) dan disentuh
+            drawerLayout.setDrawerLockMode(DrawerLayout.LOCK_MODE_LOCKED_CLOSED)
+        } else {
+            // Membuka kembali kunci laci setelah mesin selesai
+            drawerLayout.setDrawerLockMode(DrawerLayout.LOCK_MODE_UNLOCKED)
+        }
     }
 }
 

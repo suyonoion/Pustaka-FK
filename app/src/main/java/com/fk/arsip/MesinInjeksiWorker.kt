@@ -66,7 +66,8 @@ try {
 
     while (reader.hasNext()) {
         if (indeks % 500 == 0) {
-            val kalkulasiPersen = ((indeks.toDouble() / estimasiTotalItem.toDouble()) * 100).toInt().coerceAtMost(99)
+            // Katup Pengaman Persentase: Memastikan pembagi (total) bergeser secara dinamis jika jumlah indeks melebihi estimasi awal 
+            val totalRasioAman = if (estimasiTotalItem > indeks) estimasiTotalItem else (indeks + 50) val kalkulasiPersen = ((indeks.toDouble() / totalRasioAman.toDouble()) * 100).toInt().coerceAtMost(99)
             setProgress(workDataOf(
                 "FASE" to 6,
                 "PERSENTASE" to kalkulasiPersen,
@@ -121,7 +122,8 @@ try {
             lenganRobot.injeksiMassal(muatanSementara)
             muatanSementara.clear()
             
-            val kalkulasiPersen = ((indeks.toDouble() / estimasiTotalItem.toDouble()) * 100).toInt().coerceAtMost(99)
+            // Katup Pengaman Persentase: Memastikan pembagi (total) bergeser secara dinamis jika jumlah indeks melebihi estimasi awal
+            val totalRasioAman = if (estimasiTotalItem > indeks) estimasiTotalItem else (indeks + 50) val kalkulasiPersen = ((indeks.toDouble() / totalRasioAman.toDouble()) * 100).toInt().coerceAtMost(99)
             setProgress(workDataOf(
                 "FASE" to 6,
                 "PERSENTASE" to kalkulasiPersen,
