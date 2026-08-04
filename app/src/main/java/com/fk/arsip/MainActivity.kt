@@ -361,7 +361,6 @@ private fun hentikanRotasiNasehat() {
 
 // 4. PERBAIKAN FUNGSI TELEMETRI (Menampilkan Bahasa Ramah & Rotasi Nasehat)
 // REVISI FUNGSI perbaruiPanelTelemetri:
-
 private fun perbaruiPanelTelemetri(
     fase: FaseInjeksi, 
     persentase: Int, 
@@ -369,13 +368,13 @@ private fun perbaruiPanelTelemetri(
     volumeTotal: Int, 
     metrikKhusus: String = ""
 ) {
-    // Inisialisasi eksplisit seluruh komponen dari layout_inisialisasi_mesin.xml
+    // INSIALISASI EKSPLISIT SELURUH VARIABEL KOMPONEN XML
     val panelUtama = findViewById<ConstraintLayout>(R.id.panelInisialisasiUtama) ?: return
-    val teksStatus = findViewById<TextView>(R.id.teksStatusFase)
+    val teksStatusFase = findViewById<TextView>(R.id.teksStatusFase)
     val indikatorVisual = findViewById<ImageView>(R.id.indikatorVisualMesin)
-    val lingkarProgres = findViewById<ProgressBar>(R.id.lingkarPersentaseUtama)
-    val teksPersen = findViewById<TextView>(R.id.teksPersentaseSentral)
-    val teksTelemetri = findViewById<TextView>(R.id.teksTelemetriData)
+    val lingkarPersentaseUtama = findViewById<ProgressBar>(R.id.lingkarPersentaseUtama)
+    val teksPersentaseSentral = findViewById<TextView>(R.id.teksPersentaseSentral)
+    val teksTelemetriData = findViewById<TextView>(R.id.teksTelemetriData)
     
     val teksPesan = fase.pesan 
     
@@ -386,44 +385,42 @@ private fun perbaruiPanelTelemetri(
     }
 
     if (fase == FaseInjeksi.FASE_1 || fase == FaseInjeksi.FASE_7) {
-        lingkarProgres?.visibility = View.GONE
-        teksPersen?.visibility = View.GONE
+        lingkarPersentaseUtama?.visibility = View.GONE
+        teksPersentaseSentral?.visibility = View.GONE
     } else {
-        lingkarProgres?.visibility = View.VISIBLE
-        teksPersen?.visibility = View.VISIBLE
+        lingkarPersentaseUtama?.visibility = View.VISIBLE
+        teksPersentaseSentral?.visibility = View.VISIBLE
     }
     
-    teksStatus?.text = teksPesan
+    teksStatusFase?.text = teksPesan
 
     when (fase) {
         FaseInjeksi.FASE_1, FaseInjeksi.FASE_2, FaseInjeksi.FASE_4 -> {
-            lingkarProgres?.isIndeterminate = true
-            teksPersen?.text = "---"
-            teksTelemetri?.text = "Sistem sedang menginisialisasi modul ..."
+            lingkarPersentaseUtama?.isIndeterminate = true
+            teksPersentaseSentral?.text = "---"
+            teksTelemetriData?.text = "Sistem sedang menginisialisasi modul ..."
         }
         FaseInjeksi.FASE_3 -> {
-            lingkarProgres?.isIndeterminate = false
-            lingkarProgres?.progress = persentase
-            teksPersen?.text = "$persentase%"
-            teksTelemetri?.text = "Arsip Status Digital Fatwa Kehidupan\n$metrikKhusus\nSistem bekerja stabil..."
+            lingkarPersentaseUtama?.isIndeterminate = false
+            lingkarPersentaseUtama?.progress = persentase
+            teksPersentaseSentral?.text = "$persentase%"
+            teksTelemetriData?.text = "Arsip Status Digital Fatwa Kehidupan\n$metrikKhusus\nSistem bekerja stabil..."
         }
         FaseInjeksi.FASE_5, FaseInjeksi.FASE_6 -> {
-            lingkarProgres?.isIndeterminate = false
-            lingkarProgres?.progress = persentase
-            teksPersen?.text = "$persentase%"
-            teksTelemetri?.text = "Arsip Status Digital Fatwa Kehidupan\nProses injeksi baris data ($volumeSelesai / $volumeTotal baris)\nSistem bekerja stabil..."
+            lingkarPersentaseUtama?.isIndeterminate = false
+            lingkarPersentaseUtama?.progress = persentase
+            teksPersentaseSentral?.text = "$persentase%"
+            teksTelemetriData?.text = "Arsip Status Digital Fatwa Kehidupan\nProses injeksi baris data ($volumeSelesai / $volumeTotal baris)\nSistem bekerja stabil..."
         }
         FaseInjeksi.FASE_7 -> {
-            lingkarProgres?.isIndeterminate = false
-            lingkarProgres?.progress = 100
-            teksPersen?.text = "100%"
-            teksTelemetri?.text = "Seluruh blok data berhasil dilas ke dalam memori SQLite."
+            lingkarPersentaseUtama?.isIndeterminate = false
+            lingkarPersentaseUtama?.progress = 100
+            teksPersentaseSentral?.text = "100%"
+            teksTelemetriData?.text = "Seluruh blok data berhasil dilas ke dalam memori SQLite."
             Handler(Looper.getMainLooper()).postDelayed({ panelUtama.visibility = View.GONE }, 1500)
         }
     }
 }
-
-
 
 
     override fun onConfigurationChanged(newConfig: android.content.res.Configuration) {
