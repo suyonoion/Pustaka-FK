@@ -248,6 +248,7 @@ private var kecepatanEmaBytesPerSec: Double = 0.0 // Filter perata gerakan
 
         inisialisasiTuasFooterStatis()
         inisialisasiSirkuitAppDrawer()
+        inisialisasiKategoriDrawer()
         aktifkanSirkuitPencarian()
         eksekusiPabrikData()
     }
@@ -368,60 +369,66 @@ private fun perbaruiPanelTelemetri(
     totalItem: Int = 0, 
     persenProgress: Int = 0
 ) {
-    perbaruiVisualStepper(fase.kode)
+    val nomorLangkahVisual = getNomorVisualUrut(fase)
+    perbaruiVisualStepper(nomorLangkahVisual)
+
     val panelUtama = findViewById<ConstraintLayout>(R.id.panelInisialisasiUtama)
     val vTeksStatus = findViewById<TextView>(R.id.teksStatusInisialisasi)
     val vTeksDetail = findViewById<TextView>(R.id.teksDetailProgress)
-    val vTeksNasehat = findViewById<TextView>(R.id.teksNasehatInisialisasi) // ID TextView untuk nasehat
+    val vTeksNasehat = findViewById<TextView>(R.id.teksNasehatInisialisasi)
     val progressBar = findViewById<ProgressBar>(R.id.progressBarInisialisasi)
+    
+    // Inisialisasi komponen visual gambar bagian atas
+    val indikatorVisualMesin = findViewById<ImageView>(R.id.indikatorVisualMesin)
 
     panelUtama.visibility = View.VISIBLE
 
-    // Mulai rotasi nasehat jika mesin sedang sibuk
     if (jobRotasiNasehat == null || !jobRotasiNasehat!!.isActive) {
         jalankanRotasiNasehat(vTeksNasehat)
     }
 
     when (fase) {
         FaseInjeksi.FASE_1 -> {
+            indikatorVisualMesin.setImageResource(R.drawable.img_1) // Visual reaktor 1
             vTeksStatus.text = "Mempersiapkan Jalur Data..."
-            vTeksDetail.text = "Pemeriksaan awal sistem"
+            vTeksDetail.text = "Pemeriksaan awal sistem (Langkah $nomorLangkahVisual dari 6)"
             progressBar.isIndeterminate = true
         }
         FaseInjeksi.FASE_2 -> {
+            indikatorVisualMesin.setImageResource(R.drawable.img_2) // Visual reaktor 2
             vTeksStatus.text = "Menghubungkan ke Server Data..."
-            vTeksDetail.text = "Menginisialisasi jalur kargo..."
+            vTeksDetail.text = "Menginisialisasi jalur kargo... (Langkah $nomorLangkahVisual dari 6)"
             progressBar.isIndeterminate = true
         }
         FaseInjeksi.FASE_3 -> {
+            indikatorVisualMesin.setImageResource(R.drawable.img_3) // Visual reaktor 3
             vTeksStatus.text = "Mengunduh Paket Data..."
-            vTeksDetail.text = "Progres: $persenProgress%"
+            vTeksDetail.text = "Progres: $persenProgress% (Langkah $nomorLangkahVisual dari 6)"
             progressBar.isIndeterminate = false
             progressBar.progress = persenProgress
         }
         FaseInjeksi.FASE_4 -> {
+            indikatorVisualMesin.setImageResource(R.drawable.img_4) // Visual khusus peringatan darurat koneksi
+            progressBar.isIndeterminate = true
             vTeksStatus.text = "Koneksi Terputus"
             vTeksDetail.text = "Menunggu sinyal internet kembali..."
-            progressBar.isIndeterminate = true
         }
         FaseInjeksi.FASE_5 -> {
-            vTeksStatus.text = "Membongkar & Menyusun Data..."
-            if (totalItem > 0) {
-                vTeksDetail.text = "Menata $itemTerproses dari $totalItem arsip"
-                progressBar.isIndeterminate = false
-                progressBar.max = totalItem
-                progressBar.progress = itemTerproses
-            } else {
-                vTeksDetail.text = "Mengekstrak berkas ke database..."
-                progressBar.isIndeterminate = true
-            }
+            indikatorVisualMesin.setImageResource(R.drawable.img_5) // Visual reaktor 5 (Pemanasan JSON)
+            progressBar.isIndeterminate = true
+            progressBar.progress = 0
+            vTeksStatus.text = "Mengelas Data"
+            vTeksDetail.text = "Sistem sedang mengelas blok data JSON ke dalam memori SQLite... (Langkah $nomorLangkahVisual dari 6)"
         }
         FaseInjeksi.FASE_6 -> {
-            vTeksStatus.text = "Checking Keutuhan Data..."
-            vTeksDetail.text = "Membersihkan berkas sisa..."
-            progressBar.isIndeterminate = true
+            indikatorVisualMesin.setImageResource(R.drawable.img_6) // Visual reaktor 6 (Injeksi SQLite)
+            progressBar.isIndeterminate = false
+            progressBar.progress = persenProgress
+            vTeksStatus.text = "Injeksi $persenProgress%"
+            vTeksDetail.text = "Proses injeksi baris data ($itemTerproses / $totalItem) — (Langkah $nomorLangkahVisual dari 6)"
         }
         FaseInjeksi.FASE_7 -> {
+            indikatorVisualMesin.setImageResource(R.drawable.img_7) // Visual reaktor 7 (Selesai)
             hentikanRotasiNasehat()
             vTeksStatus.text = "Data Siap Digunakan!"
             vTeksDetail.text = "Selesai"
@@ -429,6 +436,8 @@ private fun perbaruiPanelTelemetri(
         }
     }
 }
+
+
 
 
     override fun onConfigurationChanged(newConfig: android.content.res.Configuration) {
@@ -821,7 +830,8 @@ private fun aktifkanMesinPenyedot() {
         .setDestinationInExternalFilesDir(this, null, namaFileTemp)
         .setAllowedOverMetered(true)
         .setAllowedOverRoaming(true)
-
+    lifecycleScope.launch(Dispatchers.Main) {
+    delay(1200) // Katup jeda agar Fase 2 dirender oleh layar
     val idUnduhan = downloadManager.enqueue(request)
     
     // PERALIHAN KANTONG VISUAL KE FASE 3 (MEMANTAU TRANSMISI)
@@ -852,70 +862,93 @@ private fun aktifkanMesinPenyedot() {
         return -1L
     }
 
+
 private fun pantauTekananUnduhan(idUnduhan: Long, downloadManager: DownloadManager) {
     lifecycleScope.launch(Dispatchers.IO) {
-        // Inisialisasi awal kalkulasi
-        waktuTerakhirMs = System.currentTimeMillis()
-        byteTerakhirDownloaded = 0L
-        kecepatanEmaBytesPerSec = 0.0
+        // Kalibrasi awal sensor pengukur debit
+        var waktuTerakhirMs = System.currentTimeMillis()
+        var byteTerakhirDownloaded = 0L
+        var kecepatanEmaBytesPerSec = 0.0
 
         var sedangMengunduh = true
 
         while (sedangMengunduh && isMesinSibuk) {
-            val query = DownloadManager.Query().setFilterById(idUnduhan)
-            val cursor: Cursor = downloadManager.query(query)
+            // SENSOR 1: Saklar Pemutus Jaringan (Master Protocol)
+            // Jika kabel putus, hentikan rotor kalkulasi dan tembakkan sinyal Fase 4
+            if (!isJaringanTersedia()) {
+                withContext(Dispatchers.Main) {
+                    perbaruiPanelTelemetri(FaseInjeksi.FASE_4, 0, 0, 0)
+                }
+                delay(3000) // Katup penunda: Istirahatkan rotor 3 detik
+                continue // Putar ulang loop tanpa mengeksekusi kalkulasi di bawah
+            }
 
-            if (cursor.moveToFirst()) {
+            val query = DownloadManager.Query().setFilterById(idUnduhan)
+            val cursor: Cursor? = downloadManager.query(query)
+
+            if (cursor != null && cursor.moveToFirst()) {
                 val indexBytesSoFar = cursor.getColumnIndex(DownloadManager.COLUMN_BYTES_DOWNLOADED_SO_FAR)
                 val indexTotalBytes = cursor.getColumnIndex(DownloadManager.COLUMN_TOTAL_SIZE_BYTES)
                 val indexStatus = cursor.getColumnIndex(DownloadManager.COLUMN_STATUS)
 
                 if (indexBytesSoFar != -1 && indexTotalBytes != -1 && indexStatus != -1) {
-                    val bytesDownloaded = cursor.getLong(indexBytesSoFar)
-                    val totalBytes = cursor.getLong(indexTotalBytes)
                     val status = cursor.getInt(indexStatus)
 
-                    val waktuSekarangMs = System.currentTimeMillis()
-                    val selisihWaktuSec = (waktuSekarangMs - waktuTerakhirMs) / 1000.0
+                    // SENSOR 2: Distribusi Status Transmisi
+                    if (status == DownloadManager.STATUS_SUCCESSFUL) {
+                        sedangMengunduh = false // Matikan mesin
+                    } else if (status == DownloadManager.STATUS_FAILED) {
+                        sedangMengunduh = false // Matikan mesin
+                    } else if (status == DownloadManager.STATUS_PAUSED) {
+                        // Jika di-pause oleh sistem operasi, alihkan panel ke Fase 4
+                        withContext(Dispatchers.Main) {
+                            perbaruiPanelTelemetri(FaseInjeksi.FASE_4, 0, 0, 0)
+                        }
+                    } else {
+                        // SENSOR 3: Mesin berjalan normal, buka katup turbin kalkulasi
+                        val bytesDownloaded = cursor.getLong(indexBytesSoFar)
+                        val totalBytes = cursor.getLong(indexTotalBytes)
 
-                    // Kalkulasi kecepatan instan jika jeda waktu cukup (> 0.2 detik)
-                    if (selisihWaktuSec >= 0.2) {
-                        val selisihByte = bytesDownloaded - byteTerakhirDownloaded
-                        val kecepatanInstan = if (selisihByte > 0) (selisihByte / selisihWaktuSec) else 0.0
+                        val waktuSekarangMs = System.currentTimeMillis()
+                        val selisihWaktuSec = (waktuSekarangMs - waktuTerakhirMs) / 1000.0
 
-                        // PENGERING/FILTER EMA: Alpha 0.25 memuluskan penurunan angka agar tidak mengagetkan (Soft Drop)
-                        val alpha = 0.25 
-                        kecepatanEmaBytesPerSec = if (kecepatanEmaBytesPerSec == 0.0) {
-                            kecepatanInstan
-                        } else {
-                            (alpha * kecepatanInstan) + ((1 - alpha) * kecepatanEmaBytesPerSec)
+                        // Kalkulasi kecepatan instan jika jeda waktu stabil (> 0.2 detik)
+                        if (selisihWaktuSec >= 0.2) {
+                            val selisihByte = bytesDownloaded - byteTerakhirDownloaded
+                            val kecepatanInstan = if (selisihByte > 0) (selisihByte / selisihWaktuSec) else 0.0
+
+                            // Filter EMA: Memuluskan fluktuasi angka (Soft Drop)
+                            val alpha = 0.25 
+                            kecepatanEmaBytesPerSec = if (kecepatanEmaBytesPerSec == 0.0) {
+                                kecepatanInstan
+                            } else {
+                                (alpha * kecepatanInstan) + ((1 - alpha) * kecepatanEmaBytesPerSec)
+                            }
+
+                            waktuTerakhirMs = waktuSekarangMs
+                            byteTerakhirDownloaded = bytesDownloaded
                         }
 
-                        waktuTerakhirMs = waktuSekarangMs
-                        byteTerakhirDownloaded = bytesDownloaded
-                    }
+                        // Konversi parameter dimensi
+                        val persen = if (totalBytes > 0) ((bytesDownloaded * 100) / totalBytes).toInt() else 0
+                        val teksKecepatan = formatKecepatanPersisi(kecepatanEmaBytesPerSec)
 
-                    // Hitung Persentase
-                    val persen = if (totalBytes > 0) ((bytesDownloaded * 100) / totalBytes).toInt() else 0
-
-                    // Format Teks Kecepatan (Kondisional KB/s vs MB/s)
-                    val teksKecepatan = formatKecepatanPersisi(kecepatanEmaBytesPerSec)
-
-                    withContext(Dispatchers.Main) {
-                        // Perbarui UI Telemetri
-                        perbaruiDetailKecepatan(persen, bytesDownloaded, totalBytes, teksKecepatan)
-                    }
-
-                    if (status == DownloadManager.STATUS_SUCCESSFUL || status == DownloadManager.STATUS_FAILED) {
-                        sedangMengunduh = false
+                        // Transmisi visual ke layar
+                        withContext(Dispatchers.Main) {
+                            perbaruiDetailKecepatan(persen, bytesDownloaded, totalBytes, teksKecepatan)
+                        }
                     }
                 }
             }
-            cursor.close()
-            delay(500) // Polling interval 500ms
+            
+            // Katup pengunci memori: Mutlak harus berada di luar rantai 'if' agar memori tidak bocor
+            cursor?.close() 
+            
+            delay(500) // Interval stabilisator mesin
         }
     }
 }
+
 
 // FUNGSI KONVERSI UNIT DENGAN SKALA PRESISI (KB/s vs MB/s)
 private fun formatKecepatanPersisi(bytesPerSec: Double): String {
@@ -1283,6 +1316,17 @@ private fun perbaruiVisualStepper(faseAktif: Int) {
     }
 }
 
+private fun getNomorVisualUrut(faseAsli: FaseInjeksi): Int {
+    return when (faseAsli) {
+        FaseInjeksi.FASE_1 -> 1
+        FaseInjeksi.FASE_2 -> 2
+        FaseInjeksi.FASE_3 -> 3
+        FaseInjeksi.FASE_4 -> 3 // Jika terpicu putus koneksi, tahan atau samakan dengan visual 3
+        FaseInjeksi.FASE_5 -> 4 // Fase 5 digeser menjadi visual nomor 4
+        FaseInjeksi.FASE_6 -> 5 // Fase 6 digeser menjadi visual nomor 5
+        FaseInjeksi.FASE_7 -> 6 // Fase 7 digeser menjadi visual nomor 6
+    }
+}
 
 }
 

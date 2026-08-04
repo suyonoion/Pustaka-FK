@@ -31,7 +31,19 @@ class MesinInjeksiWorker(context: Context, params: WorkerParameters) : Coroutine
 
         val estimasiTotalItem = (totalBobotFile / 5120).toInt()
         
-// Inisialisasi Fase Tunggal (Hanya Fase 6)
+// 1. Tembakkan Sinyal Fase 5 (Fase Pengelasan Awal)
+setProgress(workDataOf(
+    "FASE" to 5,
+    "PERSENTASE" to 0,
+    "INDEKS" to 0,
+    "TOTAL" to estimasiTotalItem
+))
+
+// 2. Katup Jeda Mekanis
+// Beri waktu 1.2 detik agar mesin UI di MainActivity sempat merender teks Fase 5 ke layar
+kotlinx.coroutines.delay(1200)
+
+// 3. Transmisi ke Fase 6 (Persiapan Injeksi Baris Data)
 setProgress(workDataOf(
     "FASE" to 6,
     "PERSENTASE" to 0,
@@ -39,12 +51,13 @@ setProgress(workDataOf(
     "TOTAL" to estimasiTotalItem
 ))
 
+// 4. Buka Katup Pipa JSON
 try {
-    val reader = com.google.gson.stream.JsonReader(FileReader(fileTarget))
+    val reader = com.google.gson.stream.JsonReader(java.io.FileReader(fileTarget))
     if (reader.peek() != com.google.gson.stream.JsonToken.BEGIN_ARRAY) {
-        throw Exception("Struktur berkas tidak valid.")
+        throw Exception("Integritas struktur berkas gagal diverifikasi.")
     }
-
+    
     lenganRobot.kurasTangkiKotor()
     reader.beginArray()
 
