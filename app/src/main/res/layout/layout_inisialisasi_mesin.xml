@@ -14,8 +14,8 @@
         android:id="@+id/teksJudulUtama"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:text="Arsip Status Fatwa Kehidupan"
-        android:textColor="#FFFFFF"
+        android:text="@string/nama_app"
+        android:textColor="@color/text_on_dark"
         android:textSize="18sp"
         android:textStyle="bold"
         android:gravity="center"
@@ -93,7 +93,7 @@
         android:layout_height="1dp"
         android:background="#233554"
         app:layout_constraintTop_toBottomOf="@id/teksNasehatInisialisasi"
-        android:layout_marginTop="8dp"/>
+        android:layout_marginTop="16dp"/>
 
     <!-- SEKTOR REL STEPPER FASE 1-6 (BAGIAN BAWAH) -->
     <ScrollView

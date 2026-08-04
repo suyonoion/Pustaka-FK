@@ -58,19 +58,18 @@ data class TitikNavigasi(
 )
 
 object KoleksiNasehat {
-    val DAFTAR_TEKS = listOf(
-        "Mencari ilmu adalah proses menata pemahaman, sebagaimana sistem ini sedang menata data untuk Anda.",
-        "Proses ini hanya dilakukan 1 kali di awal agar aplikasi bisa diakses secara cepat dan offline tanpa internet.",
-        "Kesabaran dalam menunggu adalah bagian dari adab menuntut ilmu.",
-        "Setiap data yang tersusun rapi akan memudahkan Anda menemukan jawaban dengan cepat.",
-        "Mohon tidak menutup aplikasi saat penyusunan database berlangsung agar data tidak rusak."
-    )
+    val TEKS_1 = "Mencari ilmu adalah proses menata pemahaman, sebagaimana sistem ini sedang menata data untuk Anda."
+    val TEKS_2 = "Proses ini hanya dilakukan 1 kali di awal agar aplikasi bisa diakses secara cepat dan offline tanpa internet."
+    val TEKS_3 = "Mohon tidak menutup aplikasi saat penyusunan database berlangsung agar data tidak rusak."
+    val TEKS_4 = "Kesabaran dalam menunggu adalah bagian dari adab menuntut ilmu."
+    val TEKS_5 = "Setiap data yang tersusun rapi akan memudahkan Anda menemukan jawaban dengan cepat."
 }
+
 
 enum class FaseInjeksi(val pesan: String, val idGambar: Int) {
     FASE_1("Memulai aplikasi pertama kali...", R.drawable.img_1),
     FASE_2("Menghubungkan ke server...", R.drawable.img_2),
-    FASE_3("Mengunduh data status...", R.drawable.img_3),
+    FASE_3("Mengunduh semua data status...", R.drawable.img_3),
     FASE_4("Menunggu jaringan stabil...", R.drawable.img_4), 
     FASE_5("Mengelas blok data ke memori...", R.drawable.img_5),
     FASE_6("Injeksi baris data ke SQLite...", R.drawable.img_6),
@@ -82,10 +81,9 @@ class MainActivity : AppCompatActivity() {
 
 private var idGambarAktif: Int = -1
 private var jobRotasiNasehat: Job? = null
-// Variable global/pribadi untuk menyimpan status kalkulasi kecepatan sebelumnya
 private var waktuTerakhirMs: Long = 0L
 private var byteTerakhirDownloaded: Long = 0L
-private var kecepatanEmaBytesPerSec: Double = 0.0 // Filter perata gerakan
+private var kecepatanEmaBytesPerSec: Double = 0.0
     private val namaFile = "Master_Data_Arsip_FK_11_Juli_2026.json"
     private val urlKargo = "https://github.com/suyonoion/Pustaka-FK/releases/download/v1.0.0/Master_Data_Arsip_FK_11_Juli_2026.json"
 
@@ -336,6 +334,7 @@ private fun eksekusiSaringanKombinasi(kategori: String, urutTerlama: Boolean) {
             // Dorong muatan baru ke rantai grid dan buku
             pompaDataKeLayar(kargoSaringan)
             isMesinSibuk = false
+            aturKunciDrawer(false)
         }
     }
 }
@@ -360,7 +359,7 @@ private fun hentikanRotasiNasehat() {
 }
 
 // 2. ROMBAK TOTAL FUNGSI PANEL TELEMETRI
-private var faseVisualAktif: FaseInjeksi? = null
+private var faseMesinTerakhir: FaseInjeksi? = null
 
 private fun perbaruiPanelTelemetri(
     faseAsli: FaseInjeksi, 
@@ -369,23 +368,20 @@ private fun perbaruiPanelTelemetri(
     volumeTotal: Int, 
     metrikKhusus: String = ""
 ) {
-    // Kunci seluruh eksekusi visual ke Arus Utama (UI Thread) agar tidak macet
     runOnUiThread {
-        // 1. BYPASS KOREKSI OTONOM
-        // Jika sensor jaringan meneriakkan FASE_4 (mati) tapi ada aliran data unduhan, paksa sistem ke FASE_3.
-        val fase = if (faseAsli == FaseInjeksi.FASE_4 && metrikKhusus.isNotBlank()) {
-            FaseInjeksi.FASE_3
-        } else {
-            faseAsli
-        }
+        // BYPASS KOREKSI OTONOM
+        val fase = if (faseAsli == FaseInjeksi.FASE_4 && metrikKhusus.isNotBlank()) FaseInjeksi.FASE_3 else faseAsli
 
-        // 2. PENYELARASAN TERMINAL PORT
+        // PENYELARASAN TERMINAL PORT
         val panelUtama = findViewById<ConstraintLayout>(R.id.panelInisialisasiUtama) ?: return@runOnUiThread
         val teksStatus = findViewById<TextView>(R.id.teksStatusInisialisasi)
         val indikatorVisual = findViewById<ImageView>(R.id.indikatorVisualMesin)
         val lingkarProgres = findViewById<ProgressBar>(R.id.progressBarInisialisasi)
         val teksTelemetri = findViewById<TextView>(R.id.teksDetailProgress)
         
+        val terminalNasehat = findViewById<TextView>(R.id.teksNasehatInisialisasi)
+        val wadahStepper = findViewById<LinearLayout>(R.id.wadahStepperFase)
+
         val numFase1 = findViewById<TextView>(R.id.numFase1); val lblFase1 = findViewById<TextView>(R.id.lblFase1)
         val numFase2 = findViewById<TextView>(R.id.numFase2); val lblFase2 = findViewById<TextView>(R.id.lblFase2)
         val numFase3 = findViewById<TextView>(R.id.numFase3); val lblFase3 = findViewById<TextView>(R.id.lblFase3)
@@ -393,53 +389,75 @@ private fun perbaruiPanelTelemetri(
         val numFase6 = findViewById<TextView>(R.id.numFase6); val lblFase6 = findViewById<TextView>(R.id.lblFase6)
         val numFase7 = findViewById<TextView>(R.id.numFase7); val lblFase7 = findViewById<TextView>(R.id.lblFase7)
 
-        // 3. TRANSMISI VISUAL UTAMA (Hanya dieksekusi jika fase benar-benar berubah)
-        if (faseVisualAktif != fase) {
+        // =========================================================================
+        // BLOK 1: KATUP STATIS (Hanya bekerja 1 kali saat gigi mesin berpindah fase)
+        // =========================================================================
+        if (faseMesinTerakhir != fase) {
+            
+            // A. Pasang Peredam Hidrolik (Memicu efek Fading/Transisi mulus otomatis pada seluruh stepper)
+            android.transition.TransitionManager.beginDelayedTransition(
+                wadahStepper, 
+                android.transition.AutoTransition().apply { duration = 450 } // Jeda mulus 450ms
+            )
+
+            // B. Transmisi Visual Utama
             indikatorVisual?.setImageResource(fase.idGambar)
             teksStatus?.text = fase.pesan
-            faseVisualAktif = fase
-        }
 
-        // 4. MEKANISME JEJAK REL STEPPER (Cascade System)
-        val warnaInaktif = android.graphics.Color.parseColor("#8892B0")
-        val warnaAktif = android.graphics.Color.parseColor("#64FFDA")
-        val warnaNumAktif = android.graphics.Color.parseColor("#004D40")
-        
-        val levelMesin = when (fase) {
-            FaseInjeksi.FASE_1 -> 1
-            FaseInjeksi.FASE_2 -> 2
-            FaseInjeksi.FASE_3, FaseInjeksi.FASE_4 -> 3
-            FaseInjeksi.FASE_5 -> 4
-            FaseInjeksi.FASE_6 -> 5
-            FaseInjeksi.FASE_7 -> 6
-        }
-
-        fun setelArusStepper(num: TextView?, lbl: TextView?, levelRel: Int) {
-            if (levelMesin >= levelRel) {
-                lbl?.setTextColor(warnaAktif)
-                num?.setBackgroundResource(R.drawable.bg_fase_aktif)
-                num?.setTextColor(warnaNumAktif)
-            } else {
-                lbl?.setTextColor(warnaInaktif)
-                num?.setBackgroundResource(R.drawable.bg_fase_inaktif)
+            // C. Distribusi Arus Nasehat
+            terminalNasehat?.text = when (fase) {
+                FaseInjeksi.FASE_1, FaseInjeksi.FASE_2 -> KoleksiNasehat.TEKS_1
+                FaseInjeksi.FASE_3, FaseInjeksi.FASE_4 -> KoleksiNasehat.TEKS_2
+                FaseInjeksi.FASE_5 -> KoleksiNasehat.TEKS_3
+                FaseInjeksi.FASE_6 -> KoleksiNasehat.TEKS_4
+                FaseInjeksi.FASE_7 -> KoleksiNasehat.TEKS_5
             }
+
+            // D. Pengapian Rel Stepper (Cascade System)
+            val warnaInaktif = android.graphics.Color.parseColor("#8892B0")
+            val warnaAktif = android.graphics.Color.parseColor("#64FFDA")
+            val warnaNumAktif = android.graphics.Color.parseColor("#004D40")
+            
+            val levelMesin = when (fase) {
+                FaseInjeksi.FASE_1 -> 1
+                FaseInjeksi.FASE_2 -> 2
+                FaseInjeksi.FASE_3, FaseInjeksi.FASE_4 -> 3
+                FaseInjeksi.FASE_5 -> 4
+                FaseInjeksi.FASE_6 -> 5
+                FaseInjeksi.FASE_7 -> 6
+            }
+
+            fun setelArusStepper(num: TextView?, lbl: TextView?, levelRel: Int) {
+                if (levelMesin >= levelRel) {
+                    lbl?.setTextColor(warnaAktif)
+                    num?.setTextColor(warnaNumAktif)
+                    num?.setBackgroundResource(R.drawable.bg_fase_aktif)
+                } else {
+                    lbl?.setTextColor(warnaInaktif)
+                    num?.setBackgroundResource(R.drawable.bg_fase_inaktif)
+                }
+            }
+
+            setelArusStepper(numFase1, lblFase1, 1)
+            setelArusStepper(numFase2, lblFase2, 2)
+            setelArusStepper(numFase3, lblFase3, 3)
+            setelArusStepper(numFase5, lblFase5, 4)
+            setelArusStepper(numFase6, lblFase6, 5)
+            setelArusStepper(numFase7, lblFase7, 6)
+
+            // Kunci memori fase agar katup statis tertutup kembali
+            faseMesinTerakhir = fase
         }
 
-        setelArusStepper(numFase1, lblFase1, 1)
-        setelArusStepper(numFase2, lblFase2, 2)
-        setelArusStepper(numFase3, lblFase3, 3)
-        setelArusStepper(numFase5, lblFase5, 4)
-        setelArusStepper(numFase6, lblFase6, 5)
-        setelArusStepper(numFase7, lblFase7, 6)
-
-        // 5. KONTROL VISIBILITAS ROTOR PROGRES
+        // =========================================================================
+        // BLOK 2: ROTOR DINAMIS (Berputar terus-menerus memperbarui angka progres)
+        // =========================================================================
         if (fase == FaseInjeksi.FASE_1 || fase == FaseInjeksi.FASE_7) {
             lingkarProgres?.visibility = View.GONE
         } else {
             lingkarProgres?.visibility = View.VISIBLE
         }
         
-        // 6. DISTRIBUSI DATA TELEMETRI
         when (fase) {
             FaseInjeksi.FASE_1, FaseInjeksi.FASE_2, FaseInjeksi.FASE_4 -> {
                 lingkarProgres?.isIndeterminate = true
@@ -448,7 +466,6 @@ private fun perbaruiPanelTelemetri(
             FaseInjeksi.FASE_3 -> {
                 lingkarProgres?.isIndeterminate = false
                 lingkarProgres?.progress = persentase
-                // Disesuaikan presisi dengan keluaran pada bukti visual 
                 teksTelemetri?.text = "Progres: $persentase% $metrikKhusus"
             }
             FaseInjeksi.FASE_5, FaseInjeksi.FASE_6 -> {
@@ -465,6 +482,7 @@ private fun perbaruiPanelTelemetri(
         }
     }
 }
+
 
     override fun onConfigurationChanged(newConfig: android.content.res.Configuration) {
         super.onConfigurationChanged(newConfig)
