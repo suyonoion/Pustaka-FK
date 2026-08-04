@@ -840,7 +840,7 @@ private fun aktifkanMesinPenyedot() {
     pasangSensorPendaratan(idUnduhan, downloadManager)
 }
 
-
+}
 
     private fun cariPipaAktif(downloadManager: DownloadManager): Long {
         val query = DownloadManager.Query().setFilterByStatus(
