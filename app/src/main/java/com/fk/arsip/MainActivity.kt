@@ -343,6 +343,10 @@ private fun eksekusiSaringanKombinasi(kategori: String, urutTerlama: Boolean) {
 // 2. ROMBAK TOTAL FUNGSI PANEL TELEMETRI
 private var faseMesinTerakhir: FaseInjeksi? = null
 
+// 1. DUA MODUL MEMORI INDEPENDEN (Anti-Korsleting)
+private var memoriGambarVisual: Int = -1
+private var memoriLevelStepper: Int = -1
+
 private fun perbaruiPanelTelemetri(
     faseAsli: FaseInjeksi, 
     persentase: Int, 
@@ -351,10 +355,13 @@ private fun perbaruiPanelTelemetri(
     metrikKhusus: String = ""
 ) {
     runOnUiThread {
-        // BYPASS KOREKSI OTONOM
-        val fase = if (faseAsli == FaseInjeksi.FASE_4 && metrikKhusus.isNotBlank()) FaseInjeksi.FASE_3 else faseAsli
+        // 2. BYPASS SENSOR JARINGAN ABSOLUT
+        // Jika sensor mendeteksi FASE_4 namun mesin mendeteksi adanya laju data (KB/s atau MB),
+        // sistem secara paksa membajak status ke FASE_3.
+        val adaArusData = metrikKhusus.isNotBlank() && persentase > 0
+        val fase = if (faseAsli == FaseInjeksi.FASE_4 && adaArusData) FaseInjeksi.FASE_3 else faseAsli
 
-        // PENYELARASAN TERMINAL PORT
+        // 3. PENYELARASAN TERMINAL PORT
         val panelUtama = findViewById<ConstraintLayout>(R.id.panelInisialisasiUtama) ?: return@runOnUiThread
         val teksStatus = findViewById<TextView>(R.id.teksStatusInisialisasi)
         val indikatorVisual = findViewById<ImageView>(R.id.indikatorVisualMesin)
@@ -363,6 +370,7 @@ private fun perbaruiPanelTelemetri(
         
         val terminalNasehat = findViewById<TextView>(R.id.teksNasehatInisialisasi)
         val wadahStepper = findViewById<LinearLayout>(R.id.wadahStepperFase)
+        val relPembatas = findViewById<View>(R.id.pembatasSektor)
 
         val numFase1 = findViewById<TextView>(R.id.numFase1); val lblFase1 = findViewById<TextView>(R.id.lblFase1)
         val numFase2 = findViewById<TextView>(R.id.numFase2); val lblFase2 = findViewById<TextView>(R.id.lblFase2)
@@ -372,47 +380,63 @@ private fun perbaruiPanelTelemetri(
         val numFase7 = findViewById<TextView>(R.id.numFase7); val lblFase7 = findViewById<TextView>(R.id.lblFase7)
 
         // =========================================================================
-        // BLOK 1: KATUP STATIS (Hanya bekerja 1 kali saat gigi mesin berpindah fase)
+        // BLOK A: GERBANG VISIBILITAS AWAL (Solusi Gambar 1)
         // =========================================================================
-        if (faseMesinTerakhir != fase) {
-            
-            // A. Pasang Peredam Hidrolik (Memicu efek Fading/Transisi mulus otomatis pada seluruh stepper)
-            android.transition.TransitionManager.beginDelayedTransition(
-                wadahStepper, 
-                android.transition.AutoTransition().apply { duration = 450 } // Jeda mulus 450ms
-            )
+        if (fase == FaseInjeksi.FASE_1) {
+            wadahStepper?.visibility = View.INVISIBLE
+            relPembatas?.visibility = View.INVISIBLE
+        } else {
+            wadahStepper?.visibility = View.VISIBLE
+            relPembatas?.visibility = View.VISIBLE
+        }
 
-            // B. Transmisi Visual Utama
+        // =========================================================================
+        // BLOK B: TRANSMISI VISUAL UTAMA (Solusi Gambar 2)
+        // =========================================================================
+        // Dikeluarkan dari animasi stepper agar merespons pemulihan jaringan secara instan
+        if (memoriGambarVisual != fase.idGambar) {
             indikatorVisual?.setImageResource(fase.idGambar)
             teksStatus?.text = fase.pesan
+            memoriGambarVisual = fase.idGambar
+        }
 
-            // C. Distribusi Arus Nasehat
-            terminalNasehat?.text = when (fase) {
-                FaseInjeksi.FASE_1, FaseInjeksi.FASE_2 -> KoleksiNasehat.TEKS_1
-                FaseInjeksi.FASE_3, FaseInjeksi.FASE_4 -> KoleksiNasehat.TEKS_2
-                FaseInjeksi.FASE_5 -> KoleksiNasehat.TEKS_3
-                FaseInjeksi.FASE_6 -> KoleksiNasehat.TEKS_4
-                FaseInjeksi.FASE_7 -> KoleksiNasehat.TEKS_5
+        // =========================================================================
+        // BLOK C: DISTRIBUSI ARUS NASEHAT
+        // =========================================================================
+        terminalNasehat?.text = when (fase) {
+            FaseInjeksi.FASE_1, FaseInjeksi.FASE_2 -> KoleksiNasehat.TEKS_1
+            FaseInjeksi.FASE_3, FaseInjeksi.FASE_4 -> KoleksiNasehat.TEKS_2
+            FaseInjeksi.FASE_5 -> KoleksiNasehat.TEKS_3
+            FaseInjeksi.FASE_6 -> KoleksiNasehat.TEKS_4
+            FaseInjeksi.FASE_7 -> KoleksiNasehat.TEKS_5
+        }
+
+        // =========================================================================
+        // BLOK D: ANIMASI REL STEPPER BERSYARAT (Hanya bekerja saat gigi berubah)
+        // =========================================================================
+        val levelMesin = when (fase) {
+            FaseInjeksi.FASE_1 -> 1
+            FaseInjeksi.FASE_2 -> 2
+            FaseInjeksi.FASE_3, FaseInjeksi.FASE_4 -> 3
+            FaseInjeksi.FASE_5 -> 4
+            FaseInjeksi.FASE_6 -> 5
+            FaseInjeksi.FASE_7 -> 6
+        }
+
+        if (memoriLevelStepper != levelMesin) {
+            wadahStepper?.let {
+                android.transition.TransitionManager.beginDelayedTransition(
+                    it, 
+                    android.transition.AutoTransition().apply { duration = 450 }
+                )
             }
 
-            // D. Pengapian Rel Stepper (Cascade System)
             val warnaInaktif = android.graphics.Color.parseColor("#8892B0")
             val warnaAktif = android.graphics.Color.parseColor("#64FFDA")
-            val warnaNumAktif = android.graphics.Color.parseColor("#004D40")
             
-            val levelMesin = when (fase) {
-                FaseInjeksi.FASE_1 -> 1
-                FaseInjeksi.FASE_2 -> 2
-                FaseInjeksi.FASE_3, FaseInjeksi.FASE_4 -> 3
-                FaseInjeksi.FASE_5 -> 4
-                FaseInjeksi.FASE_6 -> 5
-                FaseInjeksi.FASE_7 -> 6
-            }
-
             fun setelArusStepper(num: TextView?, lbl: TextView?, levelRel: Int) {
                 if (levelMesin >= levelRel) {
                     lbl?.setTextColor(warnaAktif)
-                    num?.setTextColor(warnaNumAktif)
                     num?.setBackgroundResource(R.drawable.bg_fase_aktif)
                 } else {
                     lbl?.setTextColor(warnaInaktif)
@@ -427,12 +451,11 @@ private fun perbaruiPanelTelemetri(
             setelArusStepper(numFase6, lblFase6, 5)
             setelArusStepper(numFase7, lblFase7, 6)
 
-            // Kunci memori fase agar katup statis tertutup kembali
-            faseMesinTerakhir = fase
+            memoriLevelStepper = levelMesin
         }
 
         // =========================================================================
-        // BLOK 2: ROTOR DINAMIS (Berputar terus-menerus memperbarui angka progres)
+        // BLOK E: ROTOR DINAMIS (Berputar memperbarui angka)
         // =========================================================================
         if (fase == FaseInjeksi.FASE_1 || fase == FaseInjeksi.FASE_7) {
             lingkarProgres?.visibility = View.GONE
@@ -464,6 +487,7 @@ private fun perbaruiPanelTelemetri(
         }
     }
 }
+
 
 
     override fun onConfigurationChanged(newConfig: android.content.res.Configuration) {
