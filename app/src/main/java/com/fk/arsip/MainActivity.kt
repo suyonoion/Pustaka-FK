@@ -339,12 +339,7 @@ private fun eksekusiSaringanKombinasi(kategori: String, urutTerlama: Boolean) {
     }
 }
 
-
-// 2. ROMBAK TOTAL FUNGSI PANEL TELEMETRI
-private var faseMesinTerakhir: FaseInjeksi? = null
-
-// 1. DUA MODUL MEMORI INDEPENDEN (Anti-Korsleting)
-private var memoriGambarVisual: Int = -1
+// HANYA TERSISA 1 PENGUNCI (Khusus untuk animasi rel stepper agar tidak macet)
 private var memoriLevelStepper: Int = -1
 
 private fun perbaruiPanelTelemetri(
@@ -355,13 +350,11 @@ private fun perbaruiPanelTelemetri(
     metrikKhusus: String = ""
 ) {
     runOnUiThread {
-        // 2. BYPASS SENSOR JARINGAN ABSOLUT
-        // Jika sensor mendeteksi FASE_4 namun mesin mendeteksi adanya laju data (KB/s atau MB),
-        // sistem secara paksa membajak status ke FASE_3.
+        // 1. BYPASS SENSOR JARINGAN ABSOLUT
         val adaArusData = metrikKhusus.isNotBlank() && persentase > 0
         val fase = if (faseAsli == FaseInjeksi.FASE_4 && adaArusData) FaseInjeksi.FASE_3 else faseAsli
 
-        // 3. PENYELARASAN TERMINAL PORT
+        // 2. PENYELARASAN TERMINAL PORT
         val panelUtama = findViewById<ConstraintLayout>(R.id.panelInisialisasiUtama) ?: return@runOnUiThread
         val teksStatus = findViewById<TextView>(R.id.teksStatusInisialisasi)
         val indikatorVisual = findViewById<ImageView>(R.id.indikatorVisualMesin)
@@ -380,7 +373,7 @@ private fun perbaruiPanelTelemetri(
         val numFase7 = findViewById<TextView>(R.id.numFase7); val lblFase7 = findViewById<TextView>(R.id.lblFase7)
 
         // =========================================================================
-        // BLOK A: GERBANG VISIBILITAS AWAL (Solusi Gambar 1)
+        // BLOK A: GERBANG VISIBILITAS AWAL (Rel stepper tembus pandang di Fase 1)
         // =========================================================================
         if (fase == FaseInjeksi.FASE_1) {
             wadahStepper?.visibility = View.INVISIBLE
@@ -391,17 +384,7 @@ private fun perbaruiPanelTelemetri(
         }
 
         // =========================================================================
-        // BLOK B: TRANSMISI VISUAL UTAMA (Solusi Gambar 2)
-        // =========================================================================
-        // Dikeluarkan dari animasi stepper agar merespons pemulihan jaringan secara instan
-        if (memoriGambarVisual != fase.idGambar) {
-            indikatorVisual?.setImageResource(fase.idGambar)
-            teksStatus?.text = fase.pesan
-            memoriGambarVisual = fase.idGambar
-        }
-
-        // =========================================================================
-        // BLOK C: DISTRIBUSI ARUS NASEHAT
+        // BLOK B: DISTRIBUSI ARUS NASEHAT DINAMIS
         // =========================================================================
         terminalNasehat?.text = when (fase) {
             FaseInjeksi.FASE_1, FaseInjeksi.FASE_2 -> KoleksiNasehat.TEKS_1
@@ -412,7 +395,7 @@ private fun perbaruiPanelTelemetri(
         }
 
         // =========================================================================
-        // BLOK D: ANIMASI REL STEPPER BERSYARAT (Hanya bekerja saat gigi berubah)
+        // BLOK C: ANIMASI REL STEPPER BERSYARAT (Beroperasi via memori katup statis)
         // =========================================================================
         val levelMesin = when (fase) {
             FaseInjeksi.FASE_1 -> 1
@@ -430,7 +413,6 @@ private fun perbaruiPanelTelemetri(
                     android.transition.AutoTransition().apply { duration = 450 }
                 )
             }
-
             val warnaInaktif = android.graphics.Color.parseColor("#8892B0")
             val warnaAktif = android.graphics.Color.parseColor("#64FFDA")
             
@@ -443,25 +425,28 @@ private fun perbaruiPanelTelemetri(
                     num?.setBackgroundResource(R.drawable.bg_fase_inaktif)
                 }
             }
-
             setelArusStepper(numFase1, lblFase1, 1)
             setelArusStepper(numFase2, lblFase2, 2)
             setelArusStepper(numFase3, lblFase3, 3)
             setelArusStepper(numFase5, lblFase5, 4)
             setelArusStepper(numFase6, lblFase6, 5)
             setelArusStepper(numFase7, lblFase7, 6)
-
             memoriLevelStepper = levelMesin
         }
 
         // =========================================================================
-        // BLOK E: ROTOR DINAMIS (Berputar memperbarui angka)
+        // BLOK D: ROTOR DINAMIS (Pemaksaan sinkronisasi visual absolut)
         // =========================================================================
         if (fase == FaseInjeksi.FASE_1 || fase == FaseInjeksi.FASE_7) {
             lingkarProgres?.visibility = View.GONE
         } else {
             lingkarProgres?.visibility = View.VISIBLE
         }
+
+        // Teks dan Gambar diinjeksikan langsung tanpa kunci memori.
+        // Jika angka progres bergerak, gambar dipastikan bergerak mengikutinya.
+        indikatorVisual?.setImageResource(fase.idGambar)
+        teksStatus?.text = fase.pesan
         
         when (fase) {
             FaseInjeksi.FASE_1, FaseInjeksi.FASE_2, FaseInjeksi.FASE_4 -> {
@@ -487,7 +472,6 @@ private fun perbaruiPanelTelemetri(
         }
     }
 }
-
 
 
     override fun onConfigurationChanged(newConfig: android.content.res.Configuration) {
