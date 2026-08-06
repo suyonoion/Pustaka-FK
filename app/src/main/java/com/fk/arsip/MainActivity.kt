@@ -110,6 +110,7 @@ private var kecepatanEmaBytesPerSec: Double = 0.0
     private var isSearchMode = false 
     private var isMesinSibuk = false
     private var modeKategoriAktif = false
+    private var katupFaseVisual: FaseInjeksi? = null
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -340,11 +341,9 @@ private fun eksekusiSaringanKombinasi(kategori: String, urutTerlama: Boolean) {
     }
 }
 
-// DUA KATUP PENGUNCI (Wajib diletakkan di tingkat kelas/luar fungsi)
-private var katupVisual: FaseInjeksi? = null
-private var katupStepper: Int = -1
 
 private fun perbaruiPanelTelemetri(fase: FaseInjeksi, persentase: Int, volumeSelesai: Int, volumeTotal: Int, metrikKhusus: String = "") {
+    // 1. Ekstraksi Soket ID
     val panelUtama = findViewById<ConstraintLayout>(R.id.panelInisialisasiUtama) ?: return
     val teksStatus = findViewById<TextView>(R.id.teksStatusFase)
     val indikatorVisual = findViewById<ImageView>(R.id.indikatorVisualMesin)
@@ -352,13 +351,17 @@ private fun perbaruiPanelTelemetri(fase: FaseInjeksi, persentase: Int, volumeSel
     val teksPersen = findViewById<TextView>(R.id.teksPersentaseSentral)
     val teksTelemetri = findViewById<TextView>(R.id.teksTelemetriData)
     
-    // KATUP VISUAL UTAMA: Menahan instruksi render yang berlebihan
+    // 2. Cabut Segel Visibilitas Standby (Buka Tuas Panel)
+    // Blok ini memaksa teks yang tersembunyi di XML untuk menyala begitu mesin beroperasi
+    teksStatus.visibility = View.VISIBLE
+    teksTelemetri.visibility = View.VISIBLE
+
+    // 3. Katup Visual Utama (Anti-Flooding)
     if (katupFaseVisual != fase) {
         val teksPesan = if (fase == FaseInjeksi.FASE_6) "Mengelas blok data ke memori..." else fase.pesan
         teksStatus.text = teksPesan
         indikatorVisual.setImageResource(fase.idGambar)
         
-        // Pemantik mekanis: Mengengkol animasi jika aset berupa GIF/Animated Vector
         val komponenGambar = indikatorVisual.drawable
         if (komponenGambar is android.graphics.drawable.Animatable) {
             komponenGambar.start()
@@ -366,7 +369,7 @@ private fun perbaruiPanelTelemetri(fase: FaseInjeksi, persentase: Int, volumeSel
         katupFaseVisual = fase
     }
 
-    // REGULATOR ARUS TELEMETRI (Berjalan bebas tanpa katup)
+    // 4. Regulator Lingkar Persentase
     if (fase == FaseInjeksi.FASE_1 || fase == FaseInjeksi.FASE_7) {
         lingkarProgres.visibility = View.GONE
         teksPersen.visibility = View.GONE
@@ -375,6 +378,7 @@ private fun perbaruiPanelTelemetri(fase: FaseInjeksi, persentase: Int, volumeSel
         teksPersen.visibility = View.VISIBLE
     }
     
+    // 5. Distributor Arus Teks Berdasarkan Transmisi
     when (fase) {
         FaseInjeksi.FASE_1, FaseInjeksi.FASE_2, FaseInjeksi.FASE_4 -> {
             lingkarProgres.isIndeterminate = true
@@ -398,11 +402,16 @@ private fun perbaruiPanelTelemetri(fase: FaseInjeksi, persentase: Int, volumeSel
             lingkarProgres.progress = 100
             teksPersen.text = "100%"
             teksTelemetri.text = "Seluruh blok data berhasil dilas ke dalam memori SQLite."
-            Handler(Looper.getMainLooper()).postDelayed({ panelUtama.visibility = View.GONE }, 1500)
+            
+            // Protokol Penutupan Panel (Mundur dari Visibilitas)
+            Handler(Looper.getMainLooper()).postDelayed({ 
+                panelUtama.visibility = View.GONE 
+            }, 1500)
         }
         else -> {}
     }
 }
+
 
 
 
