@@ -70,7 +70,7 @@
         android:id="@+id/teksJudulUtama"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:text="PUSTAKA FK"
+        android:text="PUSTAKA \n Fatwa Kehidupan"
         android:textColor="#FFFFFF"
         android:textSize="22sp"
         android:textStyle="bold"
