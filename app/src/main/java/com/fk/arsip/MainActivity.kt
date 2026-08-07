@@ -110,8 +110,7 @@ private var kecepatanEmaBytesPerSec: Double = 0.0
     private var isSearchMode = false 
     private var isMesinSibuk = false
     private var modeKategoriAktif = false
-    private var katupFaseVisual: FaseInjeksi? = null
-
+    
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
@@ -341,22 +340,24 @@ private fun eksekusiSaringanKombinasi(kategori: String, urutTerlama: Boolean) {
     }
 }
 
-
 private fun perbaruiPanelTelemetri(fase: FaseInjeksi, persentase: Int, volumeSelesai: Int, volumeTotal: Int, metrikKhusus: String = "") {
-    // 1. Ekstraksi Soket ID
+    // 1. Ekstraksi Soket Reaktor Utama
     val panelUtama = findViewById<ConstraintLayout>(R.id.panelInisialisasiUtama) ?: return
-    val teksStatus = findViewById<TextView>(R.id.teksStatusFase)
     val indikatorVisual = findViewById<ImageView>(R.id.indikatorVisualMesin)
-    val lingkarProgres = findViewById<ProgressBar>(R.id.lingkarPersentaseUtama)
-    val teksPersen = findViewById<TextView>(R.id.teksPersentaseSentral)
-    val teksTelemetri = findViewById<TextView>(R.id.teksTelemetriData)
-    
-    // 2. Cabut Segel Visibilitas Standby (Buka Tuas Panel)
-    // Blok ini memaksa teks yang tersembunyi di XML untuk menyala begitu mesin beroperasi
-    teksStatus.visibility = View.VISIBLE
-    teksTelemetri.visibility = View.VISIBLE
+    val teksStatus = findViewById<TextView>(R.id.teksStatusInisialisasi)
+    val progressBar = findViewById<ProgressBar>(R.id.progressBarInisialisasi)
+    val teksDetail = findViewById<TextView>(R.id.teksDetailProgress)
+    val teksNasehat = findViewById<TextView>(R.id.teksNasehatInisialisasi)
+    val pembatas = findViewById<View>(R.id.pembatasSektor)
+    val panelStepper = findViewById<ScrollView>(R.id.panelStepperUtama)
 
-    // 3. Katup Visual Utama (Anti-Flooding)
+    // 2. Buka Paksa Katup Visibilitas (Sistem mulai bekerja)
+    teksStatus.visibility = View.VISIBLE
+    teksNasehat.visibility = View.VISIBLE
+    pembatas.visibility = View.VISIBLE
+    panelStepper.visibility = View.VISIBLE
+
+    // 3. Mekanisme Anti-Flooding Render Visual
     if (katupFaseVisual != fase) {
         val teksPesan = if (fase == FaseInjeksi.FASE_6) "Mengelas blok data ke memori..." else fase.pesan
         teksStatus.text = teksPesan
@@ -366,44 +367,42 @@ private fun perbaruiPanelTelemetri(fase: FaseInjeksi, persentase: Int, volumeSel
         if (komponenGambar is android.graphics.drawable.Animatable) {
             komponenGambar.start()
         }
+        
+        // Panggil pendorong daya stepper
+        distribusikanDayaStepper(fase)
+        
         katupFaseVisual = fase
     }
 
-    // 4. Regulator Lingkar Persentase
+    // 4. Regulator Progress Bar dan Telemetri
     if (fase == FaseInjeksi.FASE_1 || fase == FaseInjeksi.FASE_7) {
-        lingkarProgres.visibility = View.GONE
-        teksPersen.visibility = View.GONE
+        progressBar.visibility = View.GONE
+        teksDetail.visibility = View.GONE
     } else {
-        lingkarProgres.visibility = View.VISIBLE
-        teksPersen.visibility = View.VISIBLE
+        progressBar.visibility = View.VISIBLE
+        teksDetail.visibility = View.VISIBLE
     }
     
-    // 5. Distributor Arus Teks Berdasarkan Transmisi
     when (fase) {
         FaseInjeksi.FASE_1, FaseInjeksi.FASE_2, FaseInjeksi.FASE_4 -> {
-            lingkarProgres.isIndeterminate = true
-            teksPersen.text = "---"
-            teksTelemetri.text = "Sistem sedang menginisialisasi modul ..."
+            progressBar.isIndeterminate = true
+            teksDetail.text = "Inisialisasi sistem..."
         }
         FaseInjeksi.FASE_3 -> {
-            lingkarProgres.isIndeterminate = false
-            lingkarProgres.progress = persentase
-            teksPersen.text = "$persentase%"
-            teksTelemetri.text = "Arsip Status Digital Fatwa Kehidupan\n$metrikKhusus\nSistem bekerja stabil..."
+            progressBar.isIndeterminate = false
+            progressBar.progress = persentase
+            teksDetail.text = "Progres: $persentase% • $metrikKhusus"
         }
         FaseInjeksi.FASE_6 -> {
-            lingkarProgres.isIndeterminate = false
-            lingkarProgres.progress = persentase
-            teksPersen.text = "$persentase%"
-            teksTelemetri.text = "Arsip Status Digital Fatwa Kehidupan\nProses injeksi baris data ($volumeSelesai / $volumeTotal baris)\nSistem bekerja stabil..."
+            progressBar.isIndeterminate = false
+            progressBar.progress = persentase
+            teksDetail.text = "Progres: $persentase% • Baris diinjeksi: $volumeSelesai / $volumeTotal"
         }
         FaseInjeksi.FASE_7 -> {
-            lingkarProgres.isIndeterminate = false
-            lingkarProgres.progress = 100
-            teksPersen.text = "100%"
-            teksTelemetri.text = "Seluruh blok data berhasil dilas ke dalam memori SQLite."
+            progressBar.isIndeterminate = false
+            progressBar.progress = 100
+            teksDetail.text = "Operasi pengelasan tuntas."
             
-            // Protokol Penutupan Panel (Mundur dari Visibilitas)
             Handler(Looper.getMainLooper()).postDelayed({ 
                 panelUtama.visibility = View.GONE 
             }, 1500)
@@ -412,7 +411,42 @@ private fun perbaruiPanelTelemetri(fase: FaseInjeksi, persentase: Int, volumeSel
     }
 }
 
+// 5. DISTRIBUTOR ARUS STEPPER MEKANIS
+private fun distribusikanDayaStepper(fase: FaseInjeksi) {
+    // Array Soket Stepper (Nomor dan Label)
+    val soketNum = intArrayOf(R.id.numFase1, R.id.numFase2, R.id.numFase3, R.id.numFase5, R.id.numFase6, R.id.numFase7)
+    val soketLbl = intArrayOf(R.id.lblFase1, R.id.lblFase2, R.id.lblFase3, R.id.lblFase5, R.id.lblFase6, R.id.lblFase7)
+    
+    // Pemetaan Fase Injeksi ke Indeks Array Stepper (0 hingga 5)
+    val indeksAktif = when (fase) {
+        FaseInjeksi.FASE_1 -> 0
+        FaseInjeksi.FASE_2 -> 1
+        FaseInjeksi.FASE_3, FaseInjeksi.FASE_4 -> 2 // Fase 4 (Gagal) menahan di rel ke-3
+        FaseInjeksi.FASE_5 -> 3
+        FaseInjeksi.FASE_6 -> 4
+        FaseInjeksi.FASE_7 -> 5
+        else -> -1
+    }
 
+    val warnaMati = android.graphics.Color.parseColor("#8892B0")
+    val warnaNyala = android.graphics.Color.parseColor("#64FFDA") // Hijau cyan identitas mesin
+
+    // Pompa daya ke sektor yang aktif atau sudah dilewati
+    for (i in soketNum.indices) {
+        val numView = findViewById<TextView>(soketNum[i])
+        val lblView = findViewById<TextView>(soketLbl[i])
+        
+        if (numView != null && lblView != null) {
+            if (i <= indeksAktif) {
+                numView.setTextColor(warnaNyala)
+                lblView.setTextColor(warnaNyala)
+            } else {
+                numView.setTextColor(warnaMati)
+                lblView.setTextColor(warnaMati)
+            }
+        }
+    }
+}
 
 
     override fun onConfigurationChanged(newConfig: android.content.res.Configuration) {
