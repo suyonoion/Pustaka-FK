@@ -23,6 +23,8 @@ import android.widget.FrameLayout
 import android.widget.TextView
 import android.widget.Toast
 import android.widget.ProgressBar
+import android.widget.ScrollView
+import android.view.View
 import androidx.appcompat.widget.SearchView
 import androidx.activity.OnBackPressedCallback
 import androidx.appcompat.app.AppCompatActivity
