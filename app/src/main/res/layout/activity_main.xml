@@ -291,7 +291,7 @@
     android:clipChildren="false" />
         </FrameLayout>
         <!-- Layar Kaca Pengaman (Letakkan di atas pelat utama) -->
-        <include layout="@layout/layout_inisialisasi_mesin" />
+        <include layout="@layout/layout_inisialisasi_mesin" android:layout_gravity="center"/>
     </FrameLayout>
 
     <!-- KOMPARTEMEN 2: LACI NAVIGASI -->
@@ -412,11 +412,11 @@
                     android:background="?android:attr/selectableItemBackground"/>
                 
                 <TextView 
-                    android:id="@+id/menuYayasan" 
+                    android:id="@+id/menuGammaLocking" 
                     android:layout_width="match_parent" 
                     android:layout_height="wrap_content" 
-                    android:text="Yayasan" 
-                    android:drawableStart="@android:drawable/ic_menu_manage" 
+                    android:text="Gamma Locking" 
+                    android:drawableStart="@drawable/ic_gamma_locking" 
                     android:drawablePadding="12dp" 
                     android:textColor="#212121" 
                     android:textSize="13sp" 

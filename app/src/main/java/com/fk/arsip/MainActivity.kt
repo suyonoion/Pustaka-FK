@@ -899,6 +899,8 @@ private fun pantauTekananUnduhan(idUnduhan: Long, downloadManager: DownloadManag
         var waktuTerakhir = System.currentTimeMillis()
         var byteTerakhir = 0L
         
+        // BUFFER PENAHAN FLUKTUASI (Mencegah kedip kedip)
+        var hitunganArusNol = 0
         var tangkiMemoriTelemetri = "Membuka katup aliran data..."
         
         while (isMengunduh) {
@@ -924,7 +926,12 @@ private fun pantauTekananUnduhan(idUnduhan: Long, downloadManager: DownloadManag
                 val status = cursor.getInt(statusIndex)
                 
                 if (status == DownloadManager.STATUS_SUCCESSFUL) {
-                    isMengunduh = false 
+                    isMengunduh = false
+                    // PENYELESAIAN MASALAH 2: Sakelar otomatis ke Fase 5 dan PICU PABRIK DATA
+                    withContext(Dispatchers.Main) {
+                        perbaruiPanelTelemetri(FaseInjeksi.FASE_5, 0, 0, 0)
+                        eksekusiPabrikData() // Pemicu wajib agar proses pengelasan SQLite berjalan!
+                    }
                 } else if (status == DownloadManager.STATUS_FAILED) {
                     isMengunduh = false
                     withContext(Dispatchers.Main) {
@@ -954,17 +961,17 @@ private fun pantauTekananUnduhan(idUnduhan: Long, downloadManager: DownloadManag
                                 val mbTotal = String.format("%.1f", total / (1024.0 * 1024.0))
                                 
                                 if (kecepatanBps > 0) {
+                                    // Reset hitungan karena arus data masuk normal
+                                    hitunganArusNol = 0
                                     val sisaByte = total - downloaded
                                     val sisaDetik = sisaByte / kecepatanBps
                                     
-                                    // TRANSFORMATOR WAKTU DINAMIS (Gubernur Shift Gigi)
                                     val teksWaktu = when {
                                         sisaDetik >= 3600 -> "${sisaDetik / 3600}j ${(sisaDetik % 3600) / 60}m"
                                         sisaDetik >= 60 -> "${sisaDetik / 60}m ${sisaDetik % 60}d"
                                         else -> "$sisaDetik detik"
                                     }
                                     
-                                    // TRANSFORMATOR KECEPATAN DINAMIS (Katup Otomatis)
                                     val konversiKbps = kecepatanBps / 1024.0
                                     val konversiMbps = konversiKbps / 1024.0
                                     val teksKecepatan = if (konversiMbps < 1.0) {
@@ -975,7 +982,12 @@ private fun pantauTekananUnduhan(idUnduhan: Long, downloadManager: DownloadManag
                                     
                                     tangkiMemoriTelemetri = "$teksWaktu tersisa • $teksKecepatan | $mbSelesai MB / $mbTotal MB"
                                 } else {
-                                    tangkiMemoriTelemetri = "Menunggu dorongan arus... • 0 Kbps | $mbSelesai MB / $mbTotal MB"
+                                    // PENYELESAIAN MASALAH 1: Toleransi 3 detik sebelum ganti teks
+                                    hitunganArusNol++
+                                    if (hitunganArusNol >= 3) {
+                                        tangkiMemoriTelemetri = "Menunggu dorongan arus... • 0 Kbps | $mbSelesai MB / $mbTotal MB"
+                                    }
+                                    // Jika belum 3 detik, tangkiMemoriTelemetri TIDAK DIUBAH (tetap teks terakhir)
                                 }
                             } else if (byteTerakhir == 0L && downloaded > 0) {
                                 val mbSelesai = String.format("%.1f", downloaded / (1024.0 * 1024.0))
