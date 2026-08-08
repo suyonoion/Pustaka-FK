@@ -406,10 +406,14 @@ private fun perbaruiPanelTelemetri(fase: FaseInjeksi, persentase: Int, volumeSel
             teksDetail.text = "Progres: $persentase% • $metrikKhusus"
         }
         FaseInjeksi.FASE_5 -> {
-            // Blok penampung baru untuk Fase 5 saat mesin restart dari riwayat (Recent Apps)
-            progressBar.isIndeterminate = true
-            teksDetail.text = "Mengekstrak dan mempersiapkan cetak biru data..."
+            lingkarProgres.isIndeterminate = true
+            teksPersen.text = "---"
+            teksTelemetri.text = "Membaca kargo JSON dan mengkalibrasi cetak biru SQLite...\nMesin injeksi sedang dipanaskan."
+            
+            // Pompa daya ke rel stepper agar nomor 1 sampai 4 menyala hijau
+            distribusikanDayaStepper(FaseInjeksi.FASE_5)
         }
+
         FaseInjeksi.FASE_6 -> {
             progressBar.isIndeterminate = false
             progressBar.progress = persentase
@@ -1418,6 +1422,7 @@ private fun aturKunciDrawer(kunci: Boolean) {
         }
     }
 }
+
 
 }
 

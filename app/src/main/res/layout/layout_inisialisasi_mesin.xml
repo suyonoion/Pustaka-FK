@@ -9,31 +9,30 @@
     android:background="#0A192F"
     android:elevation="10dp">
 
-    <!-- HEADER TITLE -->
-    <TextView
-        android:id="@+id/teksJudulUtama"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:text="@string/nama_app"
-        android:textColor="@color/text_on_dark"
-        android:textSize="20sp"
-        android:textStyle="bold"
-        android:gravity="center"
-        android:paddingTop="16dp"
-        android:paddingBottom="12dp"
-        app:layout_constraintTop_toTopOf="parent" />
+<!-- REAKTOR VISUAL UTAMA (RATA TENGAH VERTIKAL & HORIZONTAL) -->
+<TextView
+    android:id="@+id/teksJudulAplikasi"
+    android:layout_width="wrap_content"
+    android:layout_height="wrap_content"
+    android:text="Pustaka FK"
+    android:textColor="#FFFFFF"
+    android:textSize="20sp"
+    android:textStyle="bold"
+    app:layout_constraintVertical_bias="0.4"
+    app:layout_constraintTop_toTopOf="parent"
+    app:layout_constraintBottom_toTopOf="@id/teksStatusInisialisasi"
+    app:layout_constraintStart_toStartOf="parent"
+    app:layout_constraintEnd_toEndOf="parent" />
 
-    <!-- SEKTOR REAKTOR VISUAL UTAMA (SISI ATAS) -->
-    <ImageView
-        android:id="@+id/indikatorVisualMesin"
-        android:layout_width="120dp"
-        android:layout_height="120dp"
-        android:src="@drawable/img_1"
-        app:layout_constraintTop_toBottomOf="@id/teksJudulUtama"
-        app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintEnd_toEndOf="parent" />
-
-      <!-- ... (Sektor Reaktor Visual Utama ke atas biarkan utuh) ... -->
+<ImageView
+    android:id="@+id/indikatorVisualMesin"
+    android:layout_width="120dp"
+    android:layout_height="120dp"
+    android:layout_marginTop="16dp"
+    android:src="@drawable/logo_animasi" 
+    app:layout_constraintTop_toBottomOf="@id/teksJudulAplikasi"
+    app:layout_constraintStart_toStartOf="parent"
+    app:layout_constraintEnd_toEndOf="parent" />
 
     <TextView
         android:id="@+id/teksStatusInisialisasi"

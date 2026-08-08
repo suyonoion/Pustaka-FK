@@ -19,7 +19,7 @@ abstract class ArsipDatabase : RoomDatabase() {
                 val rakitanMesin = Room.databaseBuilder(
                     konteks.applicationContext,
                     ArsipDatabase::class.java,
-                    "arsip_zuhri_formalism.db"
+                    "arsip_fatwakehidupan.db"
                 )
                 .fallbackToDestructiveMigration() 
                 .build()
