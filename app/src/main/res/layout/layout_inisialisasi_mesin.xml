@@ -7,7 +7,8 @@
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     android:background="#0A192F"
-    android:elevation="10dp">
+    android:elevation="10dp"
+    android:gravity="center">
 
 <!-- REAKTOR VISUAL UTAMA (RATA TENGAH VERTIKAL & HORIZONTAL) -->
 <TextView
