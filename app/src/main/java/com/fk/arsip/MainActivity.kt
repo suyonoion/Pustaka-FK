@@ -406,11 +406,9 @@ private fun perbaruiPanelTelemetri(fase: FaseInjeksi, persentase: Int, volumeSel
             teksDetail.text = "Progres: $persentase% • $metrikKhusus"
         }
         FaseInjeksi.FASE_5 -> {
-            lingkarProgres.isIndeterminate = true
-            teksPersen.text = "---"
-            teksTelemetri.text = "Membaca kargo JSON dan mengkalibrasi cetak biru SQLite...\nMesin injeksi sedang dipanaskan."
-            
-            // Pompa daya ke rel stepper agar nomor 1 sampai 4 menyala hijau
+            progressBar.isIndeterminate = true
+            progressBar.progress = persentase
+            teksDetail.text = "Membaca kargo JSON dan mengkalibrasi cetak biru SQLite...\nMesin injeksi sedang dipanaskan."
             distribusikanDayaStepper(FaseInjeksi.FASE_5)
         }
 
