@@ -384,6 +384,7 @@
                     android:textSize="13sp" 
                     android:paddingVertical="8dp" 
                     android:paddingHorizontal="16dp" 
+                    app:tint="#004D40"
                     android:background="?android:attr/selectableItemBackground"/>
 
                 <TextView 
@@ -397,6 +398,7 @@
                     android:textSize="13sp" 
                     android:paddingVertical="8dp" 
                     android:paddingHorizontal="16dp" 
+                    app:tint="#004D40"
                     android:background="?android:attr/selectableItemBackground"/>
 
                 <TextView 
@@ -410,11 +412,12 @@
                     android:textSize="13sp" 
                     android:paddingVertical="8dp" 
                     android:paddingHorizontal="16dp" 
+                    app:tint="#004D40"
                     android:background="?android:attr/selectableItemBackground"/>
                 
                 <TextView 
                     android:id="@+id/menuGammaLocking" 
-                    android:layout_width="wrap_content"
+                    android:layout_width="match_parent"
                     android:layout_height="wrap_content" 
                     android:text="Gamma Locking" 
                     android:drawableStart="@drawable/ic_gamma_locking" 
@@ -437,6 +440,7 @@
                     android:textSize="13sp" 
                     android:paddingVertical="8dp" 
                     android:paddingHorizontal="16dp" 
+                    app:tint="#004D40"
                     android:background="?android:attr/selectableItemBackground"/>
                 <View 
                     android:layout_width="match_parent" 
