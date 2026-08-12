@@ -1431,7 +1431,7 @@ private fun aturKunciDrawer(kunci: Boolean) {
 
     
 // 3. FUNGSI UNTUK MENJALANKAN ROTASI TEKS SECARA OTOMATIS
-private fun jalankanRotasiNasehat(TeksNasehat: TextView) {
+private fun jalankanRotasiNasehat(teksNasehat: TextView) {
     jobRotasiNasehat?.cancel() // Hentikan rotasi lama jika ada
     jobRotasiNasehat = lifecycleScope.launch {
         var indeks = 0
