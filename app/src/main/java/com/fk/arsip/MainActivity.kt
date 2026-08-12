@@ -393,40 +393,45 @@ private fun perbaruiPanelTelemetri(fase: FaseInjeksi, persentase: Int, volumeSel
         progressBar.visibility = View.VISIBLE
         teksDetail.visibility = View.VISIBLE
     }
-    
+    if (jobRotasiNasehat == null || !jobRotasiNasehat!!.isActive) {
+        jalankanRotasiNasehat(TeksNasehat)
+    }
+
     // 5. Distribusi Arus Data ke Telemetri (Koreksi Malfungsi Gambar 2)
     when (fase) {
         FaseInjeksi.FASE_1, FaseInjeksi.FASE_2, FaseInjeksi.FASE_4 -> {
             progressBar.isIndeterminate = true
-            teksDetail.text = "Inisialisasi sistem..."
+            teksStatus.text = "Inisialisasi sistem..."
         }
         FaseInjeksi.FASE_3 -> {
             progressBar.isIndeterminate = false
             progressBar.progress = persentase
-            teksDetail.text = "Progres: $persentase% • $metrikKhusus"
+            teksStatus.text = metrikKhusus
         }
         FaseInjeksi.FASE_5 -> {
             progressBar.isIndeterminate = true
             progressBar.progress = persentase
-            teksDetail.text = "Membaca kargo JSON dan mengkalibrasi cetak biru SQLite...\nMesin injeksi sedang dipanaskan."
+            teksStatus.text = "Membaca kargo JSON dan mengkalibrasi cetak biru SQLite...\nMesin injeksi sedang dipanaskan."
             distribusikanDayaStepper(FaseInjeksi.FASE_5)
         }
 
         FaseInjeksi.FASE_6 -> {
             progressBar.isIndeterminate = false
             progressBar.progress = persentase
-            teksDetail.text = "Progres: $persentase% • Baris diinjeksi: $volumeSelesai / $volumeTotal"
+            teksStatus.text = "Progres: $persentase% • Baris diinjeksi: $volumeSelesai / $volumeTotal"
         }
         FaseInjeksi.FASE_7 -> {
             progressBar.isIndeterminate = false
             progressBar.progress = 100
-            teksDetail.text = "Operasi pengelasan tuntas."
+            teksStatus.text = "Operasi pengelasan tuntas."
             
             Handler(Looper.getMainLooper()).postDelayed({ 
                 panelUtama.visibility = View.GONE 
             }, 1500)
         }
-        else -> {}
+        else -> {
+          
+        }
     }
 }
 
@@ -1422,5 +1427,23 @@ private fun aturKunciDrawer(kunci: Boolean) {
 }
 
 
+    
+// 3. FUNGSI UNTUK MENJALANKAN ROTASI TEKS SECARA OTOMATIS
+private fun jalankanRotasiNasehat(TeksNasehat: TextView) {
+    jobRotasiNasehat?.cancel() // Hentikan rotasi lama jika ada
+    jobRotasiNasehat = lifecycleScope.launch {
+        var indeks = 0
+        while (isMesinSibuk) {
+            TeksNasehat.text = KoleksiNasehat.DAFTAR_TEKS[indeks]
+            indeks = (indeks + 1) % KoleksiNasehat.DAFTAR_TEKS.size
+            delay(6000) // Berganti setiap 6 detik
+        }
+    }
+}
+
+private fun hentikanRotasiNasehat() {
+    jobRotasiNasehat?.cancel()
+    jobRotasiNasehat = null
+}
 }
 

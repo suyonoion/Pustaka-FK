@@ -9,63 +9,7 @@
     android:background="#004D40"
     android:elevation="10dp">
 
-    <!-- SEKTOR REAKTOR UTAMA -->
-    <ImageView
-        android:id="@+id/indikatorVisualMesin"
-        android:layout_width="160dp"
-        android:layout_height="160dp"
-        android:src="@drawable/img_1"
-        app:layout_constraintTop_toTopOf="parent"
-        app:layout_constraintBottom_toBottomOf="parent"
-        app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintEnd_toEndOf="parent"
-        app:layout_constraintVertical_bias="0.25" /> 
-
-    <!-- KATUP ISOLATOR -->
-    <ProgressBar
-        android:id="@+id/progressBarInisialisasi"
-        style="?android:attr/progressBarStyleHorizontal"
-        android:layout_width="150dp"
-        android:layout_height="150dp"
-        android:progressDrawable="@drawable/desain_lingkar_progres"
-        android:max="100"
-        android:progress="0"
-        android:visibility="visible" 
-        app:layout_constraintTop_toBottomOf="@id/indikatorVisualMesin"
-        app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintEnd_toEndOf="parent"
-        android:layout_marginTop="32dp"/>
-
-    <TextView
-        android:id="@+id/teksDetailProgress"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:text="0%"
-        android:textColor="#E0F2F1"
-        android:textSize="32sp"
-        android:textStyle="bold"
-        android:visibility="visible"
-        app:layout_constraintTop_toTopOf="@id/progressBarInisialisasi"
-        app:layout_constraintBottom_toBottomOf="@id/progressBarInisialisasi"
-        app:layout_constraintStart_toStartOf="@id/progressBarInisialisasi"
-        app:layout_constraintEnd_toEndOf="@id/progressBarInisialisasi"/>
-
-    <!-- TEKS STATUS FASE (Dipindahkan ke Pusat Gravitasi) -->
-    <TextView
-        android:id="@+id/teksStatusFase"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:text="teks status fase"
-        android:textColor="#FFFFFF"
-        android:textSize="14sp"
-        android:textStyle="bold"
-        android:gravity="center"
-        app:layout_constraintTop_toBottomOf="@id/progressBarInisialisasi"
-        app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintEnd_toEndOf="parent"
-        android:layout_marginTop="20dp" />
-
-    <!-- IDENTITAS TELEMETRI -->
+    <!-- JUDUL -->
     <TextView
         android:id="@+id/teksJudulAplikasi"
         android:layout_width="match_parent"
@@ -76,11 +20,12 @@
         android:textStyle="bold"
         android:letterSpacing="0.06"
         android:gravity="center"
-        app:layout_constraintTop_toBottomOf="@id/teksStatusFase"
+        android:layout_marginTop="32dp"
+        app:layout_constraintTop_toTopOf="parent"
         app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintEnd_toEndOf="parent"
-        android:layout_marginTop="8dp"/>
+        app:layout_constraintEnd_toEndOf="parent"/>
 
+    <!-- SUB JUDUL -->
     <TextView
         android:id="@+id/teksStatusInisialisasi"
         android:layout_width="match_parent"
@@ -89,11 +34,52 @@
         android:textColor="#80CBC4" 
         android:textSize="13sp"
         android:gravity="center"
+        android:layout_marginTop="6dp"
         app:layout_constraintTop_toBottomOf="@id/teksJudulAplikasi"
         app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintEnd_toEndOf="parent"/>
+
+    <!-- GAMBAR MESIN -->
+    <ImageView
+        android:id="@+id/indikatorVisualMesin"
+        android:layout_width="160dp"
+        android:layout_height="160dp"
+        android:src="@drawable/img_1"
+        app:layout_constraintTop_toBottomOf="@id/teksStatusInisialisasi"
+        app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintEnd_toEndOf="parent"
-        android:layout_marginTop="6dp"/>
-      
+        android:layout_marginTop="24dp" /> 
+
+    <!-- PROGRESS LINGKARAN -->
+    <ProgressBar
+        android:id="@+id/progressBarInisialisasi"
+        style="?android:attr/progressBarStyleHorizontal"
+        android:layout_width="150dp"
+        android:layout_height="150dp"
+        android:progressDrawable="@drawable/desain_lingkar_progres"
+        android:max="100"
+        android:progress="0"
+        android:visibility="gone" 
+        app:layout_constraintTop_toBottomOf="@id/indikatorVisualMesin"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintEnd_toEndOf="parent"
+        android:layout_marginTop="32dp"/>
+
+    <!-- TEKS % DI TENGAH -->
+    <TextView
+        android:id="@+id/teksDetailProgress"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="0%"
+        android:textColor="#E0F2F1"
+        android:textSize="32sp"
+        android:textStyle="bold"
+        android:visibility="gone"
+        app:layout_constraintTop_toTopOf="@id/progressBarInisialisasi"
+        app:layout_constraintBottom_toBottomOf="@id/progressBarInisialisasi"
+        app:layout_constraintStart_toStartOf="@id/progressBarInisialisasi"
+        app:layout_constraintEnd_toEndOf="@id/progressBarInisialisasi"/>
+
         <!-- TEKS NASEHAT DINAMIS -->
     <TextView
         android:id="@+id/teksNasehatInisialisasi"
