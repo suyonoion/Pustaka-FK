@@ -59,22 +59,24 @@ data class TitikNavigasi(
 )
 
 object KoleksiNasehat {
-    val TEKS_1 = "Mencari ilmu adalah proses menata pemahaman, sebagaimana sistem ini sedang menata data untuk Anda."
-    val TEKS_2 = "Proses ini hanya dilakukan 1 kali di awal agar aplikasi bisa diakses secara cepat dan offline tanpa internet."
-    val TEKS_3 = "Mohon tidak menutup aplikasi saat penyusunan database berlangsung agar data tidak rusak."
-    val TEKS_4 = "Kesabaran dalam menunggu adalah bagian dari adab menuntut ilmu."
-    val TEKS_5 = "Setiap data yang tersusun rapi akan memudahkan Anda menemukan jawaban dengan cepat."
+    val DAFTAR_TEKS = listOf(
+        "Mencari ilmu adalah proses menata pemahaman, sebagaimana sistem ini sedang menata data untuk Anda.",
+        "Proses ini hanya dilakukan 1 kali di awal agar aplikasi bisa diakses secara cepat dan offline tanpa internet.",
+        "Kesabaran dalam menunggu adalah bagian dari adab menuntut ilmu.",
+        "Setiap data yang tersusun rapi akan memudahkan Anda menemukan jawaban dengan cepat.",
+        "Mohon tidak menutup aplikasi saat penyusunan database berlangsung agar data tidak rusak."
+    )
 }
 
 
 enum class FaseInjeksi(val pesan: String, val idGambar: Int) {
-    FASE_1("Memulai aplikasi pertama kali...", R.drawable.img_1),
-    FASE_2("Menghubungkan ke server...", R.drawable.img_2),
-    FASE_3("Mengunduh semua data status...", R.drawable.img_3),
-    FASE_4("Menunggu jaringan stabil...", R.drawable.img_4), 
-    FASE_5("Mengelas blok data ke memori...", R.drawable.img_5),
-    FASE_6("Injeksi baris data ke SQLite...", R.drawable.img_6),
-    FASE_7("Proses selesai.", R.drawable.img_7)
+    FASE_1("Mempersiapkan Jalur Data", R.drawable.img_1),
+    FASE_2("Menghubungkan ke Server Data", R.drawable.img_2),
+    FASE_3("Mengunduh Arsip Status Fatwa Kehidupan", R.drawable.img_3),
+    FASE_4("Koneksi Terputus, Cek Koneksi ...", R.drawable.img_4), 
+    FASE_5("Membongkar & Menyusun Data...", R.drawable.img_5),
+    FASE_6("Checking Keutuhan Data & Injeksi baris data ke SQLite...", R.drawable.img_6),
+    FASE_7("Proses selesai. Data Siap Digunakan.", R.drawable.img_7)
 }
 
 
@@ -394,7 +396,7 @@ private fun perbaruiPanelTelemetri(fase: FaseInjeksi, persentase: Int, volumeSel
         teksDetail.visibility = View.VISIBLE
     }
     if (jobRotasiNasehat == null || !jobRotasiNasehat!!.isActive) {
-        jalankanRotasiNasehat(TeksNasehat)
+        jalankanRotasiNasehat(teksNasehat)
     }
 
     // 5. Distribusi Arus Data ke Telemetri (Koreksi Malfungsi Gambar 2)
@@ -1434,7 +1436,7 @@ private fun jalankanRotasiNasehat(TeksNasehat: TextView) {
     jobRotasiNasehat = lifecycleScope.launch {
         var indeks = 0
         while (isMesinSibuk) {
-            TeksNasehat.text = KoleksiNasehat.DAFTAR_TEKS[indeks]
+            teksNasehat.text = KoleksiNasehat.DAFTAR_TEKS[indeks]
             indeks = (indeks + 1) % KoleksiNasehat.DAFTAR_TEKS.size
             delay(6000) // Berganti setiap 6 detik
         }
