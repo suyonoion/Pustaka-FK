@@ -38,33 +38,32 @@
             app:layout_constraintEnd_toEndOf="parent"/>
 
         <!-- PROGRESS BAR -->
-        <ProgressBar
-            android:id="@+id/progressBarInisialisasi"
-            style="?android:attr/progressBarStyleHorizontal"
-            android:layout_width="0dp"
-            android:layout_height="8dp"
-            android:layout_marginTop="20dp"
-            android:max="100"
-            android:progress="0"
-            android:progressDrawable="@drawable/progress_bar_toska"
-            app:layout_constraintTop_toBottomOf="@id/indikatorVisualMesin"
-            app:layout_constraintStart_toStartOf="parent"
-            app:layout_constraintEnd_toEndOf="parent"
-            android:layout_marginHorizontal="16dp"/>
+       <ProgressBar
+    android:id="@+id/progressBarInisialisasi"
+    style="?android:attr/progressBarStyleHorizontal"
+    android:layout_width="0dp"
+    android:layout_height="8dp"
+    android:layout_marginHorizontal="24dp"
+    android:max="100"
+    android:progress="0"
+    android:progressDrawable="@drawable/progress_bar_toska"
+    app:layout_constraintTop_toBottomOf="@id/indikatorVisualMesin"
+    app:layout_constraintStart_toStartOf="parent"
+    app:layout_constraintEnd_toEndOf="parent"/>
 
         <!-- TEKS % DI ATAS BAR -->
-        <TextView
-            android:id="@+id/teksDetailProgress"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:text="0%"
-            android:textSize="20sp"
-            android:textStyle="bold"
-            android:textColor="#FFFFFF"
-            app:layout_constraintBottom_toBottomOf="@id/progressBarInisialisasi"
-            app:layout_constraintTop_toTopOf="@id/progressBarInisialisasi"
-            app:layout_constraintEnd_toEndOf="@id/progressBarInisialisasi"
-            android:layout_marginEnd="8dp"/>
+       <TextView
+    android:id="@+id/teksDetailProgress"
+    android:layout_width="wrap_content"
+    android:layout_height="wrap_content"
+    android:text="0%"
+    android:textSize="18sp"
+    android:textStyle="bold"
+    android:textColor="#FFFFFF"
+    app:layout_constraintBottom_toBottomOf="@id/progressBarInisialisasi"  
+    app:layout_constraintTop_toTopOf="@id/progressBarInisialisasi"        
+    app:layout_constraintEnd_toEndOf="@id/progressBarInisialisasi"        
+    android:layout_marginEnd="10dp"/>
 
         <!-- TEKS STATUS -->
         <TextView
