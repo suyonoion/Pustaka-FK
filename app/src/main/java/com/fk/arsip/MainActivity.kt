@@ -70,14 +70,18 @@ object KoleksiNasehat {
 }
 
 
-enum class FaseInjeksi(val pesan: String, val idGambar: Int) {
-    FASE_1("Mempersiapkan Jalur Data", R.drawable.img_1),
-    FASE_2("Menghubungkan ke Server Data", R.drawable.img_2),
-    FASE_3("Mengunduh Arsip Status Fatwa Kehidupan", R.drawable.img_3),
-    KONEKSI_BURUK("Koneksi Terputus, Cek Koneksi ...", R.drawable.koneksi_buruk), 
-    FASE_4("Membongkar & Menyusun Data...", R.drawable.img_4),
-    FASE_5("Checking Keutuhan Data & Injeksi baris data ke SQLite...", R.drawable.img_5),
-    FASE_6("Proses selesai. Data Siap Digunakan.", R.drawable.img_6)
+enum class FaseInjeksi(
+    val pesan: String, 
+    val idGambar: Int,
+    val isIndeterminate: Boolean = true // default muter2
+) {
+    FASE_1("Mempersiapkan Jalur Data", R.drawable.img_1, isIndeterminate = true),
+    FASE_2("Menghubungkan ke Server Data", R.drawable.img_2, isIndeterminate = true),
+    FASE_3("Mengunduh Arsip Status Fatwa Kehidupan", R.drawable.img_3, isIndeterminate = false), // ini pake %
+    KONEKSI_BURUK("Koneksi Terputus, Cek Koneksi ...", R.drawable.koneksi_buruk, isIndeterminate = true), 
+    FASE_4("Membongkar & Menyusun Data...", R.drawable.img_4, isIndeterminate = true),
+    FASE_5("Checking Keutuhan Data & Injeksi baris data ke SQLite...", R.drawable.img_5, isIndeterminate = false), // ini pake %
+    FASE_6("Proses selesai. Data Siap Digunakan.", R.drawable.img_6, isIndeterminate = false) // ini 100%
 }
 
 
@@ -232,7 +236,39 @@ private var kecepatanEmaBytesPerSec: Double = 0.0
         aktifkanSirkuitPencarian()
         eksekusiPabrikData()
     }
+    fun applyFase(fase: FaseInjeksi, persentase: Int = 0, teksOverride: String? = null) {
+    if (katupFaseVisual == fase && teksOverride == null) return
+    katupFaseVisual = fase
+
+    // 1. Setting ProgressBar dari enum
+    progressBar.isIndeterminate = fase.isIndeterminate
     
+    // 2. Kalau bukan muter2, baru set progress nya
+    if (!fase.isIndeterminate) {
+        progressBar.progress = when (fase) {
+            FaseInjeksi.FASE_6 -> 100 // FASE_6 selalu 100%
+            else -> persentase
+        }
+    }
+
+    // 3. Setting Teks. Pakai override kalau ada, kalau gak ada ambil dari enum
+    teksStatus.text = teksOverride ?: fase.pesan
+    
+    // 4. Setting Gambar
+    indikatorVisual.setImageResource(fase.idGambar)
+    (indikatorVisual.drawable as? android.graphics.drawable.Animatable)?.start()
+
+    // 5. Logic khusus yang gak bisa di enum
+    when (fase) {
+        FaseInjeksi.FASE_4 -> distribusikanDayaStepper(FaseInjeksi.FASE_5)
+        FaseInjeksi.FASE_6 -> {
+            Handler(Looper.getMainLooper()).postDelayed({ 
+                panelUtama.visibility = View.GONE 
+            }, 1500)
+        }
+        else -> {}
+    }
+}
     private fun bukaKatupDialogFilter() {
     if (isMesinSibuk) {
         Toast.makeText(this, "Mesin sedang bekerja, tahan instruksi.", Toast.LENGTH_SHORT).show()
@@ -324,108 +360,71 @@ private fun eksekusiSaringanKombinasi(kategori: String, urutTerlama: Boolean) {
 }
 
 
-private fun perbaruiPanelTelemetri(fase: FaseInjeksi, persentase: Int, volumeSelesai: Int, volumeTotal: Int, metrikKhusus: String = "") {
-    // 1. Ekstraksi Soket Reaktor Utama
-    val panelUtama = findViewById<ConstraintLayout>(R.id.panelInisialisasiUtama) ?: return
+private fun perbaruiPanelTelemetri(fase: FaseInjeksi, persentase: Int = 0, volumeSelesai: Int = 0, volumeTotal: Int = 0, metrikKhusus: String = "") {
+    
+    // 1. Ambil semua view
     val indikatorVisual = findViewById<ImageView>(R.id.indikatorVisualMesin)
     val teksStatus = findViewById<TextView>(R.id.teksStatusInisialisasi)
     val progressBar = findViewById<ProgressBar>(R.id.progressBarInisialisasi)
-    val teksDetail = findViewById<TextView>(R.id.teksDetailProgress)
+    val teksDetail = findViewById<TextView>(R.id.teksDetailProgress) // ini dia
     val teksNasehat = findViewById<TextView>(R.id.teksNasehatInisialisasi)
     val pembatas = findViewById<View>(R.id.pembatasSektor)
     val panelStepper = findViewById<ScrollView>(R.id.panelStepperUtama)
 
-    // 2. Buka Paksa Katup Visibilitas
-    teksStatus.visibility = View.VISIBLE
-    teksNasehat.visibility = View.VISIBLE
-    pembatas.visibility = View.VISIBLE
-    panelStepper.visibility = View.VISIBLE
+    if (katupFaseVisual == fase) return // cegah kedobel
+    katupFaseVisual = fase
 
-    // 3. Mekanisme Sinkronisasi Judul dan Stepper (Koreksi Malfungsi Gambar 1)
-    if (katupFaseVisual != fase) {
-        // Label disolder langsung ke fase absolut, tidak ada lagi override yang menyilang
-        val teksPesan = when (fase) {
-            FaseInjeksi.FASE_1 -> "Memulai aplikasi pertama kali..."
-            FaseInjeksi.FASE_2 -> "Menghubungkan ke server..."
-            FaseInjeksi.FASE_3 -> "Mengunduh data status..."
-            FaseInjeksi.KONEKSI_BURUK -> "Koneksi terputus / Gagal..."
-            FaseInjeksi.FASE_4 -> "Mengelas blok data ke memori..."
-            FaseInjeksi.FASE_5 -> "Injeksi baris data ke SQLite..."
-            FaseInjeksi.FASE_6 -> "Proses selesai..."
-            else -> fase.pesan 
-        }
-        
-        teksStatus.text = teksPesan
-        indikatorVisual.setImageResource(fase.idGambar)
-        
-        val komponenGambar = indikatorVisual.drawable
-        if (komponenGambar is android.graphics.drawable.Animatable) {
-            komponenGambar.start()
-        }
-        distribusikanDayaStepper(fase)
-        katupFaseVisual = fase
-    }
-
-    // 4. Regulator Progress Bar
-    if (fase == FaseInjeksi.FASE_1 || fase == FaseInjeksi.FASE_6) {
-    teksStatus.visibility = View.GONE
-    teksNasehat.visibility = View.GONE
-    pembatas.visibility = View.GONE
-    panelStepper.visibility = View.GONE
-
+    // 2. Atur ProgressBar: muter2 atau pake %
+    progressBar.isIndeterminate = fase.isIndeterminate
+    
+    if (fase.isIndeterminate) {
+        // Mode muter2: sembunyikan teks %
+        progressBar.progress = 0
+        teksDetail.visibility = View.GONE
     } else {
-    teksStatus.visibility = View.VISIBLE
-    teksNasehat.visibility = View.VISIBLE
-    pembatas.visibility = View.VISIBLE
-    panelStepper.visibility = View.VISIBLE
-    }
-    if (jobRotasiNasehat == null || !jobRotasiNasehat!!.isActive) {
-        jalankanRotasiNasehat(teksNasehat)
+        // Mode %: tampilkan teks % dan set progress
+        progressBar.progress = when(fase) {
+            FaseInjeksi.FASE_6 -> 100
+            else -> persentase
+        }
+        teksDetail.visibility = View.VISIBLE
+        teksDetail.text = "${progressBar.progress}%" // INI KUNCINYA
     }
 
-    // 5. Distribusi Arus Data ke Telemetri
+    // 3. Atur Visibilitas panel
+    val showPanel = fase != FaseInjeksi.FASE_1 && fase != FaseInjeksi.FASE_6
+    teksStatus.visibility = if(showPanel) View.VISIBLE else View.GONE
+    progressBar.visibility = if(showPanel) View.VISIBLE else View.GONE
+    teksDetail.visibility = if(showPanel && !fase.isIndeterminate) View.VISIBLE else View.GONE // detail ikut progress
+    teksNasehat.visibility = if(showPanel) View.VISIBLE else View.GONE
+    pembatas.visibility = if(showPanel) View.VISIBLE else View.GONE
+    panelStepper.visibility = if(showPanel) View.VISIBLE else View.GONE
+
+    // 4. Set teks dan gambar dari enum
+    teksStatus.text = when(fase) { // override untuk yg dinamis
+        FaseInjeksi.FASE_3 -> metrikKhusus
+        FaseInjeksi.FASE_5 -> "Progres: $persentase% • Baris diinjeksi: $volumeSelesai / $volumeTotal"
+        else -> fase.pesan
+    }
+    
+    indikatorVisual.setImageResource(fase.idGambar)
+    (indikatorVisual.drawable as? android.graphics.drawable.Animatable)?.start()
+    // setelah set teks & gambar
+    perbaruiVisualStepper(fase) // langsung lempar enum
+
+    // 5. Logic khusus
     when (fase) {
-        FaseInjeksi.FASE_1 -> {
-            progressBar.isIndeterminate = true
-            teksStatus.text = "Inisialisasi sistem..."
-        }
-        FaseInjeksi.FASE_2 -> {
-            progressBar.isIndeterminate = true
-            teksStatus.text = "Menghubungkan ke server..."
-        }
-        FaseInjeksi.FASE_3 -> {
-            progressBar.isIndeterminate = false
-            progressBar.progress = persentase
-            teksStatus.text = metrikKhusus
-        }
-        FaseInjeksi.KONEKSI_BURUK -> {
-            progressBar.isIndeterminate = true
-            teksStatus.text = "Koneksi buruk atau terputus..."
-        }
-        FaseInjeksi.FASE_4 -> {
-            progressBar.isIndeterminate = true
-            progressBar.progress = persentase
-            teksStatus.text = "Membaca kargo JSON dan mengkalibrasi cetak biru SQLite...\nMesin injeksi sedang dipanaskan."
-            distribusikanDayaStepper(FaseInjeksi.FASE_5)
-        }
-
-        FaseInjeksi.FASE_5 -> {
-            progressBar.isIndeterminate = false
-            progressBar.progress = persentase
-            teksStatus.text = "Progres: $persentase% • Baris diinjeksi: $volumeSelesai / $volumeTotal"
-        }
+        FaseInjeksi.FASE_4 -> distribusikanDayaStepper(FaseInjeksi.FASE_5)
         FaseInjeksi.FASE_6 -> {
-            progressBar.isIndeterminate = false
-            progressBar.progress = 100
-            teksStatus.text = "Operasi pengelasan tuntas."
-            
             Handler(Looper.getMainLooper()).postDelayed({ 
-                panelUtama.visibility = View.GONE 
+                findViewById<ConstraintLayout>(R.id.panelInisialisasiUtama).visibility = View.GONE 
             }, 1500)
         }
-        else -> {
-          
-        }
+        else -> {}
+    }
+
+    if (jobRotasiNasehat == null || !jobRotasiNasehat!!.isActive) {
+        jalankanRotasiNasehat(teksNasehat)
     }
 }
 
@@ -1358,32 +1357,40 @@ private fun cekKapasitasTangkiMemadai(konteks: Context): Boolean {
     return sisaRuangMB > batasAmanMB
 }
 
-private fun perbaruiVisualStepper(faseAktif: Int) {
-    val warnaInaktifTeks = android.graphics.Color.parseColor("#8892B0")
-    val warnaAktifTeks = android.graphics.Color.parseColor("#64FFDA")
-    val warnaRelAktif = android.graphics.Color.parseColor("#00BCD4")
-    val warnaRelInaktif = android.graphics.Color.parseColor("#233554")
+private fun perbaruiVisualStepper(faseAktif: FaseInjeksi) { // langsung terima enum, jangan Int
+    val warnaInaktifTeks = Color.parseColor("#8892B0")
+    val warnaAktifTeks = Color.parseColor("#64FFDA")
+    val warnaRelAktif = Color.parseColor("#00BCD4")
+    val warnaRelInaktif = Color.parseColor("#233554")
+    val warnaAktifNomor = Color.parseColor("#004D40") // teks di dalam lingkaran aktif
 
-    for (i in 1..7) {
-        val idNum = resources.getIdentifier("numFase$i", "id", packageName)
-        val idLbl = resources.getIdentifier("lblFase$i", "id", packageName)
-        val idRel = resources.getIdentifier("relFase$i", "id", packageName)
+    val nomorUrut = getNomorVisualUrut(faseAktif) // mapping dulu
 
-        val vNum = findViewById<TextView>(idNum)
-        val vLbl = findViewById<TextView>(idLbl)
-        val vRel = if (idRel != 0) findViewById<View>(idRel) else null
+    for (i in 1..6) {
+        val vNum = findViewById<TextView>(resources.getIdentifier("numFase$i", "id", packageName))
+        val vLbl = findViewById<TextView>(resources.getIdentifier("lblFase$i", "id", packageName))
+        val vRel = findViewById<View>(resources.getIdentifier("relFase$i", "id", packageName)) // relFase6 gak ada, aman
 
-        if (i <= faseAktif) {
-            // FASE AKTIF ATAU SUDAH DILEWATI
-            vNum?.setBackgroundResource(R.drawable.bg_fase_aktif)
-            vNum?.setTextColor(android.graphics.Color.BLACK)
-            vLbl?.setTextColor(warnaAktifTeks)
+        // safety check biar gak NPE
+        if (vNum == null || vLbl == null) continue 
+
+        if (i < nomorUrut) {
+            // 1. SUDAH DILEWATI
+            vNum.setBackgroundResource(R.drawable.bg_fase_selesai) // bikin bg ijo centang kalau ada
+            vNum.setTextColor(warnaAktifNomor)
+            vLbl.setTextColor(warnaAktifTeks)
             vRel?.setBackgroundColor(warnaRelAktif)
+        } else if (i == nomorUrut) {
+            // 2. SEDANG AKTIF
+            vNum.setBackgroundResource(R.drawable.bg_fase_aktif) // bg biru toska kedip
+            vNum.setTextColor(warnaAktifNomor)
+            vLbl.setTextColor(warnaAktifTeks)
+            vRel?.setBackgroundColor(warnaRelInaktif) // rel setelahnya belum aktif
         } else {
-            // FASE BELUM TERCAPAI
-            vNum?.setBackgroundResource(R.drawable.bg_fase_inaktif)
-            vNum?.setTextColor(warnaInaktifTeks)
-            vLbl?.setTextColor(warnaInaktifTeks)
+            // 3. BELUM TERCAPAI
+            vNum.setBackgroundResource(R.drawable.bg_fase_inaktif)
+            vNum.setTextColor(warnaInaktifTeks)
+            vLbl.setTextColor(warnaInaktifTeks)
             vRel?.setBackgroundColor(warnaRelInaktif)
         }
     }
@@ -1393,8 +1400,7 @@ private fun getNomorVisualUrut(faseAsli: FaseInjeksi): Int {
     return when (faseAsli) {
         FaseInjeksi.FASE_1 -> 1
         FaseInjeksi.FASE_2 -> 2
-        FaseInjeksi.FASE_3 -> 3
-        FaseInjeksi.KONEKSI_BURUK -> 3
+        FaseInjeksi.FASE_3, FaseInjeksi.KONEKSI_BURUK -> 3 // KONEKSI_BURUK tetep di step 3
         FaseInjeksi.FASE_4 -> 4
         FaseInjeksi.FASE_5 -> 5
         FaseInjeksi.FASE_6 -> 6
