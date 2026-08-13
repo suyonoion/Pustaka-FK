@@ -1359,44 +1359,50 @@ private fun cekKapasitasTangkiMemadai(konteks: Context): Boolean {
     return sisaRuangMB > batasAmanMB
 }
 
-private fun perbaruiVisualStepper(faseAktif: FaseInjeksi) { // langsung terima enum, jangan Int
-    val warnaInaktifTeks = Color.parseColor("#8892B0")
-    val warnaAktifTeks = Color.parseColor("#64FFDA")
-    val warnaRelAktif = Color.parseColor("#00BCD4")
-    val warnaRelInaktif = Color.parseColor("#233554")
-    val warnaAktifNomor = Color.parseColor("#004D40") // teks di dalam lingkaran aktif
-
-    val nomorUrut = getNomorVisualUrut(faseAktif) // mapping dulu
+private fun perbaruiVisualStepper(faseAktif: FaseInjeksi) {
+    val dataStepper = listOf(
+        "Mempersiapkan Jalur Data",
+        "Menghubungkan ke Server",
+        "Mengunduh Arsip", 
+        "Membongkar Arsip",
+        "Injeksi ke SQLite",
+        "Inisialisasi Selesai"
+    )
+    val nomorUrut = getNomorVisualUrut(faseAktif)
+    val warnaAktif = Color.parseColor("#64FFDA")
+    val warnaSelesai = Color.parseColor("#00BCD4")
+    val warnaInaktif = Color.parseColor("#8892B0")
 
     for (i in 1..6) {
         val vNum = findViewById<TextView>(resources.getIdentifier("numFase$i", "id", packageName))
         val vLbl = findViewById<TextView>(resources.getIdentifier("lblFase$i", "id", packageName))
-        val vRel = findViewById<View>(resources.getIdentifier("relFase$i", "id", packageName)) // relFase6 gak ada, aman
+        val vRel = findViewById<View>(resources.getIdentifier("relFase$i", "id", packageName))
 
-        // safety check biar gak NPE
-        if (vNum == null || vLbl == null) continue 
+        vNum.text = i.toString() // <-- ini bikin 1 2 3 4 5 6
+        vLbl.text = dataStepper[i-1] // <-- ini bikin text nya bener
 
-        if (i < nomorUrut) {
-            // 1. SUDAH DILEWATI
-            vNum.setBackgroundResource(R.drawable.bg_fase_selesai) // bikin bg ijo centang kalau ada
-            vNum.setTextColor(warnaAktifNomor)
-            vLbl.setTextColor(warnaAktifTeks)
-            vRel?.setBackgroundColor(warnaRelAktif)
-        } else if (i == nomorUrut) {
-            // 2. SEDANG AKTIF
-            vNum.setBackgroundResource(R.drawable.bg_fase_aktif) // bg biru toska kedip
-            vNum.setTextColor(warnaAktifNomor)
-            vLbl.setTextColor(warnaAktifTeks)
-            vRel?.setBackgroundColor(warnaRelInaktif) // rel setelahnya belum aktif
-        } else {
-            // 3. BELUM TERCAPAI
-            vNum.setBackgroundResource(R.drawable.bg_fase_inaktif)
-            vNum.setTextColor(warnaInaktifTeks)
-            vLbl.setTextColor(warnaInaktifTeks)
-            vRel?.setBackgroundColor(warnaRelInaktif)
+        when {
+            i < nomorUrut -> { // SELESAI
+                vNum.setBackgroundResource(R.drawable.bg_fase_selesai) // bulat toska
+                vNum.setTextColor(Color.parseColor("#004D40"))
+                vLbl.setTextColor(warnaSelesai)
+                vRel?.setBackgroundColor(warnaSelesai)
+            }
+            i == nomorUrut -> { // AKTIF
+                vNum.setBackgroundResource(R.drawable.bg_fase_aktif) // bulat glow
+                vNum.setTextColor(Color.parseColor("#004D40"))
+                vLbl.setTextColor(warnaAktif)
+                vRel?.setBackgroundColor(warnaInaktif)
+            }
+            else -> { // BELUM
+                vNum.setBackgroundResource(R.drawable.bg_fase_inaktif) // bulat abu
+                vNum.setTextColor(warnaInaktif)
+                vLbl.setTextColor(warnaInaktif)
+                vRel?.setBackgroundColor(warnaInaktif)
+            }
         }
     }
-}
+} 
 
 private fun getNomorVisualUrut(faseAsli: FaseInjeksi): Int {
     return when (faseAsli) {
