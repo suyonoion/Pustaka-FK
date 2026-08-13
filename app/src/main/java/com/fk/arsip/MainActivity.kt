@@ -367,7 +367,7 @@ private fun eksekusiSaringanKombinasi(kategori: String, urutTerlama: Boolean) {
 }
 
 
-private var katupFaseVisual: FaseInjeksi? = null // taruh di atas class
+
 
 private fun perbaruiPanelTelemetri(fase: FaseInjeksi, persentase: Int = 0, volumeSelesai: Int = 0, volumeTotal: Int = 0, metrikKhusus: String = "") {
     
