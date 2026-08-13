@@ -36,18 +36,18 @@
         app:layout_constraintEnd_toEndOf="parent" /> 
 
     <!-- PROGRESS LINGKARAN -->
-    <ProgressBar
-        android:id="@+id/progressBarInisialisasi"
-        style="?android:attr/progressBarStyleLarge"
-        android:layout_width="140dp"
-        android:layout_height="140dp"
-        android:max="100"
-        android:progress="0"
-        android:visibility="gone" 
-        app:layout_constraintTop_toBottomOf="@id/indikatorVisualMesin"
-        app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintEnd_toEndOf="parent"
-        android:layout_marginTop="20dp"/>
+  <ProgressBar
+    android:id="@+id/progressBarInisialisasi"
+    style="?android:attr/progressBarStyleHorizontal"
+    android:layout_width="0dp"
+    android:layout_height="8dp"
+    android:max="100"
+    android:progress="0"
+    android:progressDrawable="@drawable/progress_bar_toska"
+    app:layout_constraintTop_toBottomOf="@id/indikatorVisualMesin"
+    app:layout_constraintStart_toStartOf="parent"
+    app:layout_constraintEnd_toEndOf="parent"
+    android:layout_marginHorizontal="40dp"/>
 
     <!-- TEKS % DI TENGAH PROGRESS -->
     <TextView

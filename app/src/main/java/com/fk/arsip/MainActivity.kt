@@ -367,18 +367,20 @@ private fun eksekusiSaringanKombinasi(kategori: String, urutTerlama: Boolean) {
 }
 
 
+private var katupFaseVisual: FaseInjeksi? = null // taruh di atas class
+
 private fun perbaruiPanelTelemetri(fase: FaseInjeksi, persentase: Int = 0, volumeSelesai: Int = 0, volumeTotal: Int = 0, metrikKhusus: String = "") {
     
-    // 1. Ambil semua view
+    // 1. Ambil semua view - ini boleh, tapi lebih bagus di bind di onCreate sekali aja
     val indikatorVisual = findViewById<ImageView>(R.id.indikatorVisualMesin)
     val teksStatus = findViewById<TextView>(R.id.teksStatusInisialisasi)
     val progressBar = findViewById<ProgressBar>(R.id.progressBarInisialisasi)
-    val teksDetail = findViewById<TextView>(R.id.teksDetailProgress) // ini dia
+    val teksDetail = findViewById<TextView>(R.id.teksDetailProgress)
     val teksNasehat = findViewById<TextView>(R.id.teksNasehatInisialisasi)
     val pembatas = findViewById<View>(R.id.pembatasSektor)
     val panelStepper = findViewById<ScrollView>(R.id.panelStepperUtama)
 
-    if (katupFaseVisual == fase) return // cegah kedobel
+    if (katupFaseVisual == fase && progressBar.progress == persentase) return // cegah kedobel + spam update
     katupFaseVisual = fase
 
     // 2. Atur ProgressBar: muter2 atau pake %
@@ -386,29 +388,26 @@ private fun perbaruiPanelTelemetri(fase: FaseInjeksi, persentase: Int = 0, volum
     
     if (fase.isIndeterminate) {
         // Mode muter2: sembunyikan teks %
-        progressBar.progress = 0
         teksDetail.visibility = View.GONE
     } else {
         // Mode %: tampilkan teks % dan set progress
-        progressBar.progress = when(fase) {
-            FaseInjeksi.FASE_6 -> 100
-            else -> persentase
-        }
-        teksDetail.visibility = View.VISIBLE
-        teksDetail.text = "${progressBar.progress}%" // INI KUNCINYA
+        val progressAkhir = if (fase == FaseInjeksi.FASE_6) 100 else persentase
+        progressBar.progress = progressAkhir // SET DULU
+        teksDetail.text = "$progressAkhir%"  // BARU SET TEXT
+        teksDetail.visibility = View.VISIBLE // BARU TAMPILIN
     }
 
     // 3. Atur Visibilitas panel
     val showPanel = fase != FaseInjeksi.FASE_1 && fase != FaseInjeksi.FASE_6
     teksStatus.visibility = if(showPanel) View.VISIBLE else View.GONE
     progressBar.visibility = if(showPanel) View.VISIBLE else View.GONE
-    teksDetail.visibility = if(showPanel && !fase.isIndeterminate) View.VISIBLE else View.GONE // detail ikut progress
     teksNasehat.visibility = if(showPanel) View.VISIBLE else View.GONE
     pembatas.visibility = if(showPanel) View.VISIBLE else View.GONE
     panelStepper.visibility = if(showPanel) View.VISIBLE else View.GONE
+    // teksDetail visibility udah diatur di atas, jangan ditimpa lagi
 
     // 4. Set teks dan gambar dari enum
-    teksStatus.text = when(fase) { // override untuk yg dinamis
+    teksStatus.text = when(fase) {
         FaseInjeksi.FASE_3 -> metrikKhusus
         FaseInjeksi.FASE_5 -> "Progres: $persentase% • Baris diinjeksi: $volumeSelesai / $volumeTotal"
         else -> fase.pesan
@@ -416,8 +415,8 @@ private fun perbaruiPanelTelemetri(fase: FaseInjeksi, persentase: Int = 0, volum
     
     indikatorVisual.setImageResource(fase.idGambar)
     (indikatorVisual.drawable as? android.graphics.drawable.Animatable)?.start()
-    // setelah set teks & gambar
-    perbaruiVisualStepper(fase) // langsung lempar enum
+    
+    perbaruiVisualStepper(fase)
 
     // 5. Logic khusus
     when (fase) {
