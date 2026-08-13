@@ -33,8 +33,9 @@
     android:exported="false"
     android:label=""
     android:theme="@style/Theme.PustakaFK" />
+        
         <activity android:name=".LetnanActivity" />
-          <activity android:name=".SosmedActivity" />
+        <activity android:name=".SosmedActivity" />
         <activity
     android:name=".GaleriActivity"
     android:exported="false"

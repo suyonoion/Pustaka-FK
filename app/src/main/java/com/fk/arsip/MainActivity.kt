@@ -73,17 +73,16 @@ enum class FaseInjeksi(val pesan: String, val idGambar: Int) {
     FASE_1("Mempersiapkan Jalur Data", R.drawable.img_1),
     FASE_2("Menghubungkan ke Server Data", R.drawable.img_2),
     FASE_3("Mengunduh Arsip Status Fatwa Kehidupan", R.drawable.img_3),
-    FASE_4("Koneksi Terputus, Cek Koneksi ...", R.drawable.img_4), 
-    FASE_5("Membongkar & Menyusun Data...", R.drawable.img_5),
-    FASE_6("Checking Keutuhan Data & Injeksi baris data ke SQLite...", R.drawable.img_6),
-    FASE_7("Proses selesai. Data Siap Digunakan.", R.drawable.img_7)
+    KONEKSI_BURUK("Koneksi Terputus, Cek Koneksi ...", R.drawable.koneksi_buruk), 
+    FASE_4("Membongkar & Menyusun Data...", R.drawable.img_4),
+    FASE_5("Checking Keutuhan Data & Injeksi baris data ke SQLite...", R.drawable.img_5),
+    FASE_6("Proses selesai. Data Siap Digunakan.", R.drawable.img_6)
 }
 
 
 class MainActivity : AppCompatActivity() {
 
 private var katupFaseVisual: FaseInjeksi? = null
-private var idGambarAktif: Int = -1
 private var jobRotasiNasehat: Job? = null
 private var waktuTerakhirMs: Long = 0L
 private var byteTerakhirDownloaded: Long = 0L
@@ -117,16 +116,12 @@ private var kecepatanEmaBytesPerSec: Double = 0.0
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
-
         drawerLayout = findViewById(R.id.drawerLayout)
         navViewCustom = findViewById(R.id.navViewCustom)
-        
         findViewById<android.widget.ImageView>(R.id.btnMenuDrawer).setOnClickListener {
             drawerLayout.openDrawer(androidx.core.view.GravityCompat.START)
         }
-        
-
-        recyclerGridMode = findViewById(R.id.recyclerGridMode)
+       recyclerGridMode = findViewById(R.id.recyclerGridMode)
         wadahModeBuku = findViewById(R.id.wadahModeBuku)
         proyektorBuku = findViewById(R.id.proyektorBuku)
         edtPencarian = findViewById<SearchView>(R.id.edtPencarian)
@@ -143,7 +138,6 @@ private var kecepatanEmaBytesPerSec: Double = 0.0
         recyclerGridMode.layoutManager = GridLayoutManager(this, 2)
         sesuaikanKompartemenGrid() 
         proyektorBuku.setPageTransformer(null)
-
         gridAdapter = GridAdapter(emptyList()) { posisi -> bukaModeBuku(posisi) }
         
         val layoutManagerGrid = GridLayoutManager(this, 2)
@@ -157,15 +151,12 @@ private var kecepatanEmaBytesPerSec: Double = 0.0
 
         bukuAdapter = BukuAdapter(daftarArsipAktif)
         proyektorBuku.adapter = bukuAdapter
-
         proyektorBuku.offscreenPageLimit = 1
-        
         val mesinProyeksi = proyektorBuku.getChildAt(0) as? RecyclerView
         mesinProyeksi?.overScrollMode = View.OVER_SCROLL_NEVER
         proyektorBuku.registerOnPageChangeCallback(object : ViewPager2.OnPageChangeCallback() {
         override fun onPageSelected(position: Int) {
             super.onPageSelected(position)
-            
             val indeksAbsolut = titikNolJendela + position
             val jarakKritis = 10
             val totalFragmenAktif = proyektorBuku.adapter?.itemCount ?: 0
@@ -183,30 +174,20 @@ private var kecepatanEmaBytesPerSec: Double = 0.0
                 if (drawerLayout.isDrawerOpen(androidx.core.view.GravityCompat.START)) {
                     drawerLayout.closeDrawer(androidx.core.view.GravityCompat.START)
                 } 
-                // Di dalam handleOnBackPressed() pada blok wadahModeBuku.visibility == View.VISIBLE:
                 else if (wadahModeBuku.visibility == View.VISIBLE) {
-    wadahModeBuku.visibility = View.GONE
-    
-    // PEMULIHAN JALUR VISUAL
-    recyclerGridMode.visibility = View.VISIBLE
-    kontainerJalurKanan.visibility = View.VISIBLE 
-    recyclerTimeline.visibility = View.VISIBLE
-    
-    // FORMAT TELEMETRI KATEGORI SAAT KEMBALI
-    panelStatusPencarian.visibility = View.VISIBLE
-    val totalVolume = daftarArsipAktif.size
-    val labelKategori = if (modeKategoriAktif && daftarArsipAktif.isNotEmpty()) {
-        daftarArsipAktif.first().kategori
-    } else {
-        "Semua Status"
-    }
-    
-    txtStatusPencarian.text = "$labelKategori • $totalVolume Status"
-    
-    if (daftarArsipAktif.size > 5000) {
-        bukuAdapter.perbaruiData(emptyList()) 
-    }
-}
+                wadahModeBuku.visibility = View.GONE
+                recyclerGridMode.visibility = View.VISIBLE
+                kontainerJalurKanan.visibility = View.VISIBLE 
+                recyclerTimeline.visibility = View.VISIBLE
+                // FORMAT TELEMETRI KATEGORI SAAT KEMBALI
+                panelStatusPencarian.visibility = View.VISIBLE
+                val totalVolume = daftarArsipAktif.size
+                val labelKategori = if (modeKategoriAktif && daftarArsipAktif.isNotEmpty()) {
+                daftarArsipAktif.first().kategori} else {"Semua Status"}
+                txtStatusPencarian.text = "$labelKategori • $totalVolume Status"
+                if (daftarArsipAktif.size > 5000) {
+                bukuAdapter.perbaruiData(emptyList()) }
+                }
 
 
                 else if (isSearchMode || edtPencarian.query.toString().isNotEmpty() || modeKategoriAktif) {
@@ -254,6 +235,7 @@ private var kecepatanEmaBytesPerSec: Double = 0.0
     private fun bukaKatupDialogFilter() {
     if (isMesinSibuk) {
         Toast.makeText(this, "Mesin sedang bekerja, tahan instruksi.", Toast.LENGTH_SHORT).show()
+        aturKunciDrawer(true)
         return
     }
 
@@ -298,8 +280,6 @@ private var kecepatanEmaBytesPerSec: Double = 0.0
 private fun eksekusiSaringanKombinasi(kategori: String, urutTerlama: Boolean) {
     if (isMesinSibuk) return
     isMesinSibuk = true
-    aturKunciDrawer(true)
-    
     tampilkanIndikator("Mereset jalur dan menyaring kargo...", true)
 
     lifecycleScope.launch(Dispatchers.IO) {
@@ -338,7 +318,6 @@ private fun eksekusiSaringanKombinasi(kategori: String, urutTerlama: Boolean) {
             // Dorong muatan baru ke rantai grid dan buku
             pompaDataKeLayar(kargoSaringan)
             isMesinSibuk = false
-            aturKunciDrawer(false)
         }
     }
 }
@@ -368,10 +347,10 @@ private fun perbaruiPanelTelemetri(fase: FaseInjeksi, persentase: Int, volumeSel
             FaseInjeksi.FASE_1 -> "Memulai aplikasi pertama kali..."
             FaseInjeksi.FASE_2 -> "Menghubungkan ke server..."
             FaseInjeksi.FASE_3 -> "Mengunduh data status..."
-            FaseInjeksi.FASE_4 -> "Koneksi terputus / Gagal..."
-            FaseInjeksi.FASE_5 -> "Mengelas blok data ke memori..."
-            FaseInjeksi.FASE_6 -> "Injeksi baris data ke SQLite..."
-            FaseInjeksi.FASE_7 -> "Proses selesai..."
+            FaseInjeksi.KONEKSI_BURUK -> "Koneksi terputus / Gagal..."
+            FaseInjeksi.FASE_4 -> "Mengelas blok data ke memori..."
+            FaseInjeksi.FASE_5 -> "Injeksi baris data ke SQLite..."
+            FaseInjeksi.FASE_6 -> "Proses selesai..."
             else -> fase.pesan 
         }
         
@@ -382,47 +361,59 @@ private fun perbaruiPanelTelemetri(fase: FaseInjeksi, persentase: Int, volumeSel
         if (komponenGambar is android.graphics.drawable.Animatable) {
             komponenGambar.start()
         }
-        
         distribusikanDayaStepper(fase)
         katupFaseVisual = fase
     }
 
     // 4. Regulator Progress Bar
-    if (fase == FaseInjeksi.FASE_1 || fase == FaseInjeksi.FASE_7) {
-        progressBar.visibility = View.GONE
-        teksDetail.visibility = View.GONE
+    if (fase == FaseInjeksi.FASE_1 || fase == FaseInjeksi.FASE_6) {
+    teksStatus.visibility = View.GONE
+    teksNasehat.visibility = View.GONE
+    pembatas.visibility = View.GONE
+    panelStepper.visibility = View.GONE
+
     } else {
-        progressBar.visibility = View.VISIBLE
-        teksDetail.visibility = View.VISIBLE
+    teksStatus.visibility = View.VISIBLE
+    teksNasehat.visibility = View.VISIBLE
+    pembatas.visibility = View.VISIBLE
+    panelStepper.visibility = View.VISIBLE
     }
     if (jobRotasiNasehat == null || !jobRotasiNasehat!!.isActive) {
         jalankanRotasiNasehat(teksNasehat)
     }
 
-    // 5. Distribusi Arus Data ke Telemetri (Koreksi Malfungsi Gambar 2)
+    // 5. Distribusi Arus Data ke Telemetri
     when (fase) {
-        FaseInjeksi.FASE_1, FaseInjeksi.FASE_2, FaseInjeksi.FASE_4 -> {
+        FaseInjeksi.FASE_1 -> {
             progressBar.isIndeterminate = true
             teksStatus.text = "Inisialisasi sistem..."
+        }
+        FaseInjeksi.FASE_2 -> {
+            progressBar.isIndeterminate = true
+            teksStatus.text = "Menghubungkan ke server..."
         }
         FaseInjeksi.FASE_3 -> {
             progressBar.isIndeterminate = false
             progressBar.progress = persentase
             teksStatus.text = metrikKhusus
         }
-        FaseInjeksi.FASE_5 -> {
+        FaseInjeksi.KONEKSI_BURUK -> {
+            progressBar.isIndeterminate = true
+            teksStatus.text = "Koneksi buruk atau terputus..."
+        }
+        FaseInjeksi.FASE_4 -> {
             progressBar.isIndeterminate = true
             progressBar.progress = persentase
             teksStatus.text = "Membaca kargo JSON dan mengkalibrasi cetak biru SQLite...\nMesin injeksi sedang dipanaskan."
             distribusikanDayaStepper(FaseInjeksi.FASE_5)
         }
 
-        FaseInjeksi.FASE_6 -> {
+        FaseInjeksi.FASE_5 -> {
             progressBar.isIndeterminate = false
             progressBar.progress = persentase
             teksStatus.text = "Progres: $persentase% • Baris diinjeksi: $volumeSelesai / $volumeTotal"
         }
-        FaseInjeksi.FASE_7 -> {
+        FaseInjeksi.FASE_6 -> {
             progressBar.isIndeterminate = false
             progressBar.progress = 100
             teksStatus.text = "Operasi pengelasan tuntas."
@@ -441,17 +432,17 @@ private fun perbaruiPanelTelemetri(fase: FaseInjeksi, persentase: Int, volumeSel
 // 5. DISTRIBUTOR ARUS STEPPER MEKANIS
 private fun distribusikanDayaStepper(fase: FaseInjeksi) {
     // Array Soket Stepper (Nomor dan Label)
-    val soketNum = intArrayOf(R.id.numFase1, R.id.numFase2, R.id.numFase3, R.id.numFase5, R.id.numFase6, R.id.numFase7)
-    val soketLbl = intArrayOf(R.id.lblFase1, R.id.lblFase2, R.id.lblFase3, R.id.lblFase5, R.id.lblFase6, R.id.lblFase7)
+    val soketNum = intArrayOf(R.id.numFase1, R.id.numFase2, R.id.numFase3, R.id.numFase4, R.id.numFase5, R.id.numFase6)
+    val soketLbl = intArrayOf(R.id.lblFase1, R.id.lblFase2, R.id.lblFase3, R.id.lblFase4, R.id.lblFase5, R.id.lblFase6)
     
     // Pemetaan Fase Injeksi ke Indeks Array Stepper (0 hingga 5)
     val indeksAktif = when (fase) {
         FaseInjeksi.FASE_1 -> 0
         FaseInjeksi.FASE_2 -> 1
-        FaseInjeksi.FASE_3, FaseInjeksi.FASE_4 -> 2 // Fase 4 (Gagal) menahan di rel ke-3
-        FaseInjeksi.FASE_5 -> 3
-        FaseInjeksi.FASE_6 -> 4
-        FaseInjeksi.FASE_7 -> 5
+        FaseInjeksi.FASE_3 -> 2
+        FaseInjeksi.FASE_4 -> 3
+        FaseInjeksi.FASE_5 -> 4
+        FaseInjeksi.FASE_6 -> 5
         else -> -1
     }
 
@@ -482,9 +473,10 @@ private fun distribusikanDayaStepper(fase: FaseInjeksi) {
     }    
     
     private fun inisialisasiSirkuitAppDrawer() {
-        val menuBiografi = findViewById<TextView>(R.id.menuBiografi)
+    val menuBiografi = findViewById<TextView>(R.id.menuBiografi)
     val menuSosmed = findViewById<TextView>(R.id.menuSosmed)
     val menuLetnan = findViewById<TextView>(R.id.menuLetnan)
+    val menuGammaLocking = findViewById<TextView>(R.id.menuGammaLocking)
     val menuGaleriFoto = findViewById<TextView>(R.id.menuGaleriFoto)
     
 
@@ -507,6 +499,12 @@ private fun distribusikanDayaStepper(fase: FaseInjeksi) {
         drawerLayout.closeDrawer(GravityCompat.START)
         val intent = Intent(this, LetnanActivity::class.java)
         startActivity(intent)
+    }
+    
+    menuGammaLocking.setOnClickListener {
+        sorotMenuTerpilih(menuGammaLocking)
+        drawerLayout.closeDrawer(GravityCompat.START)
+        tampilkanDialogAbout()
     }
 
     menuGaleriFoto.setOnClickListener {
@@ -745,7 +743,7 @@ private fun distribusikanDayaStepper(fase: FaseInjeksi) {
             val lenganRobot = database.arsipDao()
             
             val jumlahBarisData = lenganRobot.hitungTotalArsip() 
-            val berkasLokal = File(getExternalFilesDir(null), namaFile) // Perbaikan acuan nama
+            val berkasLokal = File(getExternalFilesDir(null), namaFile)
             
             // PENURUNAN SENSITIVITAS SENSOR BEBAN KE 50 MB AGAR KARGO LOLOS INSPEKSI
             val bobotMinimum = 50 * 1024 * 1024 
@@ -766,9 +764,8 @@ private fun distribusikanDayaStepper(fase: FaseInjeksi) {
             if (berkasLokal.exists() && berkasLokal.length() >= bobotMinimum) {
                 withContext(Dispatchers.Main) {
                     isMesinSibuk = true
-                    aturKunciDrawer(true)
                     findViewById<ConstraintLayout>(R.id.panelInisialisasiUtama).visibility = View.VISIBLE
-                    perbaruiPanelTelemetri(FaseInjeksi.FASE_5, 0, 0, 0)
+                    perbaruiPanelTelemetri(FaseInjeksi.FASE_4, 0, 0, 0)
                     jalankanMesinInjeksiOtonom(berkasLokal.absolutePath)
                 }
                 return@launch
@@ -827,12 +824,11 @@ private fun distribusikanDayaStepper(fase: FaseInjeksi) {
 
 private fun aktifkanMesinPenyedot() {
     isMesinSibuk = true
-    aturKunciDrawer(true)
     findViewById<ConstraintLayout>(R.id.panelInisialisasiUtama).visibility = View.VISIBLE
 
     // Sensor Jaringan
     if (!isJaringanTersedia()) {
-        perbaruiPanelTelemetri(FaseInjeksi.FASE_4, 0, 0, 0)
+        perbaruiPanelTelemetri(FaseInjeksi.KONEKSI_BURUK, 0, 0, 0)
         lifecycleScope.launch(Dispatchers.IO) {
             while (!isJaringanTersedia()) {
                 delay(3000)
@@ -871,7 +867,7 @@ private fun aktifkanMesinPenyedot() {
         .setAllowedOverMetered(true)
         .setAllowedOverRoaming(true)
     lifecycleScope.launch(Dispatchers.Main) {
-    delay(1200) // Katup jeda agar Fase 2 dirender oleh layar
+    delay(3000) // Katup jeda agar Fase 2 dirender oleh layar
     val idUnduhan = downloadManager.enqueue(request)
     
     // PERALIHAN KANTONG VISUAL KE FASE 3 (MEMANTAU TRANSMISI)
@@ -917,7 +913,7 @@ private fun pantauTekananUnduhan(idUnduhan: Long, downloadManager: DownloadManag
             
             if (!jaringanAktif) {
                 beradaDiFaseGagalJaringan = true
-                withContext(Dispatchers.Main) { perbaruiPanelTelemetri(FaseInjeksi.FASE_4, 0, 0, 0) }
+                withContext(Dispatchers.Main) { perbaruiPanelTelemetri(FaseInjeksi.KONEKSI_BURUK, 0, 0, 0) }
                 delay(3000)
                 continue
             }
@@ -936,15 +932,15 @@ private fun pantauTekananUnduhan(idUnduhan: Long, downloadManager: DownloadManag
                 
                 if (status == DownloadManager.STATUS_SUCCESSFUL) {
                     isMengunduh = false
-                    // PENYELESAIAN MASALAH 2: Sakelar otomatis ke Fase 5 dan PICU PABRIK DATA
+              
                     withContext(Dispatchers.Main) {
-                        perbaruiPanelTelemetri(FaseInjeksi.FASE_5, 0, 0, 0)
-                        eksekusiPabrikData() // Pemicu wajib agar proses pengelasan SQLite berjalan!
+                        perbaruiPanelTelemetri(FaseInjeksi.FASE_4, 0, 0, 0)
+                        eksekusiPabrikData()
                     }
                 } else if (status == DownloadManager.STATUS_FAILED) {
                     isMengunduh = false
                     withContext(Dispatchers.Main) {
-                        perbaruiPanelTelemetri(FaseInjeksi.FASE_4, 0, 0, 0)
+                        perbaruiPanelTelemetri(FaseInjeksi.KONEKSI_BURUK, 0, 0, 0)
                         delay(3000)
                         eksekusiPabrikData() 
                     }
@@ -957,7 +953,7 @@ private fun pantauTekananUnduhan(idUnduhan: Long, downloadManager: DownloadManag
                         val total = cursor.getLong(bytesTotalIndex)
                         
                         if (status == DownloadManager.STATUS_PAUSED && downloaded == byteTerakhir) {
-                            withContext(Dispatchers.Main) { perbaruiPanelTelemetri(FaseInjeksi.FASE_4, 0, 0, 0) }
+                            withContext(Dispatchers.Main) { perbaruiPanelTelemetri(FaseInjeksi.KONEKSI_BURUK, 0, 0, 0) }
                         } else if (total > 0) {
                             val persentase = ((downloaded * 100L) / total).toInt()
                             val waktuSekarang = System.currentTimeMillis()
@@ -970,7 +966,6 @@ private fun pantauTekananUnduhan(idUnduhan: Long, downloadManager: DownloadManag
                                 val mbTotal = String.format("%.1f", total / (1024.0 * 1024.0))
                                 
                                 if (kecepatanBps > 0) {
-                                    // Reset hitungan karena arus data masuk normal
                                     hitunganArusNol = 0
                                     val sisaByte = total - downloaded
                                     val sisaDetik = sisaByte / kecepatanBps
@@ -991,12 +986,9 @@ private fun pantauTekananUnduhan(idUnduhan: Long, downloadManager: DownloadManag
                                     
                                     tangkiMemoriTelemetri = "$teksWaktu tersisa • $teksKecepatan | $mbSelesai MB / $mbTotal MB"
                                 } else {
-                                    // PENYELESAIAN MASALAH 1: Toleransi 3 detik sebelum ganti teks
                                     hitunganArusNol++
-                                    if (hitunganArusNol >= 3) {
-                                        tangkiMemoriTelemetri = "Menunggu dorongan arus... • 0 Kbps | $mbSelesai MB / $mbTotal MB"
+                                    if (hitunganArusNol >= 3) {    tangkiMemoriTelemetri = "Menunggu dorongan arus... • 0 Kbps | $mbSelesai MB / $mbTotal MB"
                                     }
-                                    // Jika belum 3 detik, tangkiMemoriTelemetri TIDAK DIUBAH (tetap teks terakhir)
                                 }
                             } else if (byteTerakhir == 0L && downloaded > 0) {
                                 val mbSelesai = String.format("%.1f", downloaded / (1024.0 * 1024.0))
@@ -1077,36 +1069,32 @@ private fun perbaruiDetailKecepatan(persen: Int, byteDiterima: Long, totalByte: 
                 when (informasiKerja.state) {
                     WorkInfo.State.RUNNING -> {
                         if (faseAktif > 0) {
-                            // Transmisi dinamis: Pemetaan presisi dari sinyal angka (1-7) ke Enum indikator lampu
                             val faseEnum = when (faseAktif) {
                                 1 -> FaseInjeksi.FASE_1
                                 2 -> FaseInjeksi.FASE_2
                                 3 -> FaseInjeksi.FASE_3
-                                4 -> FaseInjeksi.FASE_4
+                                4 -> FaseInjeksi.KONEKSI_BURUK
                                 5 -> FaseInjeksi.FASE_5
-                                6 -> FaseInjeksi.FASE_6
-                                7 -> FaseInjeksi.FASE_7
+                                6 -> FaseInjeksi.FASE_5
                                 else -> FaseInjeksi.FASE_6 // Poros operasi default
                             }
                             perbaruiPanelTelemetri(faseEnum, persentase, indeks, total)
                         }
                     }
                     WorkInfo.State.SUCCEEDED -> {
-                        perbaruiPanelTelemetri(FaseInjeksi.FASE_7, 100, indeks, indeks)
+                        perbaruiPanelTelemetri(FaseInjeksi.FASE_6, 100, indeks, indeks)
                         lifecycleScope.launch(Dispatchers.Main) {
                             delay(1500)
                             val database = ArsipDatabase.operasikanMesin(this@MainActivity).arsipDao()
                             val semuaData = withContext(Dispatchers.IO) { database.tarikSemuaArsip() }
                             pompaDataKeLayar(semuaData)
                             isMesinSibuk = false
-                            aturKunciDrawer(false)
                         }
                     }
                     WorkInfo.State.FAILED -> {
                         val kodeGagal = informasiKerja.outputData.getString("KODE_GAGAL") ?: "Unknown"
                         findViewById<ConstraintLayout>(R.id.panelInisialisasiUtama).visibility = View.GONE
                         isMesinSibuk = false
-                        aturKunciDrawer(false)
                         if (kodeGagal == "BOBOT_KURANG") {
                             aktifkanMesinPenyedot() 
                         } else {
@@ -1357,9 +1345,6 @@ private fun eksekusiLogikaPencarian(kataKunciMentah: String?) {
         val totalVolume = daftarArsipGlobal.size
         txtStatusPencarian.text = "Arsip 24/03/2014 s.d $tanggalTerbaruFormatted Total $totalVolume Status"
     } else {
-        // INSTRUKSI LAMA: panelStatusPencarian.visibility = View.GONE (Dihapus sepenuhnya)
-        
-        // Gantikan dengan pelaporan status hampa data
         txtStatusPencarian.text = "Sistem Telemetri: 0 Arsip Terdeteksi"
     }
 }
@@ -1408,10 +1393,10 @@ private fun getNomorVisualUrut(faseAsli: FaseInjeksi): Int {
         FaseInjeksi.FASE_1 -> 1
         FaseInjeksi.FASE_2 -> 2
         FaseInjeksi.FASE_3 -> 3
-        FaseInjeksi.FASE_4 -> 3 // Jika terpicu putus koneksi, tahan atau samakan dengan visual 3
-        FaseInjeksi.FASE_5 -> 4 // Fase 5 digeser menjadi visual nomor 4
-        FaseInjeksi.FASE_6 -> 5 // Fase 6 digeser menjadi visual nomor 5
-        FaseInjeksi.FASE_7 -> 6 // Fase 7 digeser menjadi visual nomor 6
+        FaseInjeksi.KONEKSI_BURUK -> 3
+        FaseInjeksi.FASE_4 -> 4
+        FaseInjeksi.FASE_5 -> 5
+        FaseInjeksi.FASE_6 -> 6
     }
 }
 
@@ -1427,12 +1412,9 @@ private fun aturKunciDrawer(kunci: Boolean) {
         }
     }
 }
-
-
-    
 // 3. FUNGSI UNTUK MENJALANKAN ROTASI TEKS SECARA OTOMATIS
 private fun jalankanRotasiNasehat(teksNasehat: TextView) {
-    jobRotasiNasehat?.cancel() // Hentikan rotasi lama jika ada
+    jobRotasiNasehat?.cancel()
     jobRotasiNasehat = lifecycleScope.launch {
         var indeks = 0
         while (isMesinSibuk) {
@@ -1447,5 +1429,16 @@ private fun hentikanRotasiNasehat() {
     jobRotasiNasehat?.cancel()
     jobRotasiNasehat = null
 }
+private fun tampilkanDialogAbout() {
+        val dialogView = layoutInflater.inflate(R.layout.activity_gammalocking, null)
+        val dialog = AlertDialog.Builder(this, android.R.style.Theme_DeviceDefault_Dialog_Alert).setView(dialogView).create()
+        dialog.window?.setBackgroundDrawableResource(android.R.color.transparent)
+        dialogView.findViewById<android.view.View>(R.id.linkSanFK).setOnClickListener { startActivity(Intent(Intent.ACTION_VIEW, android.net.Uri.parse("https://maps.google.com/?q=Kendal+Regency"))) }
+        dialogView.findViewById<android.view.View>(R.id.linkSaung).setOnClickListener { startActivity(Intent(Intent.ACTION_VIEW, android.net.Uri.parse("https://maps.google.com/?q=-6.9385,110.2031"))) }
+        dialogView.findViewById<android.view.View>(R.id.linkFB).setOnClickListener { startActivity(Intent(Intent.ACTION_VIEW, android.net.Uri.parse("https://www.facebook.com/FK.FatwaKehidupan"))) }
+        dialogView.findViewById<android.view.View>(R.id.linkZF).setOnClickListener { Toast.makeText(this, "Zuhri Formalism - Absolute Internal Circuit", Toast.LENGTH_SHORT).show() }
+        dialogView.findViewById<Button>(R.id.btnCloseAbout).setOnClickListener { dialog.dismiss() }
+        dialog.show()
+    }
 }
 
