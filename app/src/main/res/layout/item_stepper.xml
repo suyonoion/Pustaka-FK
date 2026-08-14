@@ -2,30 +2,31 @@
 <androidx.constraintlayout.widget.ConstraintLayout xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent"
-    android:layout_height="wrap_content"
-    android:paddingVertical="10dp">
+    android:layout_height="56dp"> 
 
     <!-- LINGKARAN NOMOR -->
     <TextView
         android:id="@+id/numFase"
-        android:layout_width="24dp"
-        android:layout_height="24dp"
+        android:layout_width="28dp" 
+        android:layout_height="28dp"
         android:background="@drawable/bg_fase_inaktif"
         android:text=""
         android:textColor="#8892B0"
-        android:textSize="12sp"
+        android:textSize="13sp"
         android:textStyle="bold"
         android:gravity="center"
         app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toTopOf="parent"/>
+        app:layout_constraintTop_toTopOf="parent"
+        app:layout_constraintBottom_toBottomOf="parent"/> <!-- TAMBAH INI biar center vertikal -->
 
     <!-- GARIS PENGHUBUNG -->
     <View
         android:id="@+id/relFase"
         android:layout_width="2dp"
-        android:layout_height="20dp"
+        android:layout_height="0dp" 
         android:background="#233554"
         app:layout_constraintTop_toBottomOf="@id/numFase"
+        app:layout_constraintBottom_toBottomOf="parent" 
         app:layout_constraintStart_toStartOf="@id/numFase"
         app:layout_constraintEnd_toEndOf="@id/numFase"/>
 
@@ -36,10 +37,11 @@
         android:layout_height="wrap_content"
         android:text=""
         android:textColor="#8892B0"
-        android:textSize="14sp"
-        android:layout_marginStart="16dp"
+        android:textSize="15sp"
+        android:layout_marginStart="20dp"
         app:layout_constraintStart_toEndOf="@id/numFase"
         app:layout_constraintTop_toTopOf="@id/numFase"
+        app:layout_constraintBottom_toBottomOf="@id/numFase" <!-- TAMBAH INI biar center -->
         app:layout_constraintEnd_toEndOf="parent"/>
 
 </androidx.constraintlayout.widget.ConstraintLayout>
