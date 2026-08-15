@@ -1373,48 +1373,37 @@ private fun perbaruiVisualStepper(faseAktif: FaseInjeksi) {
     val warnaSelesai = Color.parseColor("#00BCD4")
     val warnaInaktif = Color.parseColor("#8892B0")
 
-    // Ambil 6 include dulu
     val listInclude = listOf(
-        findViewById<View>(R.id.fase1),
-        findViewById<View>(R.id.fase2),
-        findViewById<View>(R.id.fase3),
-        findViewById<View>(R.id.fase4),
-        findViewById<View>(R.id.fase5),
-        findViewById<View>(R.id.fase6)
+        findViewById<View>(R.id.fase1), findViewById<View>(R.id.fase2),
+        findViewById<View>(R.id.fase3), findViewById<View>(R.id.fase4),
+        findViewById<View>(R.id.fase5), findViewById<View>(R.id.fase6)
     )
 
     for (i in 0..5) {
-        val includeView = listInclude[i]
-        if (includeView == null) continue
-
-        // Baru cari view di dalam include
+        val includeView = listInclude[i]?: continue
         val vNum = includeView.findViewById<TextView>(R.id.numFase)
         val vLbl = includeView.findViewById<TextView>(R.id.lblFase)
-        val vRel = includeView.findViewById<View>(R.id.relFase)
 
         if (vNum == null || vLbl == null) continue
 
-        vNum.text = (i+1).toString() // isi nomor 1-6
-        vLbl.text = dataStepper[i] // isi label
+        vNum.text = (i+1).toString()
+        vLbl.text = dataStepper[i]
 
         when {
             i+1 < nomorUrut -> { // SELESAI
                 vNum.setBackgroundResource(R.drawable.bg_fase_selesai)
                 vNum.setTextColor(Color.parseColor("#004D40"))
                 vLbl.setTextColor(warnaSelesai)
-                vRel.setBackgroundColor(warnaSelesai)
             }
             i+1 == nomorUrut -> { // AKTIF
                 vNum.setBackgroundResource(R.drawable.bg_fase_aktif)
                 vNum.setTextColor(Color.parseColor("#004D40"))
                 vLbl.setTextColor(warnaAktif)
-                vRel.setBackgroundColor(warnaInaktif)
             }
             else -> { // BELUM
                 vNum.setBackgroundResource(R.drawable.bg_fase_inaktif)
                 vNum.setTextColor(warnaInaktif)
                 vLbl.setTextColor(warnaInaktif)
-                vRel.setBackgroundColor(warnaInaktif)
             }
         }
     }
