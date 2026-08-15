@@ -1,11 +1,11 @@
 <?xml version="1.0" encoding="utf-8"?>
-<androidx.constraintlayout.widget.ConstraintLayout xmlns:android="http://schemas.android.com/apk/res/android"
-    xmlns:app="http://schemas.android.com/apk/res-auto"
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="match_parent"
     android:layout_height="48dp"
-    android:layout_marginBottom="8dp">
+    android:orientation="horizontal"
+    android:gravity="center_vertical"
+    android:paddingVertical="4dp">
 
-    <!-- LINGKARAN NOMOR -->
     <TextView
         android:id="@+id/numFase"
         android:layout_width="28dp"
@@ -15,21 +15,8 @@
         android:textColor="#8892B0"
         android:textSize="13sp"
         android:textStyle="bold"
-        android:gravity="center"
-        app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toTopOf="parent"/>
+        android:gravity="center"/>
 
-    <!-- GARIS PENGHUBUNG -->
-    <View
-        android:id="@+id/relFase"
-        android:layout_width="2dp"
-        android:layout_height="20dp"
-        android:background="#233554"
-        app:layout_constraintTop_toBottomOf="@id/numFase"
-        app:layout_constraintStart_toStartOf="@id/numFase"
-        app:layout_constraintEnd_toEndOf="@id/numFase"/>
-
-    <!-- LABEL TEKS -->
     <TextView
         android:id="@+id/lblFase"
         android:layout_width="0dp"
@@ -37,9 +24,7 @@
         android:text=""
         android:textColor="#8892B0"
         android:textSize="15sp"
-        android:layout_marginStart="20dp"
-        app:layout_constraintStart_toEndOf="@id/numFase"
-        app:layout_constraintTop_toTopOf="@id/numFase"
-        app:layout_constraintEnd_toEndOf="parent"/>
+        android:layout_marginStart="16dp"
+        android:layout_weight="1"/>
 
-</androidx.constraintlayout.widget.ConstraintLayout>
+</LinearLayout>
