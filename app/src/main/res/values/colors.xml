@@ -30,4 +30,9 @@
 <color name="timeline_pil_aktif_bg">#26A69A</color>
 <color name="timeline_pil_aktif_text">#FFFFFF</color>
 <color name="dot_green">#006D5B</color>
+<color name="tasbih_emas_teks">#EEDC9A</color>
+<color name="tasbih_coklat_tali">#3E2723</color>
+<color name="tasbih_pudar_teks">#8D7B68</color>
+<color name="tasbih_glow">#FFB300</color>
+
 </resources>

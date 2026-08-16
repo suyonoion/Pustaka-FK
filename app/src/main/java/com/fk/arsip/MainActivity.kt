@@ -74,16 +74,17 @@ object KoleksiNasehat {
 enum class FaseInjeksi(
     val pesan: String, 
     val idGambar: Int,
-    val isIndeterminate: Boolean = true // default muter2
+    val isIndeterminate: Boolean = true
 ) {
-    FASE_1("Mempersiapkan Jalur Data", R.drawable.img_1, isIndeterminate = true),
-    FASE_2("Menghubungkan ke Server Data", R.drawable.img_2, isIndeterminate = true),
-    FASE_3("Mengunduh Arsip Status Fatwa Kehidupan", R.drawable.img_3, isIndeterminate = false), // ini pake %
-    KONEKSI_BURUK("Koneksi Terputus, Cek Koneksi ...", R.drawable.koneksi_buruk, isIndeterminate = true), 
-    FASE_4("Membongkar & Menyusun Data...", R.drawable.img_4, isIndeterminate = true),
-    FASE_5("Checking Keutuhan Data & Injeksi baris data ke SQLite...", R.drawable.img_5, isIndeterminate = false), // ini pake %
-    FASE_6("Proses selesai. Data Siap Digunakan.", R.drawable.img_6, isIndeterminate = false) // ini 100%
+    FASE_1("Mempersiapkan Jalur Data", R.drawable.img_1_persiapan, isIndeterminate = true),
+    FASE_2("Menghubungkan ke Server Data", R.drawable.img_2_koneksi, isIndeterminate = true),
+    FASE_3("Mengunduh Arsip Status Fatwa Kehidupan", R.drawable.img_3_unduh, isIndeterminate = false), 
+    KONEKSI_BURUK("Koneksi Terputus, Cek Koneksi ...", R.drawable.img_koneksi_buruk, isIndeterminate = true), 
+    FASE_4("Membongkar & Menyusun Data...", R.drawable.img_4_bongkar, isIndeterminate = true),
+    FASE_5("Checking Keutuhan Data & Injeksi baris data ke SQLite...", R.drawable.img_5_injeksi, isIndeterminate = false), 
+    FASE_6("Proses selesai. Data Siap Digunakan.", R.drawable.img_6_selesai, isIndeterminate = false) 
 }
+
 
 
 class MainActivity : AppCompatActivity() {
@@ -447,8 +448,9 @@ private fun distribusikanDayaStepper(fase: FaseInjeksi) {
         else -> -1
     }
 
-    val warnaMati = android.graphics.Color.parseColor("#8892B0")
-    val warnaNyala = android.graphics.Color.parseColor("#64FFDA") 
+    // Injeksi skema warna Tasbih (Putus sambungan dari palet mekanis lama)
+    val warnaMati = android.graphics.Color.parseColor("#8D7B68") // tasbih_pudar_teks
+    val warnaNyala = android.graphics.Color.parseColor("#FFB300") // tasbih_glow
 
     // Putaran daya dinamis memindai dan menghidupkan sektor aktif
     for (i in 1..6) {
@@ -466,6 +468,7 @@ private fun distribusikanDayaStepper(fase: FaseInjeksi) {
         }
     }
 }
+
 
 
 
@@ -1361,6 +1364,8 @@ private fun cekKapasitasTangkiMemadai(konteks: Context): Boolean {
 
 private fun perbaruiVisualStepper(faseAktif: FaseInjeksi) {
     val nomorUrut = getNomorVisualUrut(faseAktif)
+    
+    // Teks label indikator
     val dataStepper = listOf(
         "Mempersiapkan Jalur Data",
         "Menghubungkan ke Server",
@@ -1369,9 +1374,15 @@ private fun perbaruiVisualStepper(faseAktif: FaseInjeksi) {
         "Injeksi ke SQLite",
         "Inisialisasi Selesai"
     )
-    val warnaAktif = Color.parseColor("#64FFDA")
-    val warnaSelesai = Color.parseColor("#00BCD4")
-    val warnaInaktif = Color.parseColor("#8892B0")
+    
+    // Penyesuaian Arus Warna (Skema Organik/Tasbih)
+    val warnaAktif = android.graphics.Color.parseColor("#FFB300") // tasbih_glow
+    val warnaSelesai = android.graphics.Color.parseColor("#EEDC9A") // tasbih_emas_teks
+    val warnaInaktif = android.graphics.Color.parseColor("#8D7B68") // tasbih_pudar_teks
+    
+    // Penyesuaian Kontras Teks di dalam Butiran Tasbih
+    val warnaTeksTasbihNyala = android.graphics.Color.parseColor("#3E2723") // Coklat gelap untuk kontras
+    val warnaTeksTasbihMati = android.graphics.Color.parseColor("#FFFFFF")  // Putih
 
     val listInclude = listOf(
         findViewById<View>(R.id.fase1), findViewById<View>(R.id.fase2),
@@ -1380,7 +1391,7 @@ private fun perbaruiVisualStepper(faseAktif: FaseInjeksi) {
     )
 
     for (i in 0..5) {
-        val includeView = listInclude[i]?: continue
+        val includeView = listInclude[i] ?: continue
         val vNum = includeView.findViewById<TextView>(R.id.numFase)
         val vLbl = includeView.findViewById<TextView>(R.id.lblFase)
 
@@ -1390,24 +1401,25 @@ private fun perbaruiVisualStepper(faseAktif: FaseInjeksi) {
         vLbl.text = dataStepper[i]
 
         when {
-            i+1 < nomorUrut -> { // SELESAI
-                vNum.setBackgroundResource(R.drawable.bg_fase_selesai)
-                vNum.setTextColor(Color.parseColor("#004D40"))
+            i+1 < nomorUrut -> { // FASE SELESAI
+                vNum.setBackgroundResource(R.drawable.bg_tasbih_aktif)
+                vNum.setTextColor(warnaTeksTasbihNyala)
                 vLbl.setTextColor(warnaSelesai)
             }
-            i+1 == nomorUrut -> { // AKTIF
-                vNum.setBackgroundResource(R.drawable.bg_fase_aktif)
-                vNum.setTextColor(Color.parseColor("#004D40"))
+            i+1 == nomorUrut -> { // FASE AKTIF
+                vNum.setBackgroundResource(R.drawable.bg_tasbih_aktif)
+                vNum.setTextColor(warnaTeksTasbihNyala)
                 vLbl.setTextColor(warnaAktif)
             }
-            else -> { // BELUM
-                vNum.setBackgroundResource(R.drawable.bg_fase_inaktif)
-                vNum.setTextColor(warnaInaktif)
+            else -> { // FASE BELUM TEREKSEKUSI
+                vNum.setBackgroundResource(R.drawable.bg_tasbih_inaktif)
+                vNum.setTextColor(warnaTeksTasbihMati)
                 vLbl.setTextColor(warnaInaktif)
             }
         }
     }
 }
+
 
 private fun getNomorVisualUrut(faseAsli: FaseInjeksi): Int {
     return when (faseAsli) {
