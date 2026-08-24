@@ -141,6 +141,10 @@ private var kecepatanEmaBytesPerSec: Double = 0.0
         txtStatusPencarian = findViewById(R.id.txtStatusPencarian)
         recyclerTimeline = findViewById(R.id.recyclerTimeline)
         kontainerJalurKanan = findViewById<FrameLayout>(R.id.kontainerJalurKanan)
+        findViewById<TasbihConnectorView>(R.id.connectorTasbih).apply {
+    totalLangkah = 6
+    tinggiBarisPx = 64f * resources.displayMetrics.density
+}
 
         recyclerGridMode.layoutManager = GridLayoutManager(this, 2)
         sesuaikanKompartemenGrid() 
@@ -1364,8 +1368,7 @@ private fun cekKapasitasTangkiMemadai(konteks: Context): Boolean {
 
 private fun perbaruiVisualStepper(faseAktif: FaseInjeksi) {
     val nomorUrut = getNomorVisualUrut(faseAktif)
-    
-    // Teks label indikator
+
     val dataStepper = listOf(
         "Mempersiapkan Jalur Data",
         "Menghubungkan ke Server",
@@ -1374,15 +1377,15 @@ private fun perbaruiVisualStepper(faseAktif: FaseInjeksi) {
         "Injeksi ke SQLite",
         "Inisialisasi Selesai"
     )
-    
-    // Penyesuaian Arus Warna (Skema Organik/Tasbih)
-    val warnaAktif = android.graphics.Color.parseColor("#FFB300") // tasbih_glow
-    val warnaSelesai = android.graphics.Color.parseColor("#EEDC9A") // tasbih_emas_teks
-    val warnaInaktif = android.graphics.Color.parseColor("#8D7B68") // tasbih_pudar_teks
-    
-    // Penyesuaian Kontras Teks di dalam Butiran Tasbih
-    val warnaTeksTasbihNyala = android.graphics.Color.parseColor("#3E2723") // Coklat gelap untuk kontras
-    val warnaTeksTasbihMati = android.graphics.Color.parseColor("#FFFFFF")  // Putih
+
+    val warnaAktif = android.graphics.Color.parseColor("#FFB300")
+    val warnaSelesai = android.graphics.Color.parseColor("#EEDC9A")
+    val warnaInaktif = android.graphics.Color.parseColor("#8D7B68")
+    val warnaTeksTasbihNyala = android.graphics.Color.parseColor("#3E2723")
+    val warnaTeksTasbihMati = android.graphics.Color.parseColor("#FFFFFF")
+
+    val connectorTasbih = findViewById<TasbihConnectorView>(R.id.connectorTasbih)
+    connectorTasbih.langkahAktif = nomorUrut // memicu redraw kurva + bead
 
     val listInclude = listOf(
         findViewById<View>(R.id.fase1), findViewById<View>(R.id.fase2),
@@ -1394,25 +1397,22 @@ private fun perbaruiVisualStepper(faseAktif: FaseInjeksi) {
         val includeView = listInclude[i] ?: continue
         val vNum = includeView.findViewById<TextView>(R.id.numFase)
         val vLbl = includeView.findViewById<TextView>(R.id.lblFase)
-
         if (vNum == null || vLbl == null) continue
 
-        vNum.text = (i+1).toString()
+        vNum.text = (i + 1).toString()
         vLbl.text = dataStepper[i]
+        vNum.translationX = connectorTasbih.offsetXUntukBaris(i)
 
         when {
-            i+1 < nomorUrut -> { // FASE SELESAI
-                vNum.setBackgroundResource(R.drawable.bg_tasbih_aktif)
+            i + 1 < nomorUrut -> {
                 vNum.setTextColor(warnaTeksTasbihNyala)
                 vLbl.setTextColor(warnaSelesai)
             }
-            i+1 == nomorUrut -> { // FASE AKTIF
-                vNum.setBackgroundResource(R.drawable.bg_tasbih_aktif)
+            i + 1 == nomorUrut -> {
                 vNum.setTextColor(warnaTeksTasbihNyala)
                 vLbl.setTextColor(warnaAktif)
             }
-            else -> { // FASE BELUM TEREKSEKUSI
-                vNum.setBackgroundResource(R.drawable.bg_tasbih_inaktif)
+            else -> {
                 vNum.setTextColor(warnaTeksTasbihMati)
                 vLbl.setTextColor(warnaInaktif)
             }

@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="utf-8"?>
+<layer-list xmlns:android="http://schemas.android.com/apk/res/android">
+
+    <!-- Lapisan dasar: gradasi kayu gelap vertikal -->
+    <item>
+        <shape android:shape="rectangle">
+            <gradient
+                android:type="linear"
+                android:angle="90"
+                android:startColor="#2C1810"
+                android:centerColor="#1F1310"
+                android:endColor="#1A0F0A" />
+        </shape>
+    </item>
+
+    <!-- Lapisan vignette: radial gradient bayangan sudut -->
+    <item>
+        <shape android:shape="rectangle">
+            <gradient
+                android:type="radial"
+                android:gradientRadius="450dp"
+                android:centerX="0.5"
+                android:centerY="0.35"
+                android:startColor="#00000000"
+                android:centerColor="#33000000"
+                android:endColor="#B3000000" />
+        </shape>
+    </item>
+
+</layer-list>

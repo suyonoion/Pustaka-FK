@@ -1,42 +1,29 @@
 <?xml version="1.0" encoding="utf-8"?>
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="match_parent"
-    android:layout_height="64dp" 
+    android:layout_height="64dp"
     android:orientation="horizontal"
-    android:gravity="center_vertical"
-    android:paddingHorizontal="4dp"
-    android:paddingVertical="0dp">
+    android:gravity="center_vertical">
 
-    <!-- Diubah menjadi visual tali tasbih (warna coklat gelap) -->
-    <View
-        android:id="@+id/relFase"
-        android:layout_width="4dp" 
-        android:layout_height="match_parent"
-        android:layout_gravity="center"
-        android:background="@color/tasbih_coklat_tali"
-        android:layout_marginStart="14dp"/> 
-
-    <!-- Diubah ukurannya dan menggunakan background butiran tasbih -->
     <TextView
         android:id="@+id/numFase"
         android:layout_width="36dp"
         android:layout_height="36dp"
-        android:background="@drawable/bg_tasbih_inaktif" 
+        android:layout_marginStart="6dp"
+        android:background="@android:color/transparent"
         android:text=""
-        android:textColor="#FFFFFF" 
+        android:textColor="#FFFFFF"
         android:textSize="14sp"
         android:textStyle="bold"
-        android:gravity="center"
-        android:layout_marginStart="-20dp"/> 
+        android:gravity="center"/>
 
-    <!-- Warna teks disesuaikan dengan skema emas/kayu -->
     <TextView
         android:id="@+id/lblFase"
         android:layout_width="0dp"
         android:layout_height="wrap_content"
         android:text=""
-        android:textColor="@color/tasbih_pudar_teks" 
+        android:textColor="@color/tasbih_pudar_teks"
         android:textSize="16sp"
-        android:layout_marginStart="16dp"
+        android:layout_marginStart="24dp"
         android:layout_weight="1"/>
 </LinearLayout>
