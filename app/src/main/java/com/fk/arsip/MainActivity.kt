@@ -389,7 +389,7 @@ panelStepper.visibility = View.VISIBLE
 when (fase) {
     FaseInjeksi.FASE_6 -> {
         Handler(Looper.getMainLooper()).postDelayed({ 
-            findViewById<ConstraintLayout>(R.id.panelInisialisasiUtama).visibility = View.GONE 
+            aturVisibilitasOverlayInisialisasi(false)
         }, 1500)
     }
     else -> {}
@@ -683,7 +683,7 @@ when (fase) {
             if (jumlahBarisData >= batasAmanAbsolut) {
                 val semuaData = lenganRobot.tarikSemuaArsip()
                 withContext(Dispatchers.Main) {
-                    findViewById<ConstraintLayout>(R.id.panelInisialisasiUtama).visibility = View.GONE
+                    aturVisibilitasOverlayInisialisasi(false)
                     isMesinSibuk = false
                     pompaDataKeLayar(semuaData)
                     muatDataAwalKeSasis(semuaData)
@@ -695,7 +695,7 @@ when (fase) {
             if (berkasLokal.exists() && berkasLokal.length() >= bobotMinimum) {
                 withContext(Dispatchers.Main) {
                     isMesinSibuk = true
-                    findViewById<ConstraintLayout>(R.id.panelInisialisasiUtama).visibility = View.VISIBLE
+                    aturVisibilitasOverlayInisialisasi(true)
                     perbaruiPanelTelemetri(FaseInjeksi.FASE_4, 0, 0, 0)
                     jalankanMesinInjeksiOtonom(berkasLokal.absolutePath)
                 }
@@ -704,7 +704,7 @@ when (fase) {
 
             withContext(Dispatchers.Main) {
                 lifecycleScope.launch(Dispatchers.IO) { lenganRobot.kurasTangkiKotor() }
-                findViewById<ConstraintLayout>(R.id.panelInisialisasiUtama).visibility = View.VISIBLE
+                aturVisibilitasOverlayInisialisasi(true)
                 perbaruiPanelTelemetri(FaseInjeksi.FASE_1, 0, 0, 0)
                 delay(1000)
                 aktifkanMesinPenyedot()
@@ -735,12 +735,12 @@ when (fase) {
                                 jalankanMesinInjeksiOtonom(fileAsli.absolutePath)
                             } else {
                                 // Putus putaran loop dengan mematikan mesin secara paksa jika sistem operasi menolak rename
-                                findViewById<ConstraintLayout>(R.id.panelInisialisasiUtama).visibility = View.GONE
+                                aturVisibilitasOverlayInisialisasi(false)
                                 isMesinSibuk = false
                                 Toast.makeText(this@MainActivity, "Gagal memproses pendaratan file. Ruang penuh atau terkunci.", Toast.LENGTH_LONG).show()
                             }
                         } else {
-                            findViewById<ConstraintLayout>(R.id.panelInisialisasiUtama).visibility = View.GONE
+                            aturVisibilitasOverlayInisialisasi(false)
                             isMesinSibuk = false
                             Toast.makeText(this@MainActivity, "Tekanan unduhan gagal. Cek jaringan.", Toast.LENGTH_LONG).show()
                         }
@@ -755,7 +755,7 @@ when (fase) {
 
 private fun aktifkanMesinPenyedot() {
     isMesinSibuk = true
-    findViewById<ConstraintLayout>(R.id.panelInisialisasiUtama).visibility = View.VISIBLE
+    aturVisibilitasOverlayInisialisasi(true)
 
     // Sensor Jaringan
     if (!isJaringanTersedia()) {
@@ -939,7 +939,7 @@ private fun pantauTekananUnduhan(idUnduhan: Long, downloadManager: DownloadManag
             } else {
                 isMengunduh = false
                 withContext(Dispatchers.Main) {
-                    findViewById<ConstraintLayout>(R.id.panelInisialisasiUtama).visibility = View.GONE
+                    aturVisibilitasOverlayInisialisasi(false)
                     isMesinSibuk = false
                 }
             }
@@ -1024,7 +1024,7 @@ private fun perbaruiDetailKecepatan(persen: Int, byteDiterima: Long, totalByte: 
                     }
                     WorkInfo.State.FAILED -> {
                         val kodeGagal = informasiKerja.outputData.getString("KODE_GAGAL") ?: "Unknown"
-                        findViewById<ConstraintLayout>(R.id.panelInisialisasiUtama).visibility = View.GONE
+                        aturVisibilitasOverlayInisialisasi(false)
                         isMesinSibuk = false
                         if (kodeGagal == "BOBOT_KURANG") {
                             aktifkanMesinPenyedot() 
@@ -1237,6 +1237,27 @@ private fun eksekusiLogikaPencarian(kataKunciMentah: String?) {
             kapasitasJaringan.hasTransport(NetworkCapabilities.TRANSPORT_CELLULAR) -> true
             else -> false
         }
+    }
+
+    // =========================================================================
+    // PERBAIKAN BUG UTAMA: "Halaman utama blank setelah inisialisasi selesai"
+    // -------------------------------------------------------------------------
+    // Root cause: layout_inisialisasi_mesin.xml membungkus panel init dengan
+    // sebuah ScrollView ber-id "panelStepperUtama" yang match_parent (menutupi
+    // SELURUH layar) dan punya background @drawable/bg_kayu_mandala.
+    // Sebelumnya, seluruh kode di file ini hanya meng-GONE-kan CHILD-nya
+    // (ConstraintLayout "panelInisialisasiUtama"), sementara ScrollView
+    // pembungkusnya sendiri TIDAK PERNAH disembunyikan. Akibatnya, begitu
+    // proses inisialisasi selesai, yang terjadi bukan "kembali ke halaman
+    // utama", melainkan ScrollView kosong (tanpa child) yang tetap full-screen
+    // menutupi grid/timeline di belakangnya -> layar terlihat blank.
+    // Fix: sembunyikan/tampilkan KEDUA view (ScrollView pembungkus + child-nya)
+    // lewat satu fungsi terpusat agar tidak ada lagi celah seperti ini.
+    // =========================================================================
+    private fun aturVisibilitasOverlayInisialisasi(tampil: Boolean) {
+        val statusVisibilitas = if (tampil) View.VISIBLE else View.GONE
+        findViewById<ScrollView>(R.id.panelStepperUtama)?.visibility = statusVisibilitas
+        findViewById<ConstraintLayout>(R.id.panelInisialisasiUtama)?.visibility = statusVisibilitas
     }
 
     private fun tampilkanIndikator(pesan: String, aktif: Boolean) {
