@@ -385,21 +385,20 @@ panelStepper.visibility = View.VISIBLE
     perbaruiVisualStepper(fase)
 
     // 5. Logic khusus
-    when (fase) {
-        FaseInjeksi.FASE_4 -> distribusikanDayaStepper(FaseInjeksi.FASE_5)
-        FaseInjeksi.FASE_6 -> {
-            Handler(Looper.getMainLooper()).postDelayed({ 
-                findViewById<ConstraintLayout>(R.id.panelInisialisasiUtama).visibility = View.GONE 
-            }, 1500)
-        }
-        else -> {}
+    // 5. Logic khusus
+when (fase) {
+    FaseInjeksi.FASE_6 -> {
+        Handler(Looper.getMainLooper()).postDelayed({ 
+            findViewById<ConstraintLayout>(R.id.panelInisialisasiUtama).visibility = View.GONE 
+        }, 1500)
     }
+    else -> {}
+}
 
     if (jobRotasiNasehat == null || !jobRotasiNasehat!!.isActive) {
         jalankanRotasiNasehat(teksNasehat)
     }
 }
-
     override fun onConfigurationChanged(newConfig: android.content.res.Configuration) {
         super.onConfigurationChanged(newConfig)
         sesuaikanKompartemenGrid() 
