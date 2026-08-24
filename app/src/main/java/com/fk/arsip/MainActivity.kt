@@ -243,44 +243,6 @@ private var kecepatanEmaBytesPerSec: Double = 0.0
         eksekusiPabrikData()
     }
     
-    fun applyFase(fase: FaseInjeksi, persentase: Int = 0, teksOverride: String? = null) {
-    if (katupFaseVisual == fase && teksOverride == null) return
-    katupFaseVisual = fase
-
-    // 1. Injeksi kait mekanis ke sasis antarmuka
-    val progressBar = findViewById<ProgressBar>(R.id.progressBarInisialisasi)
-    val teksStatus = findViewById<TextView>(R.id.teksStatusInisialisasi)
-    val indikatorVisual = findViewById<ImageView>(R.id.indikatorVisualMesin)
-    val panelUtama = findViewById<androidx.constraintlayout.widget.ConstraintLayout>(R.id.panelInisialisasiUtama)
-
-    // 2. Transmisi ke ProgressBar
-    progressBar.isIndeterminate = fase.isIndeterminate
-    
-    if (!fase.isIndeterminate) {
-        progressBar.progress = when (fase) {
-            FaseInjeksi.FASE_6 -> 100
-            else -> persentase
-        }
-    }
-
-    // 3. Transmisi Teks dan Indikator Visual
-    teksStatus.text = teksOverride ?: fase.pesan
-    indikatorVisual.setImageResource(fase.idGambar)
-    (indikatorVisual.drawable as? android.graphics.drawable.Animatable)?.start()
-
-    // 4. Protokol Khusus
-    when (fase) {
-        FaseInjeksi.FASE_4 -> distribusikanDayaStepper(FaseInjeksi.FASE_5)
-        FaseInjeksi.FASE_6 -> {
-            Handler(Looper.getMainLooper()).postDelayed({ 
-                panelUtama.visibility = View.GONE 
-            }, 1500)
-        }
-        else -> {}
-    }
-}
-
-
     private fun bukaKatupDialogFilter() {
     if (isMesinSibuk) {
         Toast.makeText(this, "Mesin sedang bekerja, tahan instruksi.", Toast.LENGTH_SHORT).show()
@@ -403,12 +365,11 @@ private fun perbaruiPanelTelemetri(fase: FaseInjeksi, persentase: Int = 0, volum
     }
 
     // 3. Atur Visibilitas panel
-    val showPanel = fase != FaseInjeksi.FASE_1 && fase != FaseInjeksi.FASE_6
-    teksStatus.visibility = if(showPanel) View.VISIBLE else View.GONE
-    progressBar.visibility = if(showPanel) View.VISIBLE else View.GONE
-    teksNasehat.visibility = if(showPanel) View.VISIBLE else View.GONE
-    pembatas.visibility = if(showPanel) View.VISIBLE else View.GONE
-    panelStepper.visibility = if(showPanel) View.VISIBLE else View.GONE
+    teksStatus.visibility = View.VISIBLE
+progressBar.visibility = View.VISIBLE
+teksNasehat.visibility = View.VISIBLE
+pembatas.visibility = View.VISIBLE
+panelStepper.visibility = View.VISIBLE
     // teksDetail visibility udah diatur di atas, jangan ditimpa lagi
 
     // 4. Set teks dan gambar dari enum
@@ -438,43 +399,6 @@ private fun perbaruiPanelTelemetri(fase: FaseInjeksi, persentase: Int = 0, volum
         jalankanRotasiNasehat(teksNasehat)
     }
 }
-
-
-// 5. DISTRIBUTOR ARUS STEPPER MEKANIS
-private fun distribusikanDayaStepper(fase: FaseInjeksi) {
-    val indeksAktif = when (fase) {
-        FaseInjeksi.FASE_1 -> 0
-        FaseInjeksi.FASE_2 -> 1
-        FaseInjeksi.FASE_3 -> 2
-        FaseInjeksi.FASE_4 -> 3
-        FaseInjeksi.FASE_5 -> 4
-        FaseInjeksi.FASE_6 -> 5
-        else -> -1
-    }
-
-    // Injeksi skema warna Tasbih (Putus sambungan dari palet mekanis lama)
-    val warnaMati = android.graphics.Color.parseColor("#8D7B68") // tasbih_pudar_teks
-    val warnaNyala = android.graphics.Color.parseColor("#FFB300") // tasbih_glow
-
-    // Putaran daya dinamis memindai dan menghidupkan sektor aktif
-    for (i in 1..6) {
-        val numView = findViewById<TextView>(resources.getIdentifier("numFase$i", "id", packageName))
-        val lblView = findViewById<TextView>(resources.getIdentifier("lblFase$i", "id", packageName))
-        
-        if (numView != null && lblView != null) {
-            if ((i - 1) <= indeksAktif) {
-                numView.setTextColor(warnaNyala)
-                lblView.setTextColor(warnaNyala)
-            } else {
-                numView.setTextColor(warnaMati)
-                lblView.setTextColor(warnaMati)
-            }
-        }
-    }
-}
-
-
-
 
     override fun onConfigurationChanged(newConfig: android.content.res.Configuration) {
         super.onConfigurationChanged(newConfig)
@@ -747,7 +671,6 @@ private fun distribusikanDayaStepper(fase: FaseInjeksi) {
 
         private fun eksekusiPabrikData() {
         lifecycleScope.launch(Dispatchers.IO) {
-            delay(1500)
             val database = ArsipDatabase.operasikanMesin(this@MainActivity)
             val lenganRobot = database.arsipDao()
             

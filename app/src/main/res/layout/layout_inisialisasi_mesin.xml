@@ -8,9 +8,10 @@
     android:padding="24dp">
 
     <androidx.constraintlayout.widget.ConstraintLayout
-        android:id="@+id/panelInisialisasiUtama"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content">
+    android:id="@+id/panelInisialisasiUtama"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:visibility="gone"> 
 
         <!-- JUDUL: Menggunakan font dekoratif dan warna emas -->
         <TextView
