@@ -53,6 +53,14 @@ implementation 'androidx.recyclerview:recyclerview:1.2.1'
     implementation "androidx.room:room-runtime:$room_version"
     kapt "androidx.room:room-compiler:$room_version"
     implementation "androidx.room:room-ktx:$room_version"
+
+    // PAGING 3 (mode buku/ViewPager2): paging-runtime menyediakan Pager/
+    // PagingSource/PagingDataAdapter, room-paging WAJIB ada agar Room (kapt)
+    // bisa meng-generate implementasi untuk fungsi DAO yang return
+    // PagingSource<Int, Entity> -- versinya harus sinkron dengan room_version
+    // di atas, kalau tidak kapt akan gagal dengan error "NonExistentClass".
+    implementation "androidx.paging:paging-runtime-ktx:3.2.1"
+    implementation "androidx.room:room-paging:$room_version"
     
     // Proyektor Gambar
     implementation 'com.github.bumptech.glide:glide:4.16.0'
