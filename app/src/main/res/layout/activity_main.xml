@@ -118,7 +118,6 @@
                 android:layout_width="match_parent"
                 android:layout_height="0dp"
                 android:layout_weight="1"
-                android:paddingRight="45dp"
                 android:orientation="horizontal">
 
                 <!-- JALUR KIRI: GRID SAJA. LEBAR FULL -->
@@ -130,6 +129,7 @@
                         android:id="@+id/recyclerGridMode"
                         android:layout_width="match_parent"
                         android:layout_height="match_parent"
+                        android:layout_marginEnd="45dp"
                         android:paddingVertical="4dp"
                         android:clipToPadding="false" />
                         <!-- GARIS VERTIKAL BARU -->
@@ -143,6 +143,33 @@
                 android:layout_width="match_parent"
                 android:layout_height="match_parent" />
         </RelativeLayout>
+
+        <!-- SKELETON/PLACEHOLDER GRID: tampil saat data grid & timeline
+             belum siap dibind, agar area ini tidak terlihat "mati"/blank
+             kosong. Disembunyikan otomatis di pompaDataKeLayar(). -->
+        <LinearLayout
+            android:id="@+id/wadahLoadingGrid"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:layout_marginEnd="45dp"
+            android:orientation="vertical"
+            android:gravity="center"
+            android:background="@color/bg_halaman"
+            android:visibility="visible">
+
+            <ProgressBar
+                android:layout_width="34dp"
+                android:layout_height="34dp"
+                android:indeterminateTint="@color/primary" />
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Memuat status..."
+                android:textColor="@color/primary"
+                android:textSize="12sp"
+                android:layout_marginTop="10dp" />
+        </LinearLayout>
                 </FrameLayout>
             </LinearLayout>
 
@@ -289,6 +316,18 @@
     android:layout_marginEnd="2dp"
     android:layout_marginStart="20dp"
     android:clipChildren="false" />
+
+            <!-- SKELETON TIMELINE: titik loading kecil selagi recyclerTimeline
+                 masih kosong (belum ada adapter/data), agar kolom timeline
+                 tidak terlihat mati/blank. Disembunyikan di pompaDataKeLayar(). -->
+            <ProgressBar
+                android:id="@+id/loadingTimelineKecil"
+                android:layout_width="18dp"
+                android:layout_height="18dp"
+                android:layout_marginStart="20dp"
+                android:layout_marginTop="12dp"
+                android:indeterminateTint="@color/primary"
+                android:visibility="visible" />
         </FrameLayout>
         <!-- Layar Kaca Pengaman (Letakkan di atas pelat utama) -->
         <include layout="@layout/layout_inisialisasi_mesin" android:layout_gravity="center"/>

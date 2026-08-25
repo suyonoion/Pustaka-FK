@@ -669,6 +669,13 @@ when (fase) {
 }
 
         private fun eksekusiPabrikData() {
+        // PERBAIKAN: tampilkan overlay + visual FASE_1 (logo & nama aplikasi)
+        // SEGERA, sebelum proses pengecekan database (IO) berjalan. Tanpa ini,
+        // ada jeda singkat di mana layar benar-benar kosong karena overlay
+        // default-nya "gone" sementara grid/timeline juga belum terisi data.
+        aturVisibilitasOverlayInisialisasi(true)
+        perbaruiPanelTelemetri(FaseInjeksi.FASE_1, 0, 0, 0)
+
         lifecycleScope.launch(Dispatchers.IO) {
             val database = ArsipDatabase.operasikanMesin(this@MainActivity)
             val lenganRobot = database.arsipDao()
@@ -1098,6 +1105,11 @@ private fun perbaruiDetailKecepatan(persen: Int, byteDiterima: Long, totalByte: 
 
         recyclerTimeline.layoutManager = androidx.recyclerview.widget.LinearLayoutManager(this)
         recyclerTimeline.adapter = adapterTimeline
+
+        // PERBAIKAN: begitu grid & timeline sudah benar-benar terisi data,
+        // sembunyikan skeleton/placeholder loading agar tidak menutupi konten.
+        findViewById<View>(R.id.wadahLoadingGrid)?.visibility = View.GONE
+        findViewById<View>(R.id.loadingTimelineKecil)?.visibility = View.GONE
     }
     private fun bukaModeBuku(posisi: Int) {
     if (isMesinSibuk) return
