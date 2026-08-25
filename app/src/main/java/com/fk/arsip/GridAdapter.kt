@@ -104,7 +104,19 @@ class GridAdapter(
         }
     }
 
-    fun perbaruiData(dataBaru: List<KargoCampuran>) = submitList(dataBaru)
+    // PERBAIKAN: submitList() milik ListAdapter bersifat ASINKRON -- diff
+    // dihitung di background thread lalu baru diterapkan ke RecyclerView
+    // setelah selesai. Kode pemanggil (MainActivity) sebelumnya melakukan
+    // scrollToPosition(0) TEPAT SETELAH memanggil perbaruiData(), padahal
+    // data barunya belum tentu sudah diterapkan saat itu -- scroll jadi
+    // dieksekusi terhadap state lama, sehingga hasil filter baru muncul di
+    // luar area yang terlihat pengguna (terlihat seperti "filter tidak
+    // bekerja" pada grid, walau adapter sebenarnya sudah benar). Parameter
+    // setelahDiterapkan di sini adalah commit callback bawaan submitList(),
+    // dijalankan HANYA setelah data baru benar-benar diterapkan ke grid.
+    fun perbaruiData(dataBaru: List<KargoCampuran>, setelahDiterapkan: (() -> Unit)? = null) {
+        submitList(dataBaru) { setelahDiterapkan?.invoke() }
+    }
 
     class HeaderViewHolder(view: View) : RecyclerView.ViewHolder(view) {
         val txtHeader: TextView = view.findViewById(R.id.txtHeaderWaktu)

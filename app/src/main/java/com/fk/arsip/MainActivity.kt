@@ -158,18 +158,17 @@ private var kecepatanEmaBytesPerSec: Double = 0.0
 }
 
         recyclerGridMode.layoutManager = GridLayoutManager(this, 2)
-        sesuaikanKompartemenGrid() 
         proyektorBuku.setPageTransformer(null)
         gridAdapter = GridAdapter(emptyList()) { posisi -> bukaModeBuku(posisi) }
-        
-        val layoutManagerGrid = GridLayoutManager(this, 2)
-        layoutManagerGrid.spanSizeLookup = object : GridLayoutManager.SpanSizeLookup() {
-            override fun getSpanSize(position: Int): Int {
-                return if (gridAdapter.getItemViewType(position) == GridAdapter.TIPE_PEMBATAS) 2 else 1
-            }
-        }
-        recyclerGridMode.layoutManager = layoutManagerGrid
         recyclerGridMode.adapter = gridAdapter
+        // PERBAIKAN: sebelumnya ada SETUP GANDA -- sesuaikanKompartemenGrid()
+        // dipanggil di sini untuk menghitung jumlah kolom sesuai lebar layar,
+        // tapi hasilnya langsung ditimpa oleh sebuah GridLayoutManager kedua
+        // (hardcode 2 kolom) yang dibuat & dipasang setelahnya. Sekarang
+        // hanya ada SATU layoutManager, dan sesuaikanKompartemenGrid() yang
+        // mengatur spanCount + spanSizeLookup-nya (dipanggil sekali di sini,
+        // dan lagi di onConfigurationChanged saat rotasi layar).
+        sesuaikanKompartemenGrid()
 
         bukuAdapter = BukuAdapter()
         proyektorBuku.adapter = bukuAdapter
@@ -1096,16 +1095,18 @@ private fun perbaruiDetailKecepatan(persen: Int, byteDiterima: Long, totalByte: 
             kargoSiapRakit.add(KargoCampuran.StatusKonten(arsip, indeksMurni))
             indeksMurni++
         }
-        gridAdapter.perbaruiData(kargoSiapRakit)
-        // PERBAIKAN: reset posisi scroll grid ke atas setiap kali data baru
-        // (hasil filter/kategori/pencarian) didorong masuk. Tanpa ini, jika
-        // pengguna sedang scroll ke bawah saat menekan filter, grid akan
-        // tetap berada di posisi scroll lama -- daftar baru sudah benar di
-        // adapter, tapi secara visual terlihat seperti filter "tidak bekerja"
-        // karena konten yang berubah berada di luar area yang terlihat.
-        // Timeline di sampingnya selalu terlihat ter-update karena adapternya
-        // diganti baru (recyclerTimeline.adapter = adapterTimeline) di bawah.
-        recyclerGridMode.scrollToPosition(0)
+        // PERBAIKAN: reset posisi scroll grid ke atas, tapi HANYA setelah
+        // DiffUtil benar-benar selesai menerapkan data baru ke RecyclerView
+        // (lihat commit callback di GridAdapter.perbaruiData). Sebelumnya
+        // scroll dipanggil langsung setelah perbaruiData() tanpa menunggu,
+        // sehingga balapan dengan proses diff yang asinkron -- grid terlihat
+        // seperti tidak berubah walau data hasil filter sebenarnya sudah
+        // benar di adapter. Timeline di sampingnya selalu terlihat ter-update
+        // karena adapternya diganti baru (recyclerTimeline.adapter =
+        // adapterTimeline) di bawah, tanpa isu timing serupa.
+        gridAdapter.perbaruiData(kargoSiapRakit) {
+            recyclerGridMode.scrollToPosition(0)
+        }
         // PAGING 3: ganti mekanisme lama (kirim List penuh ke bukuAdapter, atau
         // dikosongkan paksa jika >5000 baris) dengan aliran PagingData yang
         // otomatis menyesuaikan sumber query sesuai filter aktif saat ini
