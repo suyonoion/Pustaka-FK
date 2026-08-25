@@ -10,11 +10,28 @@ import android.widget.LinearLayout
 import android.widget.FrameLayout
 import android.widget.TextView
 import android.widget.Toast
+import androidx.paging.PagingDataAdapter
+import androidx.recyclerview.widget.DiffUtil
 import androidx.recyclerview.widget.RecyclerView
 import com.bumptech.glide.Glide
 import com.fk.arsip.database.ArsipEntity
 
-class BukuAdapter(private var daftarArsip: List<ArsipEntity>) : RecyclerView.Adapter<BukuAdapter.BukuViewHolder>() {
+// PAGING 3: BukuAdapter kini PagingDataAdapter, bukan lagi RecyclerView.Adapter
+// biasa yang memegang List penuh + notifyDataSetChanged(). Data dimuat bertahap
+// (halaman demi halaman) lewat submitData(), dengan DiffUtil bawaan Paging3 yang
+// hanya me-rebind item yang benar-benar berubah -> jauh lebih ringan saat
+// berpindah kategori/pencarian dibanding mengganti seluruh list sekaligus.
+class BukuAdapter : PagingDataAdapter<ArsipEntity, BukuAdapter.BukuViewHolder>(DIFF_CALLBACK) {
+
+    companion object {
+        private val DIFF_CALLBACK = object : DiffUtil.ItemCallback<ArsipEntity>() {
+            override fun areItemsTheSame(oldItem: ArsipEntity, newItem: ArsipEntity): Boolean =
+                oldItem.idPosting == newItem.idPosting
+
+            override fun areContentsTheSame(oldItem: ArsipEntity, newItem: ArsipEntity): Boolean =
+                oldItem == newItem
+        }
+    }
 
     class BukuViewHolder(view: View) : RecyclerView.ViewHolder(view) {
         val imgProfil = view.findViewById<ImageView>(R.id.imgProfilAbah)
@@ -39,7 +56,26 @@ class BukuAdapter(private var daftarArsip: List<ArsipEntity>) : RecyclerView.Ada
     }
 
     override fun onBindViewHolder(holder: BukuViewHolder, position: Int) {
-        val arsip = daftarArsip[position]
+        // PAGING 3: getItem() bisa mengembalikan null jika halaman untuk posisi
+        // ini belum selesai dimuat dari database (placeholder). Tampilkan state
+        // kosong sementara; Paging3 otomatis memicu rebind begitu data nyatanya
+        // datang, tanpa perlu logika loading manual di sisi kita.
+        val arsip = getItem(position)
+        if (arsip == null) {
+            holder.txtKontenUtama.text = ""
+            holder.txtKontenUtama.visibility = View.INVISIBLE
+            holder.wadahHeaderShared.visibility = View.GONE
+            holder.txtKontenShared.visibility = View.GONE
+            holder.wadahFoto.removeAllViews()
+            holder.wadahFoto.visibility = View.GONE
+            holder.txtTanggal.text = ""
+            holder.txtKategori.text = ""
+            holder.txtNomorHalaman.text = "Halaman : ${position + 1}/$itemCount"
+            holder.imgProfil.setImageResource(R.drawable.profil_abah)
+            holder.btnTautan.setOnClickListener(null)
+            holder.btnBagikan.setOnClickListener(null)
+            return
+        }
 
           val kontenBersih = arsip.kontenPenuh
         if (kontenBersih.contains("--- Membagikan Status:")) {
@@ -94,7 +130,7 @@ class BukuAdapter(private var daftarArsip: List<ArsipEntity>) : RecyclerView.Ada
 
         holder.txtTanggal.text = arsip.tanggalBaca
         holder.txtKategori.text = arsip.kategori
-        holder.txtNomorHalaman.text = "Halaman : ${position + 1}/${daftarArsip.size}"
+        holder.txtNomorHalaman.text = "Halaman : ${position + 1}/$itemCount"
         holder.imgProfil.setImageResource(R.drawable.profil_abah)
 
         holder.btnTautan.setOnClickListener {
@@ -258,13 +294,7 @@ private fun terapkanWarna(teksLengkap: String): android.text.SpannableString {
         dialogTampil.show()
     }
 
-    override fun getItemCount(): Int = daftarArsip.size
-// ... kode Anda sebelumnya ...
-
-    fun perbaruiData(baru: List<ArsipEntity>) {
-        this.daftarArsip = baru
-        notifyDataSetChanged()
-    }
+    // getItemCount() disediakan otomatis oleh PagingDataAdapter (termasuk placeholder).
 
     // ========================================================
     // KATUP PEMBUANGAN LIMBAH (ANTI MEMORY LEAK)

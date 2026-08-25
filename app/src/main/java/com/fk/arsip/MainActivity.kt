@@ -52,6 +52,11 @@ import androidx.work.WorkManager
 import androidx.work.workDataOf
 import androidx.work.WorkInfo
 import androidx.core.view.GravityCompat
+import androidx.paging.Pager
+import androidx.paging.PagingConfig
+import androidx.paging.PagingSource
+import androidx.paging.cachedIn
+import kotlinx.coroutines.flow.collectLatest
 
 data class TitikNavigasi(
     val tipe: Int, 
@@ -113,12 +118,18 @@ private var kecepatanEmaBytesPerSec: Double = 0.0
     private lateinit var btnFilterSort: ImageButton
 
     private var daftarArsipAktif: List<ArsipEntity> = listOf()
-    private var titikNolJendela = 0
-    private val radiusMuatan = 50 
 
     private var isSearchMode = false 
     private var isMesinSibuk = false
     private var modeKategoriAktif = false
+    // PAGING 3: nama kategori & arah sortir yang sedang aktif, dipakai untuk
+    // menentukan PagingSource mana yang harus dipasok ke bukuAdapter (lihat
+    // mulaiPagingBuku()). Menggantikan mekanisme "jendela manual" lama
+    // (titikNolJendela/radiusMuatan + subList + notifyDataSetChanged) yang
+    // dulu dipakai khusus saat dataset > 5000 baris.
+    private var kategoriAktifNama: String = "Semua Kategori"
+    private var sortTerlamaAktif: Boolean = false
+    private var jobPagingBuku: Job? = null
     
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -160,26 +171,15 @@ private var kecepatanEmaBytesPerSec: Double = 0.0
         recyclerGridMode.layoutManager = layoutManagerGrid
         recyclerGridMode.adapter = gridAdapter
 
-        bukuAdapter = BukuAdapter(daftarArsipAktif)
+        bukuAdapter = BukuAdapter()
         proyektorBuku.adapter = bukuAdapter
         proyektorBuku.offscreenPageLimit = 1
         val mesinProyeksi = proyektorBuku.getChildAt(0) as? RecyclerView
         mesinProyeksi?.overScrollMode = View.OVER_SCROLL_NEVER
-        proyektorBuku.registerOnPageChangeCallback(object : ViewPager2.OnPageChangeCallback() {
-        override fun onPageSelected(position: Int) {
-            super.onPageSelected(position)
-            val indeksAbsolut = titikNolJendela + position
-            val jarakKritis = 10
-            val totalFragmenAktif = proyektorBuku.adapter?.itemCount ?: 0
-            
-            if (position <= jarakKritis && titikNolJendela > 0) {
-                geserSabukProyektor(indeksAbsolut)
-            } 
-            else if (position >= totalFragmenAktif - jarakKritis && indeksAbsolut < daftarArsipAktif.size - 1) {
-                geserSabukProyektor(indeksAbsolut)
-            }
-        }
-    })
+        // PAGING 3: pergeseran halaman kini ditangani otomatis oleh Paging3
+        // (prefetchDistance di PagingConfig, lihat mulaiPagingBuku()) sehingga
+        // OnPageChangeCallback untuk "menggeser jendela data" manual sudah
+        // tidak diperlukan lagi.
         onBackPressedDispatcher.addCallback(this, object : OnBackPressedCallback(true) {
             override fun handleOnBackPressed() {
                 if (drawerLayout.isDrawerOpen(androidx.core.view.GravityCompat.START)) {
@@ -196,14 +196,16 @@ private var kecepatanEmaBytesPerSec: Double = 0.0
                 val labelKategori = if (modeKategoriAktif && daftarArsipAktif.isNotEmpty()) {
                 daftarArsipAktif.first().kategori} else {"Semua Status"}
                 txtStatusPencarian.text = "$labelKategori • $totalVolume Status"
-                if (daftarArsipAktif.size > 5000) {
-                bukuAdapter.perbaruiData(emptyList()) }
+                // PAGING 3: tidak perlu lagi mengosongkan bukuAdapter secara manual
+                // untuk dataset besar -- PagingDataAdapter sudah ringan dengan
+                // sendirinya karena hanya memuat halaman yang sedang terlihat.
                 }
 
 
                 else if (isSearchMode || edtPencarian.query.toString().isNotEmpty() || modeKategoriAktif) {
                     isSearchMode = false
                     modeKategoriAktif = false 
+                    sortTerlamaAktif = false
                     
                     edtPencarian.setQuery("", false)
                     edtPencarian.clearFocus()
@@ -306,6 +308,8 @@ private fun eksekusiSaringanKombinasi(kategori: String, urutTerlama: Boolean) {
         withContext(Dispatchers.Main) {
             isSearchMode = false
             modeKategoriAktif = (kategori != "Semua Kategori")
+            kategoriAktifNama = kategori
+            sortTerlamaAktif = urutTerlama
             
             // Bersihkan tangki pencarian
             edtPencarian.setQuery("", false)
@@ -613,6 +617,8 @@ when (fase) {
             withContext(Dispatchers.Main) {
     isSearchMode = false
     modeKategoriAktif = true
+    kategoriAktifNama = labelKategori
+    sortTerlamaAktif = false
     edtPencarian.setQuery("", false)
     edtPencarian.clearFocus()
 
@@ -1091,11 +1097,11 @@ private fun perbaruiDetailKecepatan(persen: Int, byteDiterima: Long, totalByte: 
             indeksMurni++
         }
         gridAdapter.perbaruiData(kargoSiapRakit)
-        if (kargoMentah.size > 5000) {
-            bukuAdapter.perbaruiData(emptyList())
-        } else {
-            bukuAdapter.perbaruiData(kargoMentah)
-        }
+        // PAGING 3: ganti mekanisme lama (kirim List penuh ke bukuAdapter, atau
+        // dikosongkan paksa jika >5000 baris) dengan aliran PagingData yang
+        // otomatis menyesuaikan sumber query sesuai filter aktif saat ini
+        // (browse biasa / kategori / pencarian) -- lihat mulaiPagingBuku().
+        mulaiPagingBuku()
         
         val adapterTimeline = TimelineAdapter(titikNavigasi) { indeksTujuan ->
             recyclerGridMode.post {
@@ -1139,7 +1145,11 @@ private fun perbaruiDetailKecepatan(persen: Int, byteDiterima: Long, totalByte: 
         txtStatusPencarian.text = "$labelKategori • $totalVolume Status"
         
         delay(100) 
-        geserSabukProyektor(posisi)
+        // PAGING 3: dengan placeholder aktif, Paging3 sudah tahu total itemCount
+        // sejak awal (dari COUNT query Room) sehingga ViewPager2 bisa langsung
+        // lompat ke posisi absolut manapun tanpa perlu memotong/menggeser
+        // jendela data secara manual seperti mekanisme lama.
+        proyektorBuku.setCurrentItem(posisi, false)
         
         proyektorBuku.post {
             isMesinSibuk = false 
@@ -1280,22 +1290,62 @@ private fun eksekusiLogikaPencarian(kataKunciMentah: String?) {
         loadingPencarian.visibility = if (aktif) View.VISIBLE else View.GONE
         txtStatusPencarian.text = pesan
     }
-    private fun geserSabukProyektor(indeksAbsolutFokus: Int) {
-    val totalData = daftarArsipAktif.size
-    val batasKiri = maxOf(0, indeksAbsolutFokus - radiusMuatan)
-    val batasKanan = minOf(totalData, indeksAbsolutFokus + radiusMuatan + 1)
-    
-    // Kunci titik koordinat baru
-    titikNolJendela = batasKiri
-    
-    val fragmenData = daftarArsipAktif.subList(batasKiri, batasKanan)
-    val posisiRelatif = indeksAbsolutFokus - batasKiri
+    // =========================================================================
+    // PAGING 3: mulai/ganti aliran data untuk mode buku (ViewPager2)
+    // -------------------------------------------------------------------------
+    // Menggantikan mekanisme lama geserSabukProyektor() (subList manual +
+    // notifyDataSetChanged berdasarkan radiusMuatan di sekitar posisi baca).
+    // Sumber data dipilih sesuai filter yang sedang aktif:
+    //  - Pencarian aktif      -> bungkus daftarArsipAktif (hasil presisi client-
+    //                            side) lewat ListPagingSource, karena regex
+    //                            batas-kata tidak bisa diwakili satu query SQL.
+    //  - Kategori aktif       -> PagingSource DB langsung (saringKategoriPaged /
+    //                            saringKategoriTerlamaPaged) -> hemat memori
+    //                            walau kategori berisi ribuan status.
+    //  - Browse biasa         -> PagingSource DB langsung (tarikSemuaArsipPaged /
+    //                            tarikSemuaArsipTerlamaPaged) -> puluhan ribu
+    //                            baris tidak pernah ditarik penuh ke RAM.
+    // =========================================================================
+    private fun mulaiPagingBuku() {
+        jobPagingBuku?.cancel()
 
-    // Heningkan pembaruan: Jangan gunakan animasi (false) agar transisi 
-    // pemotongan data tidak terasa oleh usapan jari pengguna
-    bukuAdapter.perbaruiData(fragmenData)
-    proyektorBuku.setCurrentItem(posisiRelatif, false)
-}
+        val lenganRobot by lazy { ArsipDatabase.operasikanMesin(this).arsipDao() }
+        val sourceFactory: () -> PagingSource<Int, ArsipEntity> = when {
+            isSearchMode -> {
+                { ListPagingSource(daftarArsipAktif) }
+            }
+            modeKategoriAktif -> {
+                if (sortTerlamaAktif) {
+                    { lenganRobot.saringKategoriTerlamaPaged(kategoriAktifNama) }
+                } else {
+                    { lenganRobot.saringKategoriPaged(kategoriAktifNama) }
+                }
+            }
+            else -> {
+                if (sortTerlamaAktif) {
+                    { lenganRobot.tarikSemuaArsipTerlamaPaged() }
+                } else {
+                    { lenganRobot.tarikSemuaArsipPaged() }
+                }
+            }
+        }
+
+        val pagingFlow = Pager(
+            config = PagingConfig(
+                pageSize = 40,
+                prefetchDistance = 20,
+                initialLoadSize = 80,
+                enablePlaceholders = true
+            ),
+            pagingSourceFactory = sourceFactory
+        ).flow.cachedIn(lifecycleScope)
+
+        jobPagingBuku = lifecycleScope.launch {
+            pagingFlow.collectLatest { data ->
+                bukuAdapter.submitData(data)
+            }
+        }
+    }
     private fun muatDataAwalKeSasis(daftarArsipGlobal: List<ArsipEntity>) {
     // Pastikan loading dimatikan jika pemrosesan selesai
     loadingPencarian.visibility = View.GONE

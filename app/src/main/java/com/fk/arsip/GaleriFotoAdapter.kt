@@ -1,13 +1,12 @@
 package com.fk.arsip
 
-import android.graphics.drawable.Drawable
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
 import android.widget.ImageView
 import android.widget.TextView
 import androidx.recyclerview.widget.RecyclerView
-import java.io.InputStream
+import com.bumptech.glide.Glide
 
 class GaleriFotoAdapter(
     private var listFoto: List<GaleriFoto>,
@@ -32,13 +31,16 @@ class GaleriFotoAdapter(
         holder.txtSubKategori.text = item.subKategori.uppercase()
         holder.txtNomorFoto.text = item.nomorFoto
 
-        try {
-            val inputStream: InputStream = holder.itemView.context.assets.open(item.fotoPath)
-            val drawable = Drawable.createFromStream(inputStream, null)
-            holder.imgFotoAbah.setImageDrawable(drawable)
-        } catch (e: Exception) {
-            e.printStackTrace()
-        }
+        // PERBAIKAN EFISIENSI: sebelumnya setiap bind memanggil assets.open()
+        // + Drawable.createFromStream() secara SINKRON di main thread -> tiap
+        // kali RecyclerView me-recycle item saat scroll, UI thread ikut nge-
+        // block untuk decode gambar penuh resolusi. Glide (sudah dipakai di
+        // BukuAdapter) men-decode di background thread, otomatis downsample
+        // sesuai ukuran ImageView, dan meng-cache hasilnya di memori/disk.
+        Glide.with(holder.itemView.context)
+            .load("file:///android_asset/${item.fotoPath}")
+            .centerCrop()
+            .into(holder.imgFotoAbah)
 
         // AKSI KLIK UNTUK MEMBUKA DETAIL FOTO
         holder.itemView.setOnClickListener {
@@ -47,6 +49,13 @@ class GaleriFotoAdapter(
     }
 
     override fun getItemCount(): Int = listFoto.size
+
+    override fun onViewRecycled(holder: GaleriViewHolder) {
+        super.onViewRecycled(holder)
+        // Batalkan request Glide yang belum selesai agar tidak menimpa
+        // gambar item lain saat holder ini dipakai ulang.
+        Glide.with(holder.itemView.context).clear(holder.imgFotoAbah)
+    }
 
     fun updateData(newList: List<GaleriFoto>) {
         listFoto = newList

@@ -1,5 +1,6 @@
 package com.fk.arsip.database
 
+import androidx.paging.PagingSource
 import androidx.room.Dao
 import androidx.room.Insert
 import androidx.room.OnConflictStrategy
@@ -39,4 +40,26 @@ interface ArsipDao {
 
     @Query("SELECT * FROM tabel_arsip WHERE kategori LIKE '%' || :parameterKategori || '%' ORDER BY waktuRilis ASC")
     fun saringBerdasarkanKategoriTerlama(parameterKategori: String): List<ArsipEntity>
+
+    // ========================================================
+    // PAGING 3: versi PagingSource dari query di atas, khusus untuk
+    // mode buku (ViewPager2). Room otomatis memuat data per-halaman
+    // langsung dari SQLite (bukan menarik semua baris ke memori) dan
+    // otomatis invalidate/refresh saat tabel berubah (mis. setelah
+    // injeksiMassal selesai).
+    // ========================================================
+    @Query("SELECT * FROM tabel_arsip ORDER BY waktuRilis DESC")
+    fun tarikSemuaArsipPaged(): PagingSource<Int, ArsipEntity>
+
+    @Query("SELECT * FROM tabel_arsip ORDER BY waktuRilis ASC")
+    fun tarikSemuaArsipTerlamaPaged(): PagingSource<Int, ArsipEntity>
+
+    @Query("SELECT * FROM tabel_arsip WHERE kategori LIKE '%' || :namaKategori || '%' ORDER BY waktuRilis DESC")
+    fun saringKategoriPaged(namaKategori: String): PagingSource<Int, ArsipEntity>
+
+    @Query("SELECT * FROM tabel_arsip WHERE kategori LIKE '%' || :namaKategori || '%' ORDER BY waktuRilis ASC")
+    fun saringKategoriTerlamaPaged(namaKategori: String): PagingSource<Int, ArsipEntity>
+
+    @Query("SELECT * FROM tabel_arsip WHERE kontenPenuh LIKE '%' || :kataKunci || '%' ORDER BY waktuRilis DESC")
+    fun saringArsipPaged(kataKunci: String): PagingSource<Int, ArsipEntity>
 }

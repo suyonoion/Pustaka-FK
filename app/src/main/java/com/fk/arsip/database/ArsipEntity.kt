@@ -1,9 +1,16 @@
 package com.fk.arsip.database
 
 import androidx.room.Entity
+import androidx.room.Index
 import androidx.room.PrimaryKey
 
-@Entity(tableName = "tabel_arsip")
+// PERBAIKAN EFISIENSI: tambah indeks pada kolom yang sering dipakai di
+// WHERE/ORDER BY (waktuRilis, kategori) agar query sort & filter tidak
+// full table scan setiap kali dipanggil.
+@Entity(
+    tableName = "tabel_arsip",
+    indices = [Index(value = ["waktuRilis"]), Index(value = ["kategori"])]
+)
 data class ArsipEntity(
     // Menggunakan ID mutlak dari Facebook untuk mencegah duplikasi data
     @PrimaryKey val idPosting: String, 

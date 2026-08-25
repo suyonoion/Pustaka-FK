@@ -20,10 +20,14 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.content.ContextCompat
+import androidx.lifecycle.lifecycleScope
 import androidx.recyclerview.widget.GridLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import com.google.android.material.appbar.MaterialToolbar
 import com.google.android.material.button.MaterialButton
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import java.io.File
 import java.io.FileOutputStream
 import java.io.InputStream
@@ -114,12 +118,19 @@ class GaleriActivity : AppCompatActivity() {
     // 1. ATUR SCALETYPE AWAL AGAR GAMBAR DITAMPILKAN UTUH KESELURUHAN
     imgDetail.scaleType = ImageView.ScaleType.FIT_CENTER
 
-    try {
-        val inputStream: InputStream = assets.open(foto.fotoPath)
-        val drawable = Drawable.createFromStream(inputStream, null)
-        imgDetail.setImageDrawable(drawable)
-    } catch (e: Exception) {
-        e.printStackTrace()
+    // PERBAIKAN EFISIENSI: decode gambar dari assets di background thread
+    // (Dispatchers.IO) agar tidak memblokir UI thread saat dialog dibuka --
+    // sebelumnya decode dilakukan langsung di main thread.
+    lifecycleScope.launch(Dispatchers.IO) {
+        val drawable = try {
+            assets.open(foto.fotoPath).use { Drawable.createFromStream(it, null) }
+        } catch (e: Exception) {
+            e.printStackTrace()
+            null
+        }
+        withContext(Dispatchers.Main) {
+            if (drawable != null) imgDetail.setImageDrawable(drawable)
+        }
     }
 
     // 2. PASANG SKRIP ZOOM YANG AMAN TANPA MEMOTONG GAMBAR AWAL
@@ -200,36 +211,46 @@ private fun pasangPinchToZoom(imageView: ImageView) {
 }
 
     private fun simpanFotoKeGaleri(foto: GaleriFoto) {
-        try {
-            val inputStream: InputStream = assets.open(foto.fotoPath)
-            val bitmap = BitmapFactory.decodeStream(inputStream)
-            val fileName = "PustakaFK_${foto.nomorFoto.replace("#", "")}_${System.currentTimeMillis()}.jpg"
+        // PERBAIKAN EFISIENSI: seluruh proses (baca asset, decode bitmap,
+        // compress JPEG, tulis file) dipindah ke Dispatchers.IO -- sebelumnya
+        // semua ini berjalan di main thread dan bisa memicu jank/ANR,
+        // terutama untuk foto beresolusi besar.
+        lifecycleScope.launch(Dispatchers.IO) {
+            try {
+                val inputStream: InputStream = assets.open(foto.fotoPath)
+                val bitmap = BitmapFactory.decodeStream(inputStream)
+                val fileName = "PustakaFK_${foto.nomorFoto.replace("#", "")}_${System.currentTimeMillis()}.jpg"
 
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-                val values = ContentValues().apply {
-                    put(MediaStore.MediaColumns.DISPLAY_NAME, fileName)
-                    put(MediaStore.MediaColumns.MIME_TYPE, "image/jpeg")
-                    put(MediaStore.MediaColumns.RELATIVE_PATH, "Pictures/PustakaFK")
-                }
-                val uri = contentResolver.insert(MediaStore.Images.Media.EXTERNAL_CONTENT_URI, values)
-                uri?.let {
-                    contentResolver.openOutputStream(it)?.use { os ->
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                    val values = ContentValues().apply {
+                        put(MediaStore.MediaColumns.DISPLAY_NAME, fileName)
+                        put(MediaStore.MediaColumns.MIME_TYPE, "image/jpeg")
+                        put(MediaStore.MediaColumns.RELATIVE_PATH, "Pictures/PustakaFK")
+                    }
+                    val uri = contentResolver.insert(MediaStore.Images.Media.EXTERNAL_CONTENT_URI, values)
+                    uri?.let {
+                        contentResolver.openOutputStream(it)?.use { os ->
+                            bitmap.compress(Bitmap.CompressFormat.JPEG, 100, os)
+                        }
+                    }
+                } else {
+                    val imagesDir = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_PICTURES)
+                    val appDir = File(imagesDir, "PustakaFK")
+                    if (!appDir.exists()) appDir.mkdirs()
+                    val imageFile = File(appDir, fileName)
+                    FileOutputStream(imageFile).use { os ->
                         bitmap.compress(Bitmap.CompressFormat.JPEG, 100, os)
                     }
                 }
-            } else {
-                val imagesDir = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_PICTURES)
-                val appDir = File(imagesDir, "PustakaFK")
-                if (!appDir.exists()) appDir.mkdirs()
-                val imageFile = File(appDir, fileName)
-                FileOutputStream(imageFile).use { os ->
-                    bitmap.compress(Bitmap.CompressFormat.JPEG, 100, os)
+                withContext(Dispatchers.Main) {
+                    Toast.makeText(this@GaleriActivity, "Foto tersimpan di Galeri!", Toast.LENGTH_SHORT).show()
+                }
+            } catch (e: Exception) {
+                e.printStackTrace()
+                withContext(Dispatchers.Main) {
+                    Toast.makeText(this@GaleriActivity, "Gagal menyimpan foto", Toast.LENGTH_SHORT).show()
                 }
             }
-            Toast.makeText(this, "Foto tersimpan di Galeri!", Toast.LENGTH_SHORT).show()
-        } catch (e: Exception) {
-            e.printStackTrace()
-            Toast.makeText(this, "Gagal menyimpan foto", Toast.LENGTH_SHORT).show()
         }
     }
 }

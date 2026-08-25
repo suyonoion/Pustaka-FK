@@ -4,6 +4,8 @@ import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
 import android.widget.TextView
+import androidx.recyclerview.widget.DiffUtil
+import androidx.recyclerview.widget.ListAdapter
 import androidx.recyclerview.widget.RecyclerView
 import com.fk.arsip.database.ArsipEntity
 import com.google.android.material.imageview.ShapeableImageView // IMPORT TAMBAHAN UNTUK PROFIL BULAT
@@ -14,18 +16,41 @@ sealed class KargoCampuran {
     data class StatusKonten(val data: ArsipEntity, val posisiAsli: Int) : KargoCampuran()
 }
 
+// PERBAIKAN EFISIENSI: GridAdapter sekarang ListAdapter (DiffUtil) alih-alih
+// notifyDataSetChanged() penuh setiap ganti data. Untuk list beranggota ribuan
+// item (mode "Semua Kategori"), DiffUtil menghitung perbedaan di background
+// thread (AsyncListDiffer) dan hanya me-refresh baris yang benar-benar berubah,
+// bukan memaksa RecyclerView menganggap semuanya baru.
 class GridAdapter(
-    private var daftarKargo: List<KargoCampuran>,
     private val pemicuBuku: (Int) -> Unit // Mengirim posisi asli (absolut) ke ViewPager
-) : RecyclerView.Adapter<RecyclerView.ViewHolder>() {
+) : ListAdapter<KargoCampuran, RecyclerView.ViewHolder>(DIFF_CALLBACK) {
+
+    constructor(dataAwal: List<KargoCampuran>, pemicuBuku: (Int) -> Unit) : this(pemicuBuku) {
+        submitList(dataAwal)
+    }
 
     companion object {
         const val TIPE_PEMBATAS = 0
         const val TIPE_KONTEN = 1
+
+        private val DIFF_CALLBACK = object : DiffUtil.ItemCallback<KargoCampuran>() {
+            override fun areItemsTheSame(oldItem: KargoCampuran, newItem: KargoCampuran): Boolean {
+                return when {
+                    oldItem is KargoCampuran.PembatasWaktu && newItem is KargoCampuran.PembatasWaktu ->
+                        oldItem.label == newItem.label
+                    oldItem is KargoCampuran.StatusKonten && newItem is KargoCampuran.StatusKonten ->
+                        oldItem.data.idPosting == newItem.data.idPosting
+                    else -> false
+                }
+            }
+
+            override fun areContentsTheSame(oldItem: KargoCampuran, newItem: KargoCampuran): Boolean =
+                oldItem == newItem
+        }
     }
 
     override fun getItemViewType(position: Int): Int {
-        return when (daftarKargo[position]) {
+        return when (getItem(position)) {
             is KargoCampuran.PembatasWaktu -> TIPE_PEMBATAS
             else -> TIPE_KONTEN
         }
@@ -42,7 +67,7 @@ class GridAdapter(
     }
 
     override fun onBindViewHolder(holder: RecyclerView.ViewHolder, position: Int) {
-        val material = daftarKargo[position]
+        val material = getItem(position)
         
         if (holder is HeaderViewHolder && material is KargoCampuran.PembatasWaktu) {
             holder.txtHeader.text = material.label
@@ -79,12 +104,7 @@ class GridAdapter(
         }
     }
 
-    override fun getItemCount(): Int = daftarKargo.size
-
-    fun perbaruiData(dataBaru: List<KargoCampuran>) {
-        this.daftarKargo = dataBaru
-        notifyDataSetChanged()
-    }
+    fun perbaruiData(dataBaru: List<KargoCampuran>) = submitList(dataBaru)
 
     class HeaderViewHolder(view: View) : RecyclerView.ViewHolder(view) {
         val txtHeader: TextView = view.findViewById(R.id.txtHeaderWaktu)
@@ -99,3 +119,4 @@ class GridAdapter(
         val txtIndeksGrid: TextView = view.findViewById(R.id.txtIndeksGrid) 
     }
 }
+
