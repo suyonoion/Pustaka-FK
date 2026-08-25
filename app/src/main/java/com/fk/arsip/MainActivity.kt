@@ -1097,6 +1097,15 @@ private fun perbaruiDetailKecepatan(persen: Int, byteDiterima: Long, totalByte: 
             indeksMurni++
         }
         gridAdapter.perbaruiData(kargoSiapRakit)
+        // PERBAIKAN: reset posisi scroll grid ke atas setiap kali data baru
+        // (hasil filter/kategori/pencarian) didorong masuk. Tanpa ini, jika
+        // pengguna sedang scroll ke bawah saat menekan filter, grid akan
+        // tetap berada di posisi scroll lama -- daftar baru sudah benar di
+        // adapter, tapi secara visual terlihat seperti filter "tidak bekerja"
+        // karena konten yang berubah berada di luar area yang terlihat.
+        // Timeline di sampingnya selalu terlihat ter-update karena adapternya
+        // diganti baru (recyclerTimeline.adapter = adapterTimeline) di bawah.
+        recyclerGridMode.scrollToPosition(0)
         // PAGING 3: ganti mekanisme lama (kirim List penuh ke bukuAdapter, atau
         // dikosongkan paksa jika >5000 baris) dengan aliran PagingData yang
         // otomatis menyesuaikan sumber query sesuai filter aktif saat ini
