@@ -669,13 +669,16 @@ when (fase) {
 }
 
         private fun eksekusiPabrikData() {
-        // PERBAIKAN: tampilkan overlay + visual FASE_1 (logo & nama aplikasi)
-        // SEGERA, sebelum proses pengecekan database (IO) berjalan. Tanpa ini,
-        // ada jeda singkat di mana layar benar-benar kosong karena overlay
-        // default-nya "gone" sementara grid/timeline juga belum terisi data.
-        aturVisibilitasOverlayInisialisasi(true)
-        perbaruiPanelTelemetri(FaseInjeksi.FASE_1, 0, 0, 0)
-
+        // PERBAIKAN: overlay stepper (FASE_1..6) JANGAN ditampilkan secara optimis
+        // di sini. Membuka koneksi Room/SQLite pertama kali bisa memakan waktu
+        // cukup lama (bukan cuma 1 frame), sehingga stepper sempat ter-render
+        // penuh dan terlihat jelas oleh user meskipun data sudah lengkap dan
+        // harusnya langsung ke halaman utama TANPA stepper sama sekali.
+        // Jeda saat pengecekan database ini sudah cukup ditutupi oleh skeleton
+        // loading di grid & timeline (wadahLoadingGrid / loadingTimelineKecil)
+        // yang sudah tampil instan sejak activity_main.xml di-inflate — overlay
+        // stepper baru dipanggil di cabang yang memang benar-benar butuh
+        // download/injeksi (lihat cabang di bawah).
         lifecycleScope.launch(Dispatchers.IO) {
             val database = ArsipDatabase.operasikanMesin(this@MainActivity)
             val lenganRobot = database.arsipDao()
