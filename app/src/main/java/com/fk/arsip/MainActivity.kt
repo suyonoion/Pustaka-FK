@@ -1056,81 +1056,96 @@ private fun perbaruiDetailKecepatan(persen: Int, byteDiterima: Long, totalByte: 
 }
 
 
+    // PERBAIKAN PERFORMA: pompaDataKeLayar() dulu dipanggil selalu dari dalam
+    // withContext(Dispatchers.Main) oleh pemanggilnya (pencarian, filter,
+    // kategori), sehingga loop pembangunan kargoSiapRakit/titikNavigasi di
+    // bawah ini -- yang berjalan atas SELURUH daftar hasil (bisa ribuan baris,
+    // tiap baris ada beberapa substring+string concat) -- ikut tereksekusi
+    // SECARA SINKRON di Main Thread. Itulah sebabnya UI terlihat "diam total"
+    // (bukan cuma lambat) selama proses pencarian/filter/kategori: main thread
+    // benar-benar terkunci sampai loop selesai, baru redraw. Sekarang loop ini
+    // dipindah ke Dispatchers.Default (murni komputasi, tidak menyentuh View),
+    // dan hanya bagian yang benar-benar mengubah UI yang balik ke Main.
     private fun pompaDataKeLayar(kargoMentah: List<ArsipEntity>) {
         daftarArsipAktif = kargoMentah
-        val kargoSiapRakit = mutableListOf<KargoCampuran>()
-        val titikNavigasi = mutableListOf<TitikNavigasi>()
-        var pembatasAktif = ""
-        var tahunAktif = ""
-        var putaranWarnaBulan = 0 
-        var indeksMurni = 0 
+        lifecycleScope.launch(Dispatchers.Default) {
+            val kargoSiapRakit = mutableListOf<KargoCampuran>()
+            val titikNavigasi = mutableListOf<TitikNavigasi>()
+            var pembatasAktif = ""
+            var tahunAktif = ""
+            var putaranWarnaBulan = 0
+            var indeksMurni = 0
 
-        for (arsip in kargoMentah) {
-            val tanggalStr = arsip.tanggalBaca 
-            val tahun = if (tanggalStr.length >= 4) tanggalStr.substring(0, 4) else "Tahun"
-            val bulanAngka = if (tanggalStr.length >= 7) tanggalStr.substring(5, 7) else "00"
-            
-            val namaSingkat = when (bulanAngka) {
-                "01" -> "Jan"; "02" -> "Feb"; "03" -> "Mar"
-                "04" -> "Apr"; "05" -> "Mei"; "06" -> "Jun"
-                "07" -> "Jul"; "08" -> "Agu"; "09" -> "Sep"
-                "10" -> "Okt"; "11" -> "Nov"; "12" -> "Des"
-                else -> "Bln"
-            }
+            for (arsip in kargoMentah) {
+                val tanggalStr = arsip.tanggalBaca
+                val tahun = if (tanggalStr.length >= 4) tanggalStr.substring(0, 4) else "Tahun"
+                val bulanAngka = if (tanggalStr.length >= 7) tanggalStr.substring(5, 7) else "00"
 
-            val headerBulanTahun = "$tahun | $namaSingkat"
-
-            if (tahun != tahunAktif) {
-                titikNavigasi.add(TitikNavigasi(tipe = 0, teks = tahun))
-                tahunAktif = tahun
-            }
-
-            if (headerBulanTahun != pembatasAktif) {
-                kargoSiapRakit.add(KargoCampuran.PembatasWaktu(headerBulanTahun))
-                val isGenap = (putaranWarnaBulan % 2 == 0)
-                titikNavigasi.add(TitikNavigasi(tipe = 1, teks = namaSingkat, indeksTujuan = kargoSiapRakit.size - 1, warnaGenap = isGenap))
-                pembatasAktif = headerBulanTahun
-                putaranWarnaBulan++
-            }
-            
-            kargoSiapRakit.add(KargoCampuran.StatusKonten(arsip, indeksMurni))
-            indeksMurni++
-        }
-        gridAdapter.perbaruiData(kargoSiapRakit) {
-            // PERBAIKAN BUG: GridLayoutManager di sini memakai
-            // isSpanIndexCacheEnabled = true (lihat sesuaikanKompartemenGrid()).
-            // Cache posisi-kolom itu HANYA di-invalidate otomatis oleh
-            // RecyclerView saat notifyDataSetChanged() penuh dipanggil --
-            // tidak untuk notifikasi parsial dari DiffUtil/submitList() yang
-            // dipakai ListAdapter. Akibatnya, setelah GridAdapter dikonversi ke
-            // ListAdapter, grid berhenti ikut ter-update saat filter/kategori/
-            // pencarian berganti (timeline tetap update karena adapter-nya
-            // selalu dibuat baru setiap saat, bukan lewat diff). Invalidasi
-            // manual di sini menyelesaikan akar masalahnya.
-            (recyclerGridMode.layoutManager as? GridLayoutManager)?.spanSizeLookup?.invalidateSpanIndexCache()
-        }
-        // PAGING 3: ganti mekanisme lama (kirim List penuh ke bukuAdapter, atau
-        // dikosongkan paksa jika >5000 baris) dengan aliran PagingData yang
-        // otomatis menyesuaikan sumber query sesuai filter aktif saat ini
-        // (browse biasa / kategori / pencarian) -- lihat mulaiPagingBuku().
-        mulaiPagingBuku()
-        
-        val adapterTimeline = TimelineAdapter(titikNavigasi) { indeksTujuan ->
-            recyclerGridMode.post {
-                val manager = recyclerGridMode.layoutManager as? GridLayoutManager
-                if (indeksTujuan in 0 until gridAdapter.itemCount) {
-                    manager?.scrollToPositionWithOffset(indeksTujuan, 0)
+                val namaSingkat = when (bulanAngka) {
+                    "01" -> "Jan"; "02" -> "Feb"; "03" -> "Mar"
+                    "04" -> "Apr"; "05" -> "Mei"; "06" -> "Jun"
+                    "07" -> "Jul"; "08" -> "Agu"; "09" -> "Sep"
+                    "10" -> "Okt"; "11" -> "Nov"; "12" -> "Des"
+                    else -> "Bln"
                 }
+
+                val headerBulanTahun = "$tahun | $namaSingkat"
+
+                if (tahun != tahunAktif) {
+                    titikNavigasi.add(TitikNavigasi(tipe = 0, teks = tahun))
+                    tahunAktif = tahun
+                }
+
+                if (headerBulanTahun != pembatasAktif) {
+                    kargoSiapRakit.add(KargoCampuran.PembatasWaktu(headerBulanTahun))
+                    val isGenap = (putaranWarnaBulan % 2 == 0)
+                    titikNavigasi.add(TitikNavigasi(tipe = 1, teks = namaSingkat, indeksTujuan = kargoSiapRakit.size - 1, warnaGenap = isGenap))
+                    pembatasAktif = headerBulanTahun
+                    putaranWarnaBulan++
+                }
+
+                kargoSiapRakit.add(KargoCampuran.StatusKonten(arsip, indeksMurni))
+                indeksMurni++
+            }
+
+            withContext(Dispatchers.Main) {
+                gridAdapter.perbaruiData(kargoSiapRakit) {
+                    // PERBAIKAN BUG: GridLayoutManager di sini memakai
+                    // isSpanIndexCacheEnabled = true (lihat sesuaikanKompartemenGrid()).
+                    // Cache posisi-kolom itu HANYA di-invalidate otomatis oleh
+                    // RecyclerView saat notifyDataSetChanged() penuh dipanggil --
+                    // tidak untuk notifikasi parsial dari DiffUtil/submitList() yang
+                    // dipakai ListAdapter. Akibatnya, setelah GridAdapter dikonversi ke
+                    // ListAdapter, grid berhenti ikut ter-update saat filter/kategori/
+                    // pencarian berganti (timeline tetap update karena adapter-nya
+                    // selalu dibuat baru setiap saat, bukan lewat diff). Invalidasi
+                    // manual di sini menyelesaikan akar masalahnya.
+                    (recyclerGridMode.layoutManager as? GridLayoutManager)?.spanSizeLookup?.invalidateSpanIndexCache()
+                }
+                // PAGING 3: ganti mekanisme lama (kirim List penuh ke bukuAdapter, atau
+                // dikosongkan paksa jika >5000 baris) dengan aliran PagingData yang
+                // otomatis menyesuaikan sumber query sesuai filter aktif saat ini
+                // (browse biasa / kategori / pencarian) -- lihat mulaiPagingBuku().
+                mulaiPagingBuku()
+
+                val adapterTimeline = TimelineAdapter(titikNavigasi) { indeksTujuan ->
+                    recyclerGridMode.post {
+                        val manager = recyclerGridMode.layoutManager as? GridLayoutManager
+                        if (indeksTujuan in 0 until gridAdapter.itemCount) {
+                            manager?.scrollToPositionWithOffset(indeksTujuan, 0)
+                        }
+                    }
+                }
+
+                recyclerTimeline.layoutManager = androidx.recyclerview.widget.LinearLayoutManager(this@MainActivity)
+                recyclerTimeline.adapter = adapterTimeline
+
+                // PERBAIKAN: begitu grid & timeline sudah benar-benar terisi data,
+                // sembunyikan skeleton/placeholder loading agar tidak menutupi konten.
+                findViewById<View>(R.id.wadahLoadingGrid)?.visibility = View.GONE
+                findViewById<View>(R.id.loadingTimelineKecil)?.visibility = View.GONE
             }
         }
-
-        recyclerTimeline.layoutManager = androidx.recyclerview.widget.LinearLayoutManager(this)
-        recyclerTimeline.adapter = adapterTimeline
-
-        // PERBAIKAN: begitu grid & timeline sudah benar-benar terisi data,
-        // sembunyikan skeleton/placeholder loading agar tidak menutupi konten.
-        findViewById<View>(R.id.wadahLoadingGrid)?.visibility = View.GONE
-        findViewById<View>(R.id.loadingTimelineKecil)?.visibility = View.GONE
     }
     private fun bukaModeBuku(posisi: Int) {
     if (isMesinSibuk) return

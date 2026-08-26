@@ -107,7 +107,20 @@ class GridAdapter(
         // tidak ter-invalidate otomatis -> grid bisa macet saat data berubah drastis
         // (filter/kategori/pencarian). submitList() menerima callback yang dipanggil
         // SETELAH diff selesai diproses; callback ini digunakan untuk invalidasi cache.
-        submitList(dataBaru, afterSubmit)
+        //
+        // PERBAIKAN PERFORMA: setiap ganti pencarian/filter/kategori adalah
+        // pergantian TOTAL konteks data (daftar lama & baru nyaris tidak
+        // beririsan sama sekali). Kalau langsung submitList(dataBaru), AsyncListDiffer
+        // menjalankan algoritma Myers diff antara dua daftar besar yang hampir
+        // seluruhnya berbeda -- itu skenario mendekati kasus terburuk DiffUtil
+        // (biaya bisa mendekati O(N*M)), dan inilah kontributor utama jeda lama
+        // saat ganti kategori/pencarian. Solusinya: submitList(null) dulu supaya
+        // AsyncListDiffer diff dari "kosong", lalu submitList(dataBaru) diff dari
+        // kosong ke isi penuh -- itu O(N), jauh lebih murah daripada diff
+        // "penuh-ke-penuh-yang-berbeda-total".
+        submitList(null) {
+            submitList(dataBaru, afterSubmit)
+        }
     }
 
     class HeaderViewHolder(view: View) : RecyclerView.ViewHolder(view) {
