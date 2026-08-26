@@ -160,7 +160,7 @@ private var kecepatanEmaBytesPerSec: Double = 0.0
         recyclerGridMode.layoutManager = GridLayoutManager(this, 2)
         sesuaikanKompartemenGrid() 
         proyektorBuku.setPageTransformer(null)
-        gridAdapter = GridAdapter(emptyList()) { posisi -> bukaModeBuku(posisi) }
+        gridAdapter = GridAdapter { posisi -> bukaModeBuku(posisi) }
         
         val layoutManagerGrid = GridLayoutManager(this, 2)
         layoutManagerGrid.spanSizeLookup = object : GridLayoutManager.SpanSizeLookup() {
