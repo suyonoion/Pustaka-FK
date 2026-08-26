@@ -36,11 +36,15 @@
                 android:textStyle="bold" />
         </RelativeLayout>
 
-        <!-- BINGKAI FOTO (TINGGI TETAP & SERAGAM, DIPOTONG RAPI MENGIKUTI CENTER CROP GLIDE) -->
+        <!-- BINGKAI FOTO: tinggi DIKUNCI pada 140dp (lebih kecil dari 170dp
+             agar item foto lebih proporsional & rapi, terutama untuk foto
+             portrait/vertikal yang sebelumnya membuat card item sangat tall).
+             Menggunakan centerCrop agar foto selalu fill ImageView penuh,
+             tanpa distorsi aspect ratio (dipotong jika perlu). -->
         <ImageView
             android:id="@+id/imgFotoAbah"
             android:layout_width="match_parent"
-            android:layout_height="160dp"
+            android:layout_height="140dp"
             android:scaleType="centerCrop" />
 
         <!-- LABEL SUB -->

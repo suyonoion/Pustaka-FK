@@ -22,12 +22,8 @@ sealed class KargoCampuran {
 // thread (AsyncListDiffer) dan hanya me-refresh baris yang benar-benar berubah,
 // bukan memaksa RecyclerView menganggap semuanya baru.
 class GridAdapter(
-    private val pemicuBuku: (Int) -> Unit // Mengirim posisi asli (absolut) ke ViewPager
+    private val pemicuBuku: (Int) -> Unit
 ) : ListAdapter<KargoCampuran, RecyclerView.ViewHolder>(DIFF_CALLBACK) {
-
-    constructor(dataAwal: List<KargoCampuran>, pemicuBuku: (Int) -> Unit) : this(pemicuBuku) {
-        submitList(dataAwal)
-    }
 
     companion object {
         const val TIPE_PEMBATAS = 0
@@ -104,18 +100,14 @@ class GridAdapter(
         }
     }
 
-    // PERBAIKAN: submitList() milik ListAdapter bersifat ASINKRON -- diff
-    // dihitung di background thread lalu baru diterapkan ke RecyclerView
-    // setelah selesai. Kode pemanggil (MainActivity) sebelumnya melakukan
-    // scrollToPosition(0) TEPAT SETELAH memanggil perbaruiData(), padahal
-    // data barunya belum tentu sudah diterapkan saat itu -- scroll jadi
-    // dieksekusi terhadap state lama, sehingga hasil filter baru muncul di
-    // luar area yang terlihat pengguna (terlihat seperti "filter tidak
-    // bekerja" pada grid, walau adapter sebenarnya sudah benar). Parameter
-    // setelahDiterapkan di sini adalah commit callback bawaan submitList(),
-    // dijalankan HANYA setelah data baru benar-benar diterapkan ke grid.
-    fun perbaruiData(dataBaru: List<KargoCampuran>, setelahDiterapkan: (() -> Unit)? = null) {
-        submitList(dataBaru) { setelahDiterapkan?.invoke() }
+    fun perbaruiData(dataBaru: List<KargoCampuran>, afterSubmit: (() -> Unit)? = null) {
+        // PERBAIKAN BUG: GridLayoutManager meng-cache posisi span-index,
+        // dan cache ini HANYA di-invalidate otomatis saat notifyDataSetChanged()
+        // penuh (mekanisme adapter lama). Dengan ListAdapter + DiffUtil, cache
+        // tidak ter-invalidate otomatis -> grid bisa macet saat data berubah drastis
+        // (filter/kategori/pencarian). submitList() menerima callback yang dipanggil
+        // SETELAH diff selesai diproses; callback ini digunakan untuk invalidasi cache.
+        submitList(dataBaru, afterSubmit)
     }
 
     class HeaderViewHolder(view: View) : RecyclerView.ViewHolder(view) {
