@@ -113,6 +113,10 @@ private var kecepatanEmaBytesPerSec: Double = 0.0
     private lateinit var txtStatusPencarian: TextView
     private lateinit var gridAdapter: GridAdapter
     private lateinit var bukuAdapter: BukuAdapter
+    // Sampul depan ditempel sebagai item ke-0 di ConcatAdapter proyektorBuku
+    // (lihat onCreate) -- semua index arsip mentah harus ditambah ini dulu
+    // sebelum dipakai sebagai posisi absolut proyektorBuku.setCurrentItem().
+    private val OFFSET_SAMPUL_DEPAN = 1
     private lateinit var recyclerTimeline: RecyclerView
     private lateinit var kontainerJalurKanan: FrameLayout
     private lateinit var btnFilterSort: ImageButton
@@ -172,7 +176,25 @@ private var kecepatanEmaBytesPerSec: Double = 0.0
         recyclerGridMode.adapter = gridAdapter
 
         bukuAdapter = BukuAdapter()
-        proyektorBuku.adapter = bukuAdapter
+        val sampulDepanAdapter = SampulAdapter(
+            judul = "Pustaka FK",
+            subjudul = "Arsip Fatwa & Kehidupan",
+            layoutRes = R.layout.item_sampul_depan
+        )
+        val sampulBelakangAdapter = SampulAdapter(
+            judul = "Tamat",
+            subjudul = "Pustaka FK",
+            layoutRes = R.layout.item_sampul_belakang
+        )
+        // SAMPUL BUKU: ditempel lewat ConcatAdapter di depan & belakang
+        // bukuAdapter (yang isinya arsip sungguhan dari Paging3), bukan
+        // dicampur ke data arsip itu sendiri -- supaya bukuAdapter tidak
+        // perlu diubah sama sekali. Konsekuensinya: SEMUA index absolut ke
+        // proyektorBuku (lihat bukaModeBuku()) harus ditambah
+        // OFFSET_SAMPUL_DEPAN supaya tetap menunjuk arsip yang benar.
+        proyektorBuku.adapter = androidx.recyclerview.widget.ConcatAdapter(
+            sampulDepanAdapter, bukuAdapter, sampulBelakangAdapter
+        )
         proyektorBuku.offscreenPageLimit = 1
         val mesinProyeksi = proyektorBuku.getChildAt(0) as? RecyclerView
         mesinProyeksi?.overScrollMode = View.OVER_SCROLL_NEVER
@@ -1176,7 +1198,7 @@ private fun perbaruiDetailKecepatan(persen: Int, byteDiterima: Long, totalByte: 
         // sejak awal (dari COUNT query Room) sehingga ViewPager2 bisa langsung
         // lompat ke posisi absolut manapun tanpa perlu memotong/menggeser
         // jendela data secara manual seperti mekanisme lama.
-        proyektorBuku.setCurrentItem(posisi, false)
+        proyektorBuku.setCurrentItem(posisi + OFFSET_SAMPUL_DEPAN, false)
         
         proyektorBuku.post {
             isMesinSibuk = false 

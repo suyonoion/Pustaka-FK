@@ -1,0 +1,44 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:orientation="vertical"
+    android:gravity="center"
+    android:background="@drawable/bg_sampul_depan"
+    android:padding="32dp">
+
+    <View
+        android:layout_width="72dp"
+        android:layout_height="72dp"
+        android:background="@drawable/bg_lingkaran_emas"
+        android:layout_marginBottom="24dp"/>
+
+    <TextView
+        android:id="@+id/txtJudulSampul"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="Pustaka FK"
+        android:textColor="#FFFDF7"
+        android:textSize="28sp"
+        android:textStyle="bold"
+        android:gravity="center"
+        android:fontFamily="serif"/>
+
+    <TextView
+        android:id="@+id/txtSubjudulSampul"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="Arsip Fatwa &amp; Kehidupan"
+        android:textColor="#D4AF37"
+        android:textSize="14sp"
+        android:layout_marginTop="8dp"
+        android:gravity="center"
+        android:fontFamily="serif"/>
+
+    <View
+        android:layout_width="48dp"
+        android:layout_height="2dp"
+        android:background="#D4AF37"
+        android:layout_marginTop="20dp"/>
+
+</LinearLayout>

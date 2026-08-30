@@ -1,41 +1,34 @@
 package com.fk.arsip
 
-import android.graphics.drawable.GradientDrawable
 import android.view.View
 import androidx.viewpager2.widget.ViewPager2
 import kotlin.math.abs
 
 /**
- * PageTransformer efek "halaman buku dibalik" (page-flip 3D), versi rombak
- * total. Murni transformasi View bawaan Android -- TANPA OpenGL, TANPA
- * library eksternal, konten tiap halaman tetap View hidup (teks tetap bisa
- * di-scroll/select).
+ * PageTransformer efek "halaman buku dibalik" (page-flip 3D) -- versi
+ * rombak total dengan bayangan lipatan LENGKUNG (CurlShadowDrawable, pakai
+ * Path/Bezier) menggantikan gradient kotak lurus, plus bayangan-jatuh
+ * (elevation) & scale-down untuk kesan kedalaman.
  *
- * PERUBAHAN DARI VERSI SEBELUMNYA (berdasar screenshot: bayangan rata gelap
- * menutupi teks, bentuk kaku trapesium, transisi kurang mulus):
- *  1. Bayangan lipatan sekarang HANYA terkonsentrasi ~30% dekat sisi engsel
- *     (pivot), bukan rata menggelapkan seluruh halaman -- teks di sisi jauh
- *     dari lipatan tetap terbaca jelas.
- *  2. Ditambah bayangan jatuh (elevation) SUNGGUHAN yang menguat saat
- *     halaman terangkat berputar -- ini yang paling banyak menyumbang kesan
- *     "kertas terangkat", bukan sekadar kartu datar diputar.
- *  3. Sedikit scale-down (mengecil tipis) saat berputar untuk kesan jarak/
- *     kedalaman, dan cameraDistance diperbesar supaya distorsi perspektif
- *     lebih halus (tidak terlalu "gepeng-terpelintir").
+ * Murni transformasi View bawaan Android -- TANPA OpenGL, TANPA library
+ * eksternal. Konten tiap halaman TETAP View hidup sepenuhnya: link, tombol
+ * Bagikan, foto/video (Glide) semua tetap bisa disentuh, karena Android
+ * menghitung ulang koordinat sentuhan sesuai matriks rotasi/skala View saat
+ * dispatch touch event -- rotationY tidak membuat View kehilangan
+ * interaktivitasnya.
  *
  * CATATAN JUJUR: ini tetap bidang datar kaku yang diputar (rotationY),
- * bukan lengkungan silinder sungguhan seperti curl OpenGL -- tapi dengan
- * kombinasi shadow+elevation+scale di atas, kesan "kertas" jauh lebih
- * meyakinkan dibanding versi sebelumnya.
+ * bukan mesh silinder sungguhan seperti curl OpenGL asli -- tapi kombinasi
+ * bayangan-lengkung + bayangan-jatuh + scale ini dirancang untuk mendekati
+ * kesan itu semaksimal mungkin tanpa mengorbankan interaktivitas halaman.
  *
  * Cara pakai:
  *   proyektorBuku.setPageTransformer(BookFlipPageTransformer())
  */
 class BookFlipPageTransformer : ViewPager2.PageTransformer {
 
-    private val alphaBayanganMaks = 130   // 0-255 -- puncak kegelapan HANYA di garis lipatan
-    private val elevasiMaks = 28f          // px, kekuatan bayangan-jatuh saat halaman terangkat penuh
-    private val skalaMinimum = 0.94f       // seberapa mengecil halaman saat berputar penuh
+    private val elevasiMaks = 28f
+    private val skalaMinimum = 0.94f
     private val zHalamanBerputar = 8f
     private val zHalamanBerikutnya = 0f
 
@@ -43,8 +36,6 @@ class BookFlipPageTransformer : ViewPager2.PageTransformer {
         val lebarHalaman = page.width
         if (lebarHalaman == 0) return
 
-        // Kamera diperbesar dari versi sebelumnya supaya perspektifnya lebih
-        // halus (tidak terlihat gepeng/terpelintir kasar seperti di screenshot).
         page.cameraDistance = 24000f * page.resources.displayMetrics.density
 
         when {
@@ -69,11 +60,9 @@ class BookFlipPageTransformer : ViewPager2.PageTransformer {
                 page.scaleX = skala
                 page.scaleY = skala
 
-                // Bayangan jatuh sungguhan (drop shadow), menguat seiring
-                // halaman "terangkat" dari permukaan halaman di baliknya.
                 page.elevation = elevasiMaks * intensitas
 
-                terapkanBayanganLipatan(page, intensitas)
+                terapkanBayanganLengkung(page, intensitas)
             }
 
             else -> {
@@ -94,32 +83,15 @@ class BookFlipPageTransformer : ViewPager2.PageTransformer {
         }
     }
 
-    /**
-     * Bayangan lipatan yang HANYA gelap di ~30% terakhir dekat sisi engsel
-     * (kanan, arah pivot), transparan penuh di sisa halaman -- supaya teks
-     * di bagian yang jauh dari lipatan tidak ikut tertutup abu-abu.
-     */
-    private fun terapkanBayanganLipatan(page: View, intensitas: Float) {
-        val overlayLama = page.tag as? GradientDrawable
-        val overlay = overlayLama ?: GradientDrawable(
-            GradientDrawable.Orientation.LEFT_RIGHT,
-            intArrayOf(
-                0x00000000, // 0%   -- transparan penuh
-                0x00000000, // 33%  -- transparan penuh
-                0x00000000, // 66%  -- transparan penuh
-                0x00000000, // 90%  -- mulai gelap dikit (diisi ulang di bawah)
-                0xFF000000.toInt() // 100% -- paling gelap tepat di garis lipatan
-            )
-        ).also {
+    private fun terapkanBayanganLengkung(page: View, intensitas: Float) {
+        val overlay = (page.tag as? CurlShadowDrawable) ?: CurlShadowDrawable().also {
             page.foreground = it
             page.tag = it
         }
-        // Alpha maksimum di titik gelap terpekat mengikuti intensitas putaran.
-        overlay.alpha = (intensitas * alphaBayanganMaks).toInt().coerceIn(0, alphaBayanganMaks)
+        overlay.intensitas = intensitas
     }
 
     private fun bersihkanBayangan(page: View) {
-        val overlay = page.tag as? GradientDrawable ?: return
-        overlay.alpha = 0
+        (page.tag as? CurlShadowDrawable)?.intensitas = 0f
     }
 }

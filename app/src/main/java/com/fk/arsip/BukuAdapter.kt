@@ -52,6 +52,10 @@ class BukuAdapter : PagingDataAdapter<ArsipEntity, BukuAdapter.BukuViewHolder>(D
 
     override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): BukuViewHolder {
         val view = LayoutInflater.from(parent.context).inflate(R.layout.item_buku, parent, false)
+        // TAMPILAN KERTAS BERGARIS: dipasang lewat kode (bukan android:background
+        // di XML) karena KertasBergarisDrawable adalah kelas Drawable kustom yang
+        // menggambar garis lewat Canvas, bukan resource XML statis.
+        view.background = KertasBergarisDrawable(density = parent.context.resources.displayMetrics.density)
         return BukuViewHolder(view)
     }
 
