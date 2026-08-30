@@ -93,7 +93,9 @@ class BookFlipPageTransformer : ViewPager2.PageTransformer {
     }
 
     private fun terapkanBayanganLengkung(page: View, intensitasVisual: Float) {
-        val overlay = (page.tag as? CurlShadowDrawable) ?: CurlShadowDrawable().also {
+        val overlay = (page.tag as? CurlShadowDrawable) ?: CurlShadowDrawable(
+            density = page.resources.displayMetrics.density
+        ).also {
             page.foreground = it
             page.tag = it
         }
