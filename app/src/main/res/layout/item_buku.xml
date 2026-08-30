@@ -4,7 +4,10 @@
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     android:orientation="vertical"
-    android:padding="16dp">
+    android:paddingStart="48dp"
+    android:paddingEnd="16dp"
+    android:paddingTop="16dp"
+    android:paddingBottom="16dp">
 
     <LinearLayout
         android:layout_width="match_parent"
@@ -79,12 +82,14 @@
     <View android:layout_width="match_parent" android:layout_height="1dp" android:background="#E0E0E0" android:layout_marginBottom="12dp"/>
 
     <ScrollView
+        android:id="@+id/scrollKontenBuku"
         android:layout_width="match_parent"
         android:layout_height="0dp"
         android:layout_weight="1"
         android:fillViewport="true"
         android:scrollbars="none">
         <LinearLayout
+            android:id="@+id/wadahKontenBerbaris"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:orientation="vertical">
@@ -96,7 +101,6 @@
                 android:layout_height="wrap_content"
                 android:textSize="14sp"
                 android:textColor="#212121"
-                android:lineSpacingExtra="5dp"
                 android:autoLink="web"
                 android:linksClickable="true"
                 android:textColorLink="#00B0FF"
@@ -156,7 +160,6 @@
                     android:layout_height="wrap_content"
                     android:textSize="13sp"
                     android:textColor="#1C1E21"
-                    android:lineSpacingExtra="4dp"
                     android:autoLink="web"
                     android:linksClickable="true"
                     android:textColorLink="#00B0FF"

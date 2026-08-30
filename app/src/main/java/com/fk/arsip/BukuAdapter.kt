@@ -5,11 +5,14 @@ import android.net.Uri
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
+import android.widget.FrameLayout
 import android.widget.ImageView
 import android.widget.LinearLayout
-import android.widget.FrameLayout
+import android.widget.ScrollView
 import android.widget.TextView
 import android.widget.Toast
+import androidx.core.view.doOnLayout
+import androidx.core.widget.TextViewCompat
 import androidx.paging.PagingDataAdapter
 import androidx.recyclerview.widget.DiffUtil
 import androidx.recyclerview.widget.RecyclerView
@@ -38,7 +41,9 @@ class BukuAdapter : PagingDataAdapter<ArsipEntity, BukuAdapter.BukuViewHolder>(D
         val txtTanggal = view.findViewById<TextView>(R.id.txtTanggal)
         val txtKategori = view.findViewById<TextView>(R.id.txtKategori)
         val txtNomorHalaman = view.findViewById<TextView>(R.id.txtNomorHalaman)
-            
+        val scrollKontenBuku = view.findViewById<ScrollView>(R.id.scrollKontenBuku)
+        val wadahKontenBerbaris = view.findViewById<LinearLayout>(R.id.wadahKontenBerbaris)
+
         val txtKontenUtama = view.findViewById<TextView>(R.id.txtKontenUtama)
         val wadahDinamisKonten = view.findViewById<LinearLayout>(R.id.wadahDinamisKonten)
         val wadahHeaderShared = view.findViewById<LinearLayout>(R.id.wadahHeaderShared)
@@ -56,7 +61,18 @@ class BukuAdapter : PagingDataAdapter<ArsipEntity, BukuAdapter.BukuViewHolder>(D
         // di XML) karena KertasBergarisDrawable adalah kelas Drawable kustom yang
         // menggambar garis lewat Canvas, bukan resource XML statis.
         view.background = KertasBergarisDrawable(density = parent.context.resources.displayMetrics.density)
-        return BukuViewHolder(view)
+        val holder = BukuViewHolder(view)
+
+        // PENYELARASAN TEKS KE GARIS KERTAS (bagian 1): samakan PERSIS tinggi
+        // baris teks dengan jarak antar garis kertas, pakai TextViewCompat
+        // (bukan lineSpacingExtra yang cuma perkiraan berdasarkan metrik font
+        // yang bisa beda-beda tiap device/ukuran teks). Cukup sekali di
+        // onCreateViewHolder karena nilainya sama untuk semua item.
+        val tinggiBarisPx = (KertasBergarisDrawable.TINGGI_BARIS_DP * parent.context.resources.displayMetrics.density).toInt()
+        TextViewCompat.setLineHeight(holder.txtKontenUtama, tinggiBarisPx)
+        TextViewCompat.setLineHeight(holder.txtKontenShared, tinggiBarisPx)
+
+        return holder
     }
 
     override fun onBindViewHolder(holder: BukuViewHolder, position: Int) {
@@ -243,6 +259,25 @@ class BukuAdapter : PagingDataAdapter<ArsipEntity, BukuAdapter.BukuViewHolder>(D
                 }
             }
         } else { holder.wadahFoto.visibility = View.GONE }
+
+        // PENYELARASAN TEKS KE GARIS KERTAS (bagian 2): header (foto profil +
+        // nama + tanggal) tingginya tidak selalu kelipatan pas dari jarak
+        // antar garis kertas, jadi ScrollView konten bisa mulai di posisi
+        // "nanggung" (misal 86dp, padahal garis ada di 84dp/112dp). Diukur
+        // SESUNGGUHNYA lewat doOnLayout (bukan ditebak manual dari hitungan
+        // dp di atas kertas, karena tinggi header sedikit berbeda-beda
+        // tergantung panjang teks nama/kategori/tanggal per arsip), lalu
+        // wadahKontenBerbaris digeser turun tipis supaya baris pertama
+        // teksnya jatuh tepat di garis berikutnya.
+        holder.itemView.doOnLayout {
+            val tinggiBarisPx = KertasBergarisDrawable.TINGGI_BARIS_DP * holder.itemView.resources.displayMetrics.density
+            val posisiMulaiKonten = holder.scrollKontenBuku.top.toFloat()
+            if (tinggiBarisPx > 0f && posisiMulaiKonten > 0f) {
+                val sisa = posisiMulaiKonten % tinggiBarisPx
+                val jarakKeGarisBerikutnya = if (sisa < 0.5f) 0f else (tinggiBarisPx - sisa)
+                holder.wadahKontenBerbaris.setPadding(0, jarakKeGarisBerikutnya.toInt(), 0, 0)
+            }
+        }
     }
 
 private fun terapkanWarna(teksLengkap: String): android.text.SpannableString {

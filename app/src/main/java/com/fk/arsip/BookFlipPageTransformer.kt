@@ -2,25 +2,30 @@ package com.fk.arsip
 
 import android.view.View
 import androidx.viewpager2.widget.ViewPager2
+import kotlin.math.PI
 import kotlin.math.abs
+import kotlin.math.sin
 
 /**
- * PageTransformer efek "halaman buku dibalik" (page-flip 3D) -- versi
- * rombak total dengan bayangan lipatan LENGKUNG (CurlShadowDrawable, pakai
- * Path/Bezier) menggantikan gradient kotak lurus, plus bayangan-jatuh
- * (elevation) & scale-down untuk kesan kedalaman.
+ * PageTransformer efek "halaman buku dibalik" (page-flip 3D) dengan bayangan
+ * gulungan (CurlShadowDrawable) + bayangan-jatuh (elevation) + scale-down.
  *
- * Murni transformasi View bawaan Android -- TANPA OpenGL, TANPA library
- * eksternal. Konten tiap halaman TETAP View hidup sepenuhnya: link, tombol
- * Bagikan, foto/video (Glide) semua tetap bisa disentuh, karena Android
- * menghitung ulang koordinat sentuhan sesuai matriks rotasi/skala View saat
- * dispatch touch event -- rotationY tidak membuat View kehilangan
- * interaktivitasnya.
+ * PERBAIKAN (dari laporan: ada bayangan aneh di kiri layar saat pertama kali
+ * buka mode baca, sebelum digeser sama sekali): sebelumnya elevation &
+ * intensitas bayangan dihitung linear dari abs(position) -- artinya halaman
+ * "sebelumnya" yang diam di posisi -1 (rotationY = -90, seharusnya tak
+ * terlihat sama sekali karena tegak lurus edge-on) tetap mendapat elevation
+ * MAKSIMUM, dan bayangan-jatuhnya tetap ter-render walau halamannya sendiri
+ * sudah tak kelihatan -- itulah bayangan aneh yang muncul di pojok layar.
  *
- * CATATAN JUJUR: ini tetap bidang datar kaku yang diputar (rotationY),
- * bukan mesh silinder sungguhan seperti curl OpenGL asli -- tapi kombinasi
- * bayangan-lengkung + bayangan-jatuh + scale ini dirancang untuk mendekati
- * kesan itu semaksimal mungkin tanpa mengorbankan interaktivitas halaman.
+ * Diperbaiki dengan kurva "naik-turun" (fungsi sin, memuncak di tengah
+ * putaran ~45 derajat, kembali ke NOL persis saat diam di posisi 0 ATAU -1)
+ * untuk elevation & intensitas bayangan -- rotationY sendiri tetap linear
+ * penuh 0->90 derajat seperti biasa, hanya efek visual tambahannya yang
+ * mengikuti kurva ini.
+ *
+ * Konten tiap halaman TETAP View hidup sepenuhnya -- link, tombol Bagikan,
+ * foto/video semua tetap bisa disentuh walau halaman sedang berputar.
  *
  * Cara pakai:
  *   proyektorBuku.setPageTransformer(BookFlipPageTransformer())
@@ -46,7 +51,11 @@ class BookFlipPageTransformer : ViewPager2.PageTransformer {
 
             position <= 0f -> {
                 // HALAMAN YANG SEDANG TERANGKAT & BERPUTAR PERGI.
-                val intensitas = abs(position) // 0 (diam) -> 1 (baru selesai berputar)
+                val progresRotasi = abs(position) // 0 (diam) -> 1 (baru selesai berputar)
+                // Kurva naik-turun: 0 di kedua ujung (diam), puncak di
+                // tengah -- inilah yang menghilangkan bayangan hantu saat
+                // halaman idle di posisi -1.
+                val intensitasVisual = sin(PI.toFloat() * progresRotasi)
 
                 page.alpha = 1f
                 page.translationX = 0f
@@ -56,13 +65,13 @@ class BookFlipPageTransformer : ViewPager2.PageTransformer {
                 // TUNE: kalau arah putaran kebalik di HP, ganti jadi: -90f * position
                 page.rotationY = 90f * position
 
-                val skala = 1f - (1f - skalaMinimum) * intensitas
+                val skala = 1f - (1f - skalaMinimum) * intensitasVisual
                 page.scaleX = skala
                 page.scaleY = skala
 
-                page.elevation = elevasiMaks * intensitas
+                page.elevation = elevasiMaks * intensitasVisual
 
-                terapkanBayanganLengkung(page, intensitas)
+                terapkanBayanganLengkung(page, intensitasVisual)
             }
 
             else -> {
@@ -83,12 +92,12 @@ class BookFlipPageTransformer : ViewPager2.PageTransformer {
         }
     }
 
-    private fun terapkanBayanganLengkung(page: View, intensitas: Float) {
+    private fun terapkanBayanganLengkung(page: View, intensitasVisual: Float) {
         val overlay = (page.tag as? CurlShadowDrawable) ?: CurlShadowDrawable().also {
             page.foreground = it
             page.tag = it
         }
-        overlay.intensitas = intensitas
+        overlay.intensitas = intensitasVisual
     }
 
     private fun bersihkanBayangan(page: View) {

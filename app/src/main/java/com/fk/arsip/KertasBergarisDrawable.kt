@@ -21,9 +21,17 @@ class KertasBergarisDrawable(
     private val warnaDasar: Int = 0xFFFFFdF7.toInt(),
     private val warnaGaris: Int = 0xFFD8E4E0.toInt(),
     private val warnaMargin: Int = 0xFFE8B4B0.toInt(),
-    tinggiBarisDp: Float = 28f,
+    tinggiBarisDp: Float = TINGGI_BARIS_DP,
     private val density: Float = 1f
 ) : Drawable() {
+
+    companion object {
+        // Dipakai juga oleh BukuAdapter untuk menyamakan persis tinggi baris
+        // teks (lewat TextViewCompat.setLineHeight) dengan jarak antar garis
+        // di kertas -- supaya teks benar-benar duduk di atas garis, bukan
+        // cuma kira-kira dekat.
+        const val TINGGI_BARIS_DP = 28f
+    }
 
     private val tinggiBarisPx = tinggiBarisDp * density
     private val marginKiriPx = 40f * density
