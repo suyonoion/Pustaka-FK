@@ -163,7 +163,8 @@ private var kecepatanEmaBytesPerSec: Double = 0.0
 
         recyclerGridMode.layoutManager = GridLayoutManager(this, 2)
         sesuaikanKompartemenGrid() 
-        proyektorBuku.setPageTransformer(BookFlipPageTransformer())
+        val bookFlipTransformer = BookFlipPageTransformer()
+        proyektorBuku.setPageTransformer(bookFlipTransformer)
         gridAdapter = GridAdapter { posisi -> bukaModeBuku(posisi) }
         
         val layoutManagerGrid = GridLayoutManager(this, 2)
@@ -198,6 +199,20 @@ private var kecepatanEmaBytesPerSec: Double = 0.0
         proyektorBuku.offscreenPageLimit = 1
         val mesinProyeksi = proyektorBuku.getChildAt(0) as? RecyclerView
         mesinProyeksi?.overScrollMode = View.OVER_SCROLL_NEVER
+        // EFEK CURL "MERESPON" SENTUHAN (sebagian -- lihat catatan jujur di
+        // BookFlipPageTransformer.rasioSentuhanY): ViewPager2 tidak
+        // meneruskan koordinat sentuhan ke PageTransformer sama sekali,
+        // jadi posisi Y sentuhan dilacak manual di sini lewat listener
+        // terpisah yang TIDAK mengonsumsi event (selalu return false),
+        // supaya gesture swipe normal ViewPager2 tidak terganggu sedikit
+        // pun -- listener ini cuma "mengintip" lalu menyuplai nilainya ke
+        // transformer.
+        mesinProyeksi?.setOnTouchListener { v, event ->
+            if (v.height > 0) {
+                bookFlipTransformer.rasioSentuhanY = (event.y / v.height.toFloat()).coerceIn(0f, 1f)
+            }
+            false
+        }
         // PAGING 3: pergeseran halaman kini ditangani otomatis oleh Paging3
         // (prefetchDistance di PagingConfig, lihat mulaiPagingBuku()) sehingga
         // OnPageChangeCallback untuk "menggeser jendela data" manual sudah

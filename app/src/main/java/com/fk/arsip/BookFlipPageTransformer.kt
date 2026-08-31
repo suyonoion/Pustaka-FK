@@ -10,27 +10,39 @@ import kotlin.math.sin
  * PageTransformer efek "halaman buku dibalik" (page-flip 3D) dengan bayangan
  * gulungan (CurlShadowDrawable) + bayangan-jatuh (elevation) + scale-down.
  *
- * PERBAIKAN (dari laporan: ada bayangan aneh di kiri layar saat pertama kali
- * buka mode baca, sebelum digeser sama sekali): sebelumnya elevation &
- * intensitas bayangan dihitung linear dari abs(position) -- artinya halaman
- * "sebelumnya" yang diam di posisi -1 (rotationY = -90, seharusnya tak
- * terlihat sama sekali karena tegak lurus edge-on) tetap mendapat elevation
- * MAKSIMUM, dan bayangan-jatuhnya tetap ter-render walau halamannya sendiri
- * sudah tak kelihatan -- itulah bayangan aneh yang muncul di pojok layar.
+ * SOAL "GULUNGAN MENGIKUTI SENTUHAN" -- CATATAN JUJUR: ViewPager2.PageTransformer
+ * SECARA DESAIN tidak pernah menerima koordinat sentuhan sama sekali -- ia
+ * cuma dikasih satu angka `position` (progres geser horizontal 0..1). Tidak
+ * ada cara membuatnya tahu jari menyentuh bagian atas/tengah/bawah layar
+ * lewat mekanisme ini saja. Curl OpenGL asli bisa mengikuti sentuhan persis
+ * karena ia membaca event sentuhan mentah dan me-render ulang tiap frame --
+ * arsitektur yang sama sekali berbeda dari PageTransformer.
  *
- * Diperbaiki dengan kurva "naik-turun" (fungsi sin, memuncak di tengah
- * putaran ~45 derajat, kembali ke NOL persis saat diam di posisi 0 ATAU -1)
- * untuk elevation & intensitas bayangan -- rotationY sendiri tetap linear
- * penuh 0->90 derajat seperti biasa, hanya efek visual tambahannya yang
- * mengikuti kurva ini.
+ * Jalan tengah yang jujur bisa dicapai: [rasioSentuhanY] di-update dari LUAR
+ * kelas ini (lewat OnTouchListener terpisah yang dipasang MainActivity ke
+ * ViewPager2 -- lihat MainActivity.onCreate) untuk melacak posisi Y sentuhan
+ * terakhir, lalu dipakai sebagai pivotY rotasi. Efeknya: titik lipatan
+ * condong ke arah mana jari terakhir menyentuh (dekat atas vs dekat bawah
+ * layar melipat dari titik berbeda) -- BUKAN curl 2D penuh yang mengikuti
+ * jari secara real-time per piksel seperti OpenGL, tapi minimal terasa
+ * merespons, bukan statis di tengah selalu.
  *
  * Konten tiap halaman TETAP View hidup sepenuhnya -- link, tombol Bagikan,
  * foto/video semua tetap bisa disentuh walau halaman sedang berputar.
  *
  * Cara pakai:
- *   proyektorBuku.setPageTransformer(BookFlipPageTransformer())
+ *   val transformer = BookFlipPageTransformer()
+ *   proyektorBuku.setPageTransformer(transformer)
+ *   // lalu update transformer.rasioSentuhanY dari touch listener terpisah
  */
 class BookFlipPageTransformer : ViewPager2.PageTransformer {
+
+    /**
+     * Posisi vertikal sentuhan terakhir, 0f (paling atas) .. 1f (paling
+     * bawah). Di-update dari luar kelas ini lewat MainActivity. Default
+     * 0.5f (tengah) dipakai selama belum ada sentuhan tercatat sama sekali.
+     */
+    var rasioSentuhanY: Float = 0.5f
 
     private val elevasiMaks = 28f
     private val skalaMinimum = 0.94f
@@ -42,6 +54,7 @@ class BookFlipPageTransformer : ViewPager2.PageTransformer {
         if (lebarHalaman == 0) return
 
         page.cameraDistance = 24000f * page.resources.displayMetrics.density
+        val pivotYSesuaiSentuhan = page.height * rasioSentuhanY
 
         when {
             position < -1f || position > 1f -> {
@@ -50,18 +63,14 @@ class BookFlipPageTransformer : ViewPager2.PageTransformer {
             }
 
             position <= 0f -> {
-                // HALAMAN YANG SEDANG TERANGKAT & BERPUTAR PERGI.
-                val progresRotasi = abs(position) // 0 (diam) -> 1 (baru selesai berputar)
-                // Kurva naik-turun: 0 di kedua ujung (diam), puncak di
-                // tengah -- inilah yang menghilangkan bayangan hantu saat
-                // halaman idle di posisi -1.
+                val progresRotasi = abs(position)
                 val intensitasVisual = sin(PI.toFloat() * progresRotasi)
 
                 page.alpha = 1f
                 page.translationX = 0f
                 page.translationZ = zHalamanBerputar
                 page.pivotX = lebarHalaman.toFloat()
-                page.pivotY = page.height * 0.5f
+                page.pivotY = pivotYSesuaiSentuhan
                 // TUNE: kalau arah putaran kebalik di HP, ganti jadi: -90f * position
                 page.rotationY = 90f * position
 
@@ -75,16 +84,13 @@ class BookFlipPageTransformer : ViewPager2.PageTransformer {
             }
 
             else -> {
-                // HALAMAN BERIKUTNYA -- diam di posisi akhir, di-render di
-                // bawah (Z rendah) supaya tersembunyi total di balik halaman
-                // aktif sampai halaman itu benar-benar berputar pergi.
                 page.alpha = 1f
                 page.translationX = -lebarHalaman * position
                 page.translationZ = zHalamanBerikutnya
                 page.elevation = 0f
                 page.rotationY = 0f
                 page.pivotX = 0f
-                page.pivotY = page.height * 0.5f
+                page.pivotY = pivotYSesuaiSentuhan
                 page.scaleX = 1f
                 page.scaleY = 1f
                 bersihkanBayangan(page)
