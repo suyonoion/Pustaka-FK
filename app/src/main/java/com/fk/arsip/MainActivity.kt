@@ -181,7 +181,13 @@ private var kecepatanEmaBytesPerSec: Double = 0.0
         // pemuatan bertahap Paging3. bukuAdapter/ConcatAdapter/SampulAdapter/
         // BookFlipPageTransformer bekas ViewPager2 sudah tidak dipakai lagi
         // (boleh dihapus filenya kalau mau beres-beres, tidak wajib).
-        bookPageProvider = BookPageProvider(this) { daftarArsipAktif }
+        // refreshHalaman: dipanggil BookPageProvider dari thread background
+        // begitu render sebuah halaman (yang tadinya belum ada di cache)
+        // selesai, supaya CurlView tahu harus ambil tekstur final & gambar
+        // ulang -- lihat BudayakanBaca.refreshPageTexture().
+        bookPageProvider = BookPageProvider(this, { daftarArsipAktif }) { index ->
+            curlViewBuku.refreshPageTexture(index)
+        }
         curlViewBuku.setPageProvider(bookPageProvider)
         curlViewBuku.setBackgroundColor(android.graphics.Color.parseColor("#00251A"))
         curlViewBuku.setSizeChangedObserver(object : com.fk.arsip.curl.BudayakanBaca.SizeChangedObserver {
@@ -430,6 +436,15 @@ when (fase) {
         super.onConfigurationChanged(newConfig)
         sesuaikanKompartemenGrid() 
     }    
+
+    override fun onDestroy() {
+        super.onDestroy()
+        // Matikan thread pool render halaman supaya tidak bocor/nyala terus
+        // setelah Activity ditutup (lihat BookPageProvider).
+        if (::bookPageProvider.isInitialized) {
+            bookPageProvider.shutdown()
+        }
+    }
     
     private fun inisialisasiSirkuitAppDrawer() {
     val menuBiografi = findViewById<TextView>(R.id.menuBiografi)

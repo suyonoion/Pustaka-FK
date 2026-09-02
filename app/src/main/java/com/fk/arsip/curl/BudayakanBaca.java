@@ -100,6 +100,14 @@ public class BudayakanBaca extends GLSurfaceView implements View.OnTouchListener
 	private PageProvider mPageProvider;
 	private CurlMesh mPageRight;
 
+	// INDEX HALAMAN YANG SEDANG TAMPIL -- disimpan supaya refreshPageTexture()
+	// tahu mesh mana yang perlu di-refresh saat PageProvider selesai merender
+	// versi halaman yang lebih lengkap (mis. foto sudah kelar di-fetch) secara
+	// ASYNC di belakang layar (lihat BookPageProvider.onPageReady).
+	private int mLastLeftIdx = -1;
+	private int mLastRightIdx = -1;
+	private int mLastCurlIdx = -1;
+
 	private PointerPosition mPointerPos = new PointerPosition();
 
 	private CurlRenderer mRenderer;
@@ -774,8 +782,16 @@ public class BudayakanBaca extends GLSurfaceView implements View.OnTouchListener
 			++rightIdx;
 		}
 
+		// Catat index yang sedang ditampilkan tiap mesh, dipakai oleh
+		// refreshPageTexture() untuk tahu mesh mana yang perlu diperbarui
+		// saat render async selesai belakangan.
+		mLastLeftIdx = -1;
+		mLastRightIdx = -1;
+		mLastCurlIdx = -1;
+
 		if (rightIdx >= 0 && rightIdx < mPageProvider.getPageCount()) {
 			updatePage(mPageRight.getTexturePage(), rightIdx);
+			mLastRightIdx = rightIdx;
 			mPageRight.setFlipTexture(false);
 			mPageRight.setRect(mRenderer.getPageRect(CurlRenderer.PAGE_RIGHT));
 			mPageRight.reset();
@@ -783,6 +799,7 @@ public class BudayakanBaca extends GLSurfaceView implements View.OnTouchListener
 		}
 		if (leftIdx >= 0 && leftIdx < mPageProvider.getPageCount()) {
 			updatePage(mPageLeft.getTexturePage(), leftIdx);
+			mLastLeftIdx = leftIdx;
 			mPageLeft.setFlipTexture(true);
 			mPageLeft.setRect(mRenderer.getPageRect(CurlRenderer.PAGE_LEFT));
 			mPageLeft.reset();
@@ -792,6 +809,7 @@ public class BudayakanBaca extends GLSurfaceView implements View.OnTouchListener
 		}
 		if (curlIdx >= 0 && curlIdx < mPageProvider.getPageCount()) {
 			updatePage(mPageCurl.getTexturePage(), curlIdx);
+			mLastCurlIdx = curlIdx;
 
 			if (mCurlState == CURL_RIGHT) {
 				mPageCurl.setFlipTexture(true);
@@ -806,6 +824,48 @@ public class BudayakanBaca extends GLSurfaceView implements View.OnTouchListener
 			mPageCurl.reset();
 			mRenderer.addCurlMesh(mPageCurl);
 		}
+	}
+
+	/**
+	 * Dipanggil dari PageProvider (thread BEBAS -- boleh dari background
+	 * thread manapun) ketika versi halaman yang lebih lengkap untuk `index`
+	 * (mis. foto sudah selesai di-fetch async) sudah siap di cache-nya, DAN
+	 * halaman itu kebetulan masih sedang tampil (kiri/kanan/curl). Kalau
+	 * begitu, tekstur mesh terkait diperbarui dan frame digambar ulang --
+	 * tanpa mengulang seluruh updatePages() (supaya tidak mengganggu state
+	 * curl/animasi yang sedang berjalan).
+	 *
+	 * queueEvent() dipakai supaya sentuhan ke CurlPage/CurlMesh tetap terjadi
+	 * di GL thread, sesuai kontrak GLSurfaceView.
+	 */
+	public void refreshPageTexture(final int index) {
+		queueEvent(new Runnable() {
+			@Override
+			public void run() {
+				if (mPageProvider == null) {
+					return;
+				}
+				boolean changed = false;
+				if (index == mLastRightIdx) {
+					mPageProvider.updatePage(mPageRight.getTexturePage(),
+							mPageBitmapWidth, mPageBitmapHeight, index);
+					changed = true;
+				}
+				if (index == mLastLeftIdx) {
+					mPageProvider.updatePage(mPageLeft.getTexturePage(),
+							mPageBitmapWidth, mPageBitmapHeight, index);
+					changed = true;
+				}
+				if (index == mLastCurlIdx) {
+					mPageProvider.updatePage(mPageCurl.getTexturePage(),
+							mPageBitmapWidth, mPageBitmapHeight, index);
+					changed = true;
+				}
+				if (changed) {
+					requestRender();
+				}
+			}
+		});
 	}
 
 	/**
