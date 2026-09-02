@@ -142,7 +142,15 @@ class BookPageProvider(
 
         val fromCache = cacheBitmap.get(cacheKey)
         if (fromCache != null) {
-            page.setTexture(fromCache, CurlPage.SIDE_FRONT)
+            // PENTING: jangan pernah kasih objek Bitmap cache ASLI ke
+            // CurlPage. CurlPage.setTexture()/reset() me-recycle() bitmap
+            // lama begitu diganti -- kalau kita kasih objek cache langsung,
+            // dan objek yang sama juga dipakai mesh lain atau meshnya
+            // di-reset nanti, bitmap di cache ikut ke-recycle dan bikin
+            // crash "trying to use a recycled bitmap" saat dipakai lagi.
+            // Kasih SALINANNYA saja -- murah (cuma copy memori, tanpa
+            // network/inflate ulang), cache tetap utuh & aman dipakai lagi.
+            page.setTexture(salinUntukTampil(fromCache, w, h), CurlPage.SIDE_FRONT)
             page.setColor(warnaSampulBack, CurlPage.SIDE_BACK)
             return
         }
@@ -187,6 +195,18 @@ class BookPageProvider(
         }
         canvas.drawText("Memuat\u2026", width / 2f, height / 2f, paint)
         return bmp
+    }
+
+    /**
+     * Salinan aman dari bitmap cache untuk diserahkan ke CurlPage (yang akan
+     * me-recycle()-nya begitu diganti/direset). Lihat catatan di pemanggil.
+     */
+    private fun salinUntukTampil(bitmap: Bitmap, width: Int, height: Int): Bitmap {
+        return try {
+            bitmap.copy(bitmap.config ?: Bitmap.Config.ARGB_8888, false) ?: renderKosong(width, height)
+        } catch (e: OutOfMemoryError) {
+            renderKosong(width, height)
+        }
     }
 
     private fun renderKosong(width: Int, height: Int): Bitmap {
