@@ -34,9 +34,9 @@ import androidx.lifecycle.lifecycleScope
 import androidx.recyclerview.widget.GridLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import androidx.cardview.widget.CardView
-import androidx.viewpager2.widget.ViewPager2
 import com.fk.arsip.database.ArsipDatabase
 import com.fk.arsip.database.ArsipEntity
+import com.bumptech.glide.Glide
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
@@ -52,11 +52,6 @@ import androidx.work.WorkManager
 import androidx.work.workDataOf
 import androidx.work.WorkInfo
 import androidx.core.view.GravityCompat
-import androidx.paging.Pager
-import androidx.paging.PagingConfig
-import androidx.paging.PagingSource
-import androidx.paging.cachedIn
-import kotlinx.coroutines.flow.collectLatest
 
 data class TitikNavigasi(
     val tipe: Int, 
@@ -106,17 +101,20 @@ private var kecepatanEmaBytesPerSec: Double = 0.0
     private lateinit var navViewCustom: LinearLayout
     private lateinit var recyclerGridMode: RecyclerView
     private lateinit var wadahModeBuku: RelativeLayout
-    private lateinit var proyektorBuku: ViewPager2
+    private lateinit var curlViewBuku: com.fk.arsip.curl.BudayakanBaca
+    private lateinit var bookPageProvider: BookPageProvider
+    private lateinit var barAksiBaca: LinearLayout
+    // Arsip yang SEDANG tampil di CurlView -- diperbarui lewat
+    // BudayakanBaca.PenggantiHalamanListener setiap halaman berganti (baik
+    // lewat gesture curl maupun lompat dari grid). Bar aksi (Sumber Asli/
+    // Bagikan/Lampiran) selalu baca dari sini, bukan dari index terpisah,
+    // supaya tidak pernah ketinggalan/tidak sinkron.
+    private var arsipSedangTampil: ArsipEntity? = null
     private lateinit var edtPencarian: SearchView
     private lateinit var panelStatusPencarian: CardView
     private lateinit var loadingPencarian: ProgressBar
     private lateinit var txtStatusPencarian: TextView
     private lateinit var gridAdapter: GridAdapter
-    private lateinit var bukuAdapter: BukuAdapter
-    // Sampul depan ditempel sebagai item ke-0 di ConcatAdapter proyektorBuku
-    // (lihat onCreate) -- semua index arsip mentah harus ditambah ini dulu
-    // sebelum dipakai sebagai posisi absolut proyektorBuku.setCurrentItem().
-    private val OFFSET_SAMPUL_DEPAN = 1
     private lateinit var recyclerTimeline: RecyclerView
     private lateinit var kontainerJalurKanan: FrameLayout
     private lateinit var btnFilterSort: ImageButton
@@ -133,7 +131,7 @@ private var kecepatanEmaBytesPerSec: Double = 0.0
     // dulu dipakai khusus saat dataset > 5000 baris.
     private var kategoriAktifNama: String = "Semua Kategori"
     private var sortTerlamaAktif: Boolean = false
-    private var jobPagingBuku: Job? = null
+    private var jobPagingBuku: Job? = null // sudah tidak dipakai (mode baca kini CurlView), dibiarkan agar tidak mengubah field lain di sekitarnya
     
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -145,7 +143,8 @@ private var kecepatanEmaBytesPerSec: Double = 0.0
         }
        recyclerGridMode = findViewById(R.id.recyclerGridMode)
         wadahModeBuku = findViewById(R.id.wadahModeBuku)
-        proyektorBuku = findViewById(R.id.proyektorBuku)
+        curlViewBuku = findViewById(R.id.curlViewBuku)
+        barAksiBaca = findViewById(R.id.barAksiBaca)
         edtPencarian = findViewById<SearchView>(R.id.edtPencarian)
         btnFilterSort = findViewById<ImageButton>(R.id.btnFilterSort)
         btnFilterSort.setOnClickListener {
@@ -163,8 +162,6 @@ private var kecepatanEmaBytesPerSec: Double = 0.0
 
         recyclerGridMode.layoutManager = GridLayoutManager(this, 2)
         sesuaikanKompartemenGrid() 
-        val bookFlipTransformer = BookFlipPageTransformer()
-        proyektorBuku.setPageTransformer(bookFlipTransformer)
         gridAdapter = GridAdapter { posisi -> bukaModeBuku(posisi) }
         
         val layoutManagerGrid = GridLayoutManager(this, 2)
@@ -176,47 +173,35 @@ private var kecepatanEmaBytesPerSec: Double = 0.0
         recyclerGridMode.layoutManager = layoutManagerGrid
         recyclerGridMode.adapter = gridAdapter
 
-        bukuAdapter = BukuAdapter()
-        val sampulDepanAdapter = SampulAdapter(
-            judul = "Pustaka FK",
-            subjudul = "Arsip Fatwa & Kehidupan",
-            layoutRes = R.layout.item_sampul_depan
-        )
-        val sampulBelakangAdapter = SampulAdapter(
-            judul = "Tamat",
-            subjudul = "Pustaka FK",
-            layoutRes = R.layout.item_sampul_belakang
-        )
-        // SAMPUL BUKU: ditempel lewat ConcatAdapter di depan & belakang
-        // bukuAdapter (yang isinya arsip sungguhan dari Paging3), bukan
-        // dicampur ke data arsip itu sendiri -- supaya bukuAdapter tidak
-        // perlu diubah sama sekali. Konsekuensinya: SEMUA index absolut ke
-        // proyektorBuku (lihat bukaModeBuku()) harus ditambah
-        // OFFSET_SAMPUL_DEPAN supaya tetap menunjuk arsip yang benar.
-        proyektorBuku.adapter = androidx.recyclerview.widget.ConcatAdapter(
-            sampulDepanAdapter, bukuAdapter, sampulBelakangAdapter
-        )
-        proyektorBuku.offscreenPageLimit = 1
-        val mesinProyeksi = proyektorBuku.getChildAt(0) as? RecyclerView
-        mesinProyeksi?.overScrollMode = View.OVER_SCROLL_NEVER
-        // EFEK CURL "MERESPON" SENTUHAN (sebagian -- lihat catatan jujur di
-        // BookFlipPageTransformer.rasioSentuhanY): ViewPager2 tidak
-        // meneruskan koordinat sentuhan ke PageTransformer sama sekali,
-        // jadi posisi Y sentuhan dilacak manual di sini lewat listener
-        // terpisah yang TIDAK mengonsumsi event (selalu return false),
-        // supaya gesture swipe normal ViewPager2 tidak terganggu sedikit
-        // pun -- listener ini cuma "mengintip" lalu menyuplai nilainya ke
-        // transformer.
-        mesinProyeksi?.setOnTouchListener { v, event ->
-            if (v.height > 0) {
-                bookFlipTransformer.rasioSentuhanY = (event.y / v.height.toFloat()).coerceIn(0f, 1f)
+        // MODE BACA: CurlView OpenGL asli (BudayakanBaca) menggantikan
+        // ViewPager2+PageTransformer sepenuhnya. Sumber data langsung
+        // `daftarArsipAktif` (List yang sama dipakai grid, sudah di memori)
+        // -- Paging3 TIDAK dipakai lagi di sini karena PageProvider CurlView
+        // butuh getPageCount() yang pasti/sinkron, tidak cocok dengan model
+        // pemuatan bertahap Paging3. bukuAdapter/ConcatAdapter/SampulAdapter/
+        // BookFlipPageTransformer bekas ViewPager2 sudah tidak dipakai lagi
+        // (boleh dihapus filenya kalau mau beres-beres, tidak wajib).
+        bookPageProvider = BookPageProvider(this) { daftarArsipAktif }
+        curlViewBuku.setPageProvider(bookPageProvider)
+        curlViewBuku.setBackgroundColor(android.graphics.Color.parseColor("#00251A"))
+        curlViewBuku.setSizeChangedObserver(object : com.fk.arsip.curl.BudayakanBaca.SizeChangedObserver {
+            override fun onSizeChanged(w: Int, h: Int) {
+                if (w > h) {
+                    curlViewBuku.setViewMode(com.fk.arsip.curl.BudayakanBaca.SHOW_TWO_PAGES)
+                } else {
+                    curlViewBuku.setViewMode(com.fk.arsip.curl.BudayakanBaca.SHOW_ONE_PAGE)
+                }
+                curlViewBuku.setMargins(.03f, .03f, .03f, .03f)
             }
-            false
+        })
+        // LISTENER GANTI HALAMAN: dipicu dari GL THREAD (lihat catatan di
+        // BudayakanBaca.PenggantiHalamanListener) -- WAJIB posting ke UI
+        // thread sebelum menyentuh View apa pun, makanya pakai runOnUiThread.
+        curlViewBuku.setPenggantiHalamanListener { indexBaru ->
+            runOnUiThread { perbaruiBarAksiBaca(indexBaru) }
         }
-        // PAGING 3: pergeseran halaman kini ditangani otomatis oleh Paging3
-        // (prefetchDistance di PagingConfig, lihat mulaiPagingBuku()) sehingga
-        // OnPageChangeCallback untuk "menggeser jendela data" manual sudah
-        // tidak diperlukan lagi.
+        pasangBarAksiBaca()
+
         onBackPressedDispatcher.addCallback(this, object : OnBackPressedCallback(true) {
             override fun handleOnBackPressed() {
                 if (drawerLayout.isDrawerOpen(androidx.core.view.GravityCompat.START)) {
@@ -224,6 +209,7 @@ private var kecepatanEmaBytesPerSec: Double = 0.0
                 } 
                 else if (wadahModeBuku.visibility == View.VISIBLE) {
                 wadahModeBuku.visibility = View.GONE
+                barAksiBaca.visibility = View.GONE
                 recyclerGridMode.visibility = View.VISIBLE
                 kontainerJalurKanan.visibility = View.VISIBLE 
                 recyclerTimeline.visibility = View.VISIBLE
@@ -1159,11 +1145,13 @@ private fun perbaruiDetailKecepatan(persen: Int, byteDiterima: Long, totalByte: 
                     // manual di sini menyelesaikan akar masalahnya.
                     (recyclerGridMode.layoutManager as? GridLayoutManager)?.spanSizeLookup?.invalidateSpanIndexCache()
                 }
-                // PAGING 3: ganti mekanisme lama (kirim List penuh ke bukuAdapter, atau
-                // dikosongkan paksa jika >5000 baris) dengan aliran PagingData yang
-                // otomatis menyesuaikan sumber query sesuai filter aktif saat ini
-                // (browse biasa / kategori / pencarian) -- lihat mulaiPagingBuku().
-                mulaiPagingBuku()
+                // MODE BACA: dulu di sini dipanggil mulaiPagingBuku() untuk
+                // mengisi bukuAdapter (Paging3). Sekarang mode baca pakai
+                // CurlView (BudayakanBaca) yang baca `daftarArsipAktif`
+                // LANGSUNG lewat BookPageProvider -- tidak perlu tahap
+                // "mengisi adapter" terpisah lagi, curlViewBuku otomatis
+                // memakai data terbaru begitu daftarArsipAktif berubah
+                // (lihat BookPageProvider.ambilData).
 
                 val adapterTimeline = TimelineAdapter(titikNavigasi) { indeksTujuan ->
                     recyclerGridMode.post {
@@ -1193,6 +1181,7 @@ private fun perbaruiDetailKecepatan(persen: Int, byteDiterima: Long, totalByte: 
         kontainerJalurKanan.visibility = View.GONE 
         recyclerGridMode.visibility = View.GONE
         wadahModeBuku.visibility = View.VISIBLE
+        barAksiBaca.visibility = View.VISIBLE
 
         // AKTIFKAN PANEL TELEMETRI DENGAN FORMAT BARU
         panelStatusPencarian.visibility = View.VISIBLE
@@ -1209,17 +1198,156 @@ private fun perbaruiDetailKecepatan(persen: Int, byteDiterima: Long, totalByte: 
         txtStatusPencarian.text = "$labelKategori • $totalVolume Status"
         
         delay(100) 
-        // PAGING 3: dengan placeholder aktif, Paging3 sudah tahu total itemCount
-        // sejak awal (dari COUNT query Room) sehingga ViewPager2 bisa langsung
-        // lompat ke posisi absolut manapun tanpa perlu memotong/menggeser
-        // jendela data secara manual seperti mekanisme lama.
-        proyektorBuku.setCurrentItem(posisi + OFFSET_SAMPUL_DEPAN, false)
+        // CurlView baca `daftarArsipAktif` langsung (lihat BookPageProvider),
+        // index halaman 0 = sampul depan, jadi arsip ke-`posisi` (0-based)
+        // ada di index halaman `posisi + 1`.
+        curlViewBuku.setCurrentIndex(posisi + 1)
         
-        proyektorBuku.post {
+        curlViewBuku.post {
             isMesinSibuk = false 
         }
     }
 }
+
+    // ==========================================================================
+    // BAR AKSI BACA -- pengganti tombol "Sumber Asli"/"Bagikan" yang dulu ada
+    // DI DALAM item_buku.xml (BukuAdapter). Karena CurlView OpenGL merender
+    // halaman sebagai Bitmap statis (tidak ada View interaktif di dalamnya
+    // sama sekali), tombol-tombol itu direlokasi ke bar persisten di luar
+    // permukaan OpenGL, di atas footer. Bar ini selalu merujuk ke
+    // `arsipSedangTampil`, yang diperbarui oleh perbaruiBarAksiBaca() setiap
+    // kali BudayakanBaca.PenggantiHalamanListener menyala.
+    // ==========================================================================
+    private fun pasangBarAksiBaca() {
+        findViewById<View>(R.id.btnAksiSumberAsli).setOnClickListener {
+            val arsip = arsipSedangTampil ?: return@setOnClickListener
+            if (arsip.tautanAsli.isNotBlank()) {
+                try {
+                    startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(arsip.tautanAsli)))
+                } catch (e: Exception) {
+                    Toast.makeText(this, "Gagal membuka.", Toast.LENGTH_SHORT).show()
+                }
+            } else {
+                Toast.makeText(this, "Tautan asli tidak tersedia untuk halaman ini.", Toast.LENGTH_SHORT).show()
+            }
+        }
+
+        findViewById<View>(R.id.btnAksiBagikan).setOnClickListener {
+            val arsip = arsipSedangTampil ?: return@setOnClickListener
+            val intentShare = Intent(Intent.ACTION_SEND).apply {
+                type = "text/plain"
+                putExtra(Intent.EXTRA_TEXT, "${arsip.kontenPenuh}\n\nSumber: ${arsip.tautanAsli}")
+            }
+            startActivity(Intent.createChooser(intentShare, "Bagikan fatwa via..."))
+        }
+
+        findViewById<View>(R.id.btnAksiLampiran).setOnClickListener {
+            val arsip = arsipSedangTampil
+            if (arsip == null || arsip.daftarFoto.isBlank()) {
+                Toast.makeText(this, "Halaman ini tidak punya lampiran foto/video.", Toast.LENGTH_SHORT).show()
+            } else {
+                tampilkanDialogLampiran(arsip)
+            }
+        }
+    }
+
+    /**
+     * Dipanggil dari MainActivity.curlViewBuku.setPenggantiHalamanListener
+     * (SUDAH di-runOnUiThread oleh pemanggilnya). indexHalaman di sini
+     * memakai penomoran BookPageProvider: 0 = sampul depan, 1..N = arsip,
+     * N+1 = sampul belakang -- jadi arsip sungguhan ada di indexHalaman-1.
+     */
+    private fun perbaruiBarAksiBaca(indexHalaman: Int) {
+        val arsip = bookPageProvider.indexArsipDari(indexHalaman)?.let { idx -> daftarArsipAktif.getOrNull(idx) }
+        arsipSedangTampil = arsip
+
+        val adaLampiran = arsip != null && arsip.daftarFoto.isNotBlank()
+        findViewById<TextView>(R.id.txtLabelLampiran).text =
+            if (adaLampiran) "Lampiran (${arsip!!.daftarFoto.split(",").size})" else "Lampiran"
+
+        // Di halaman sampul (arsip == null), aksi baca tidak relevan --
+        // redupkan barnya sedikit alih-alih menyembunyikannya total, supaya
+        // tetap terasa konsisten sebagai satu bar yang sama.
+        barAksiBaca.alpha = if (arsip == null) 0.4f else 1f
+    }
+
+    /**
+     * Dialog daftar SEMUA foto/video milik halaman yang sedang tampil --
+     * inilah tempat interaktivitas penuh (bukan cuma 1 foto representatif
+     * seperti di dalam tekstur CurlView) dipulihkan. Pola tap-untuk-
+     * memperbesar/putar sengaja dibuat sesederhana & seaman mungkin (bukan
+     * menyalin persis grid dinamis BukuAdapter yang lebih rumit), supaya
+     * risikonya kecil sebagai kode baru yang belum sempat diuji di device
+     * asli.
+     */
+    private fun tampilkanDialogLampiran(arsip: ArsipEntity) {
+        val daftarMedia = arsip.daftarFoto.split(",").map { it.trim() }.filter { it.isNotEmpty() }
+        if (daftarMedia.isEmpty()) return
+
+        val wadahDaftar = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            val pad = (12 * resources.displayMetrics.density).toInt()
+            setPadding(pad, pad, pad, pad)
+        }
+
+        for (item in daftarMedia) {
+            val isVideo = item.startsWith("video:")
+            val urlBersih = item.removePrefix("video:").removePrefix("image:")
+
+            val baris = FrameLayout(this).apply {
+                layoutParams = LinearLayout.LayoutParams(
+                    LinearLayout.LayoutParams.MATCH_PARENT,
+                    (180 * resources.displayMetrics.density).toInt()
+                ).apply { setMargins(0, 0, 0, (8 * resources.displayMetrics.density).toInt()) }
+                setBackgroundResource(R.drawable.bg_border_media)
+            }
+            val gambar = android.widget.ImageView(this).apply {
+                layoutParams = FrameLayout.LayoutParams(FrameLayout.LayoutParams.MATCH_PARENT, FrameLayout.LayoutParams.MATCH_PARENT)
+                scaleType = android.widget.ImageView.ScaleType.CENTER_CROP
+            }
+            Glide.with(this).load(urlBersih).error(android.R.drawable.ic_menu_report_image).into(gambar)
+            baris.addView(gambar)
+
+            if (isVideo) {
+                val playIcon = android.widget.ImageView(this).apply {
+                    layoutParams = FrameLayout.LayoutParams(120, 120).apply { gravity = android.view.Gravity.CENTER }
+                    setImageResource(android.R.drawable.ic_media_play)
+                    setColorFilter(android.graphics.Color.WHITE)
+                }
+                baris.addView(playIcon)
+                baris.setOnClickListener {
+                    try { startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(arsip.tautanAsli))) }
+                    catch (e: Exception) { Toast.makeText(this, "Gagal membuka video.", Toast.LENGTH_SHORT).show() }
+                }
+            } else {
+                baris.setOnClickListener { tampilkanFotoPenuh(urlBersih) }
+            }
+            wadahDaftar.addView(baris)
+        }
+
+        val scrollWadah = ScrollView(this).apply { addView(wadahDaftar) }
+        android.app.AlertDialog.Builder(this)
+            .setTitle("Lampiran (${daftarMedia.size})")
+            .setView(scrollWadah)
+            .setNegativeButton("Tutup", null)
+            .show()
+    }
+
+    private fun tampilkanFotoPenuh(urlGambar: String) {
+        val sasis = FrameLayout(this).apply { setBackgroundColor(android.graphics.Color.BLACK) }
+        val proyektorBesar = android.widget.ImageView(this).apply {
+            layoutParams = FrameLayout.LayoutParams(FrameLayout.LayoutParams.MATCH_PARENT, FrameLayout.LayoutParams.MATCH_PARENT)
+            adjustViewBounds = true
+            scaleType = android.widget.ImageView.ScaleType.FIT_CENTER
+        }
+        Glide.with(this).load(urlGambar).into(proyektorBesar)
+        sasis.addView(proyektorBesar)
+        val dialog = android.app.AlertDialog.Builder(this, android.R.style.Theme_Black_NoTitleBar_Fullscreen)
+            .setView(sasis)
+            .create()
+        sasis.setOnClickListener { dialog.dismiss() }
+        dialog.show()
+    }
 
     private fun aktifkanSirkuitPencarian() {
     edtPencarian.setOnQueryTextListener(object : androidx.appcompat.widget.SearchView.OnQueryTextListener {
@@ -1359,57 +1487,141 @@ private fun eksekusiLogikaPencarian(kataKunciMentah: String?) {
     // -------------------------------------------------------------------------
     // Menggantikan mekanisme lama geserSabukProyektor() (subList manual +
     // notifyDataSetChanged berdasarkan radiusMuatan di sekitar posisi baca).
-    // Sumber data dipilih sesuai filter yang sedang aktif:
-    //  - Pencarian aktif      -> bungkus daftarArsipAktif (hasil presisi client-
-    //                            side) lewat ListPagingSource, karena regex
-    //                            batas-kata tidak bisa diwakili satu query SQL.
-    //  - Kategori aktif       -> PagingSource DB langsung (saringKategoriPaged /
-    //                            saringKategoriTerlamaPaged) -> hemat memori
-    //                            walau kategori berisi ribuan status.
-    //  - Browse biasa         -> PagingSource DB langsung (tarikSemuaArsipPaged /
-    //                            tarikSemuaArsipTerlamaPaged) -> puluhan ribu
-    //                            baris tidak pernah ditarik penuh ke RAM.
-    // =========================================================================
-    private fun mulaiPagingBuku() {
-        jobPagingBuku?.cancel()
-
-        val lenganRobot by lazy { ArsipDatabase.operasikanMesin(this).arsipDao() }
-        val sourceFactory: () -> PagingSource<Int, ArsipEntity> = when {
-            isSearchMode -> {
-                { ListPagingSource(daftarArsipAktif) }
-            }
-            modeKategoriAktif -> {
-                if (sortTerlamaAktif) {
-                    { lenganRobot.saringKategoriTerlamaPaged(kategoriAktifNama) }
-                } else {
-                    { lenganRobot.saringKategoriPaged(kategoriAktifNama) }
-                }
-            }
-            else -> {
-                if (sortTerlamaAktif) {
-                    { lenganRobot.tarikSemuaArsipTerlamaPaged() }
-                } else {
-                    { lenganRobot.tarikSemuaArsipPaged() }
+    // MODE BACA (CurlView): fungsi mulaiPagingBuku() beserta seluruh mesin
+    // Paging3-untuk-mode-baca (Pager/PagingSource/bukuAdapter) sudah TIDAK
+    // dipakai lagi -- BookPageProvider baca `daftarArsipAktif` langsung.
+    // Dihapus di sini (bukan cuma didiamkan) supaya tidak membingungkan kode
+    // mana yang sebenarnya aktif dipakai.
+    // ============================================================
+    // BAR AKSI BACA (Sumber Asli / Bagikan / Lampiran)
+    // ============================================================
+    // CurlView OpenGL tidak bisa punya tombol interaktif DI DALAM
+    // tekstur-nya (lihat penjelasan sebelumnya di percakapan) -- bar ini
+    // hidup di LUAR permukaan OpenGL, isinya disinkronkan lewat
+    // arsipSedangTampil yang diperbarui setiap halaman berganti.
+    private fun pasangBarAksiBaca() {
+        findViewById<LinearLayout>(R.id.btnAksiSumberAsli).setOnClickListener {
+            val arsip = arsipSedangTampil ?: return@setOnClickListener
+            if (arsip.tautanAsli.isNotBlank()) {
+                try {
+                    startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(arsip.tautanAsli)))
+                } catch (e: Exception) {
+                    Toast.makeText(this, "Gagal membuka.", Toast.LENGTH_SHORT).show()
                 }
             }
         }
-
-        val pagingFlow = Pager(
-            config = PagingConfig(
-                pageSize = 40,
-                prefetchDistance = 20,
-                initialLoadSize = 80,
-                enablePlaceholders = true
-            ),
-            pagingSourceFactory = sourceFactory
-        ).flow.cachedIn(lifecycleScope)
-
-        jobPagingBuku = lifecycleScope.launch {
-            pagingFlow.collectLatest { data ->
-                bukuAdapter.submitData(data)
+        findViewById<LinearLayout>(R.id.btnAksiBagikan).setOnClickListener {
+            val arsip = arsipSedangTampil ?: return@setOnClickListener
+            val intentShare = Intent(Intent.ACTION_SEND).apply {
+                type = "text/plain"
+                putExtra(Intent.EXTRA_TEXT, "${arsip.kontenPenuh}\n\nSumber: ${arsip.tautanAsli}")
             }
+            startActivity(Intent.createChooser(intentShare, "Bagikan fatwa via..."))
+        }
+        findViewById<LinearLayout>(R.id.btnAksiLampiran).setOnClickListener {
+            val arsip = arsipSedangTampil ?: return@setOnClickListener
+            tampilkanDialogLampiran(arsip)
         }
     }
+
+    /**
+     * Dipanggil dari curlViewBuku.setPenggantiHalamanListener (sudah
+     * di-runOnUiThread sebelum sampai sini). indexHalaman di sini adalah
+     * index CurlView (0 = sampul depan, 1..N = arsip, N+1 = sampul
+     * belakang) -- BUKAN index arsip mentah, makanya dipetakan dulu lewat
+     * BookPageProvider.indexArsipDari().
+     */
+    private fun perbaruiBarAksiBaca(indexHalaman: Int) {
+        val indexArsip = bookPageProvider.indexArsipDari(indexHalaman)
+        arsipSedangTampil = if (indexArsip != null) daftarArsipAktif.getOrNull(indexArsip) else null
+
+        val adaLampiran = arsipSedangTampil?.daftarFoto?.isNotBlank() == true
+        findViewById<TextView>(R.id.txtLabelLampiran).text = if (adaLampiran) {
+            val jumlah = arsipSedangTampil!!.daftarFoto.split(",").count { it.isNotBlank() }
+            "Lampiran ($jumlah)"
+        } else {
+            "Lampiran"
+        }
+        barAksiBaca.alpha = if (arsipSedangTampil != null) 1f else 0.35f
+    }
+
+    /**
+     * Dialog sederhana menampilkan SEMUA foto/video arsip yang sedang
+     * dibaca (bukan cuma satu representatif seperti di dalam CurlView) --
+     * di sinilah interaksi penuh (perbesar foto, buka video) dikembalikan,
+     * di luar permukaan OpenGL.
+     */
+    private fun tampilkanDialogLampiran(arsip: ArsipEntity) {
+        val daftar = arsip.daftarFoto.split(",").map { it.trim() }.filter { it.isNotEmpty() }
+        if (daftar.isEmpty()) {
+            Toast.makeText(this, "Tidak ada lampiran di halaman ini.", Toast.LENGTH_SHORT).show()
+            return
+        }
+
+        val wadahScroll = ScrollView(this)
+        val wadahList = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL }
+        wadahScroll.addView(wadahList)
+
+        for (itemMedia in daftar) {
+            val isVideo = itemMedia.startsWith("video:")
+            val urlBersih = itemMedia.removePrefix("video:").removePrefix("image:")
+
+            val bingkai = FrameLayout(this).apply {
+                layoutParams = LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, 500).apply {
+                    setMargins(16, 12, 16, 12)
+                }
+                setBackgroundResource(R.drawable.bg_border_media)
+            }
+            val img = ImageView(this).apply {
+                layoutParams = FrameLayout.LayoutParams(FrameLayout.LayoutParams.MATCH_PARENT, FrameLayout.LayoutParams.MATCH_PARENT)
+                scaleType = ImageView.ScaleType.CENTER_CROP
+            }
+            Glide.with(this).load(urlBersih).error(android.R.drawable.ic_menu_report_image).into(img)
+            bingkai.addView(img)
+
+            if (isVideo) {
+                val playIcon = ImageView(this).apply {
+                    layoutParams = FrameLayout.LayoutParams(110, 110).apply { gravity = android.view.Gravity.CENTER }
+                    setImageResource(android.R.drawable.ic_media_play)
+                    setColorFilter(Color.WHITE)
+                }
+                bingkai.addView(playIcon)
+                bingkai.setOnClickListener {
+                    try { startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(arsip.tautanAsli))) } catch (e: Exception) { }
+                }
+            } else {
+                bingkai.setOnClickListener { tampilkanPerbesaranFotoDariAktivitas(urlBersih) }
+            }
+            wadahList.addView(bingkai)
+        }
+
+        AlertDialog.Builder(this)
+            .setTitle("Lampiran halaman ini")
+            .setView(wadahScroll)
+            .setNegativeButton("Tutup", null)
+            .show()
+    }
+
+    private fun tampilkanPerbesaranFotoDariAktivitas(urlGambar: String) {
+        val sasisDialog = FrameLayout(this).apply {
+            layoutParams = android.view.ViewGroup.LayoutParams(android.view.ViewGroup.LayoutParams.MATCH_PARENT, android.view.ViewGroup.LayoutParams.MATCH_PARENT)
+            setBackgroundColor(Color.BLACK)
+        }
+        val proyektorBesar = ImageView(this).apply {
+            layoutParams = FrameLayout.LayoutParams(FrameLayout.LayoutParams.MATCH_PARENT, FrameLayout.LayoutParams.MATCH_PARENT)
+            adjustViewBounds = true
+            scaleType = ImageView.ScaleType.FIT_CENTER
+        }
+        Glide.with(this).load(urlGambar).into(proyektorBesar)
+        sasisDialog.addView(proyektorBesar)
+
+        val dialogTampil = AlertDialog.Builder(this, android.R.style.Theme_Black_NoTitleBar_Fullscreen)
+            .setView(sasisDialog)
+            .create()
+        sasisDialog.setOnClickListener { dialogTampil.dismiss() }
+        dialogTampil.show()
+    }
+
     private fun muatDataAwalKeSasis(daftarArsipGlobal: List<ArsipEntity>) {
     // Pastikan loading dimatikan jika pemrosesan selesai
     loadingPencarian.visibility = View.GONE
