@@ -144,9 +144,7 @@
                 android:layout_height="match_parent" />
         </RelativeLayout>
 
-        <!-- SKELETON/PLACEHOLDER GRID: tampil saat data grid & timeline
-             belum siap dibind, agar area ini tidak terlihat "mati"/blank
-             kosong. Disembunyikan otomatis di pompaDataKeLayar(). -->
+        <!-- SKELETON/PLACEHOLDER GRID: tampil saat data grid & timeline belum siap dibind, agar area ini tidak terlihat "mati"/blank kosong. Disembunyikan otomatis di pompaDataKeLayar(). -->
         <LinearLayout
             android:id="@+id/wadahLoadingGrid"
             android:layout_width="match_parent"
@@ -173,12 +171,7 @@
                 </FrameLayout>
             </LinearLayout>
 
-            <!-- BAR AKSI BACA (CurlView OpenGL tidak bisa punya tombol
-                 interaktif DI DALAM tekstur-nya -- lihat penjelasan di
-                 percakapan. Bar ini persisten di luar permukaan OpenGL,
-                 kontennya diperbarui MainActivity setiap halaman berganti
-                 lewat BudayakanBaca.PenggantiHalamanListener). Disembunyikan
-                 kecuali sedang di mode baca. -->
+            <!-- BAR AKSI BACA (CurlView OpenGL tidak bisa punya tombol interaktif DI DALAM tekstur-nya. lihat penjelasan di percakapan. Bar ini persisten di luar permukaan OpenGL,kontennya diperbarui MainActivity setiap halaman berganti lewat BudayakanBaca.PenggantiHalamanListener). Disembunyikan kecuali sedang di mode baca. -->
             <LinearLayout
                 android:id="@+id/barAksiBaca"
                 android:layout_width="match_parent"
@@ -412,9 +405,7 @@
     android:layout_marginStart="20dp"
     android:clipChildren="false" />
 
-            <!-- SKELETON TIMELINE: titik loading kecil selagi recyclerTimeline
-                 masih kosong (belum ada adapter/data), agar kolom timeline
-                 tidak terlihat mati/blank. Disembunyikan di pompaDataKeLayar(). -->
+            <!-- SKELETON TIMELINE: titik loading kecil selagi recyclerTimeline masih kosong (belum ada adapter/data), agar kolom timeline tidak terlihat mati/blank. Disembunyikan di pompaDataKeLayar(). -->
             <ProgressBar
                 android:id="@+id/loadingTimelineKecil"
                 android:layout_width="18dp"
