@@ -1213,10 +1213,11 @@ private fun perbaruiDetailKecepatan(persen: Int, byteDiterima: Long, totalByte: 
         txtStatusPencarian.text = "$labelKategori • $totalVolume Status"
         
         delay(100) 
-        // CurlView baca `daftarArsipAktif` langsung (lihat BookPageProvider),
-        // index halaman 0 = sampul depan, jadi arsip ke-`posisi` (0-based)
-        // ada di index halaman `posisi + 1`.
-        curlViewBuku.setCurrentIndex(posisi + 1)
+        // CurlView baca `daftarArsipAktif` langsung (lihat BookPageProvider).
+        // Sejak paginasi ditambahkan, 1 arsip bisa menempati lebih dari 1
+        // halaman, jadi index halaman TIDAK LAGI selalu `posisi + 1` --
+        // dihitung lewat BookPageProvider yg tahu peta halaman sebenarnya.
+        curlViewBuku.setCurrentIndex(bookPageProvider.indexHalamanUntukArsip(posisi))
         
         curlViewBuku.post {
             isMesinSibuk = false 

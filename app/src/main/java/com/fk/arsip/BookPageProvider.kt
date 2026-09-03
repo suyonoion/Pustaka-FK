@@ -9,6 +9,9 @@ import android.os.Handler
 import android.os.Looper
 import android.text.Spannable
 import android.text.SpannableString
+import android.text.SpannableStringBuilder
+import android.text.StaticLayout
+import android.text.TextPaint
 import android.text.style.ForegroundColorSpan
 import android.util.LruCache
 import android.view.LayoutInflater
@@ -25,48 +28,62 @@ import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.CountDownLatch
 import java.util.concurrent.Executors
 import java.util.concurrent.TimeUnit
+import kotlin.math.ceil
+import kotlin.math.max
 
 /**
- * Merender tiap "halaman" (sampul depan, arsip, sampul belakang) menjadi
- * Bitmap untuk dipakai sebagai tekstur di BudayakanBaca (CurlView OpenGL).
+ * Merender tiap "halaman" menjadi Bitmap tekstur untuk BudayakanBaca (CurlView
+ * OpenGL). Sejak update ini, 1 ARSIP BISA MENEMPATI LEBIH DARI 1 HALAMAN kalau
+ * kontennya panjang -- lihat bagian "PAGINASI" di bawah untuk kenapa & caranya.
  *
- * CATATAN ARSITEKTUR PENTING -- kenapa desain thread-nya seperti ini:
- * updatePage() dipanggil dari GL THREAD milik GLSurfaceView (bukan UI
- * thread), lewat updatePages()/onDrawFrame() di BudayakanBaca. GL thread
- * TIDAK BOLEH diblokir lama -- kalau diblokir, seluruh CurlView "membeku"
- * (halaman kosong / terasa berat), karena GL thread juga yang menggambar
- * frame & memproses animasi curl.
+ * ------------------------------------------------------------------
+ * THREADING (tidak berubah dari perbaikan sebelumnya):
+ * updatePage() dipanggil dari GL THREAD dan harus SELALU langsung return.
+ * Kalau bitmap final belum ada di cache, pasang placeholder instan, lalu
+ * kerjakan render sesungguhnya (fetch Glide + inflate/draw View) di thread
+ * background terpisah. Begitu selesai, panggil refreshHalaman(index) yang
+ * diteruskan ke BudayakanBaca.refreshPageTexture() supaya tekstur halaman
+ * yang sedang tampil diperbarui tanpa mengganggu animasi curl.
  *
- * PERBAIKAN (dulu vs sekarang):
- *   DULU: updatePage() blocking penuh di GL thread -- fetch Glide (sampai
- *   6 detik) + inflate/draw View di UI thread lewat CountDownLatch (sampai
- *   4 detik) -- SETIAP KALI halaman itu tampil, TANPA cache. Itu sebabnya
- *   konten lama muncul (halaman kosong dulu) dan navigasi terasa berat.
+ * Bitmap dari cache SELALU disalin (bukan diberikan objek aslinya) sebelum
+ * diserahkan ke CurlPage, karena CurlPage.setTexture()/reset() me-recycle()
+ * bitmap lama begitu diganti -- kalau cache & CurlPage berbagi objek yang
+ * sama, cache ikut rusak (lihat histori perbaikan crash "recycled bitmap").
  *
- *   SEKARANG: updatePage() SELALU langsung return (non-blocking):
- *     - kalau bitmap final untuk index itu sudah ada di cache -> pakai itu.
- *     - kalau belum -> pasang placeholder "Memuat..." (digambar langsung,
- *       tanpa inflate View, jadi instan), lalu kirim tugas render
- *       sesungguhnya (fetch Glide + inflate/draw View) ke THREAD BACKGROUND
- *       terpisah (bukan GL thread, bukan UI thread -- UI thread cuma
- *       dipinjam sebentar utk inflate/measure/layout/draw via Handler).
- *   Begitu hasil akhirnya siap, disimpan ke cache lalu `refreshHalaman(index)`
- *   dipanggil -- ini meneruskan ke BudayakanBaca.refreshPageTexture(), yang
- *   sudah memang disiapkan untuk kasus ini: kalau halaman itu masih sedang
- *   tampil, tekstur-nya diperbarui & frame digambar ulang, tanpa mengganggu
- *   animasi curl yang sedang berjalan.
+ * ------------------------------------------------------------------
+ * PAGINASI -- kenapa & bagaimana:
+ * Sebelumnya 1 arsip = 1 halaman selalu, dan konten ditaruh di dalam
+ * ScrollView di dalam item_buku.xml. Itu masalahnya: begitu View itu
+ * "difoto" jadi Bitmap statis, ScrollView cuma menggambar apa yang
+ * kelihatan di layar -- teks yang ada di bawah area yang kelihatan itu
+ * SIMPLY TIDAK IKUT TERGAMBAR (bukan disembunyikan, betul-betul hilang dari
+ * bitmap), makin parah di landscape karena tinggi layar lebih pendek.
  *
- * Cache di-key pakai ID arsip (idPosting) + ukuran bitmap, BUKAN index
- * halaman -- supaya tetap valid walau daftar/filter berubah, dan otomatis
- * "batal berlaku" sendiri kalau ukuran layar berubah (rotasi).
+ * Perbaikannya: teks panjang dipecah jadi beberapa halaman (ukuran font
+ * tetap, seperti buku asli), lewat 2 mekanisme terpisah:
  *
- * PENYEDERHANAAN yang disengaja dibanding BukuAdapter (RecyclerView) yang
- * asli: hanya menampilkan SATU foto representatif per halaman (bukan grid
- * multi-foto penuh), dan video ditampilkan sebagai gambar diam + ikon play
- * (tidak bisa diputar langsung di sini -- ini keterbatasan mendasar OpenGL
- * texture, bukan bug). Untuk melihat SEMUA foto/video & interaksi penuh,
- * pakai tombol "Lampiran" di bar aksi (lihat MainActivity) yang membuka
- * dialog terpisah pakai kode yang sama persis dengan grid biasa.
+ *  1) PERKIRAAN CEPAT (untuk `getPageCount()` & lompat-ke-halaman dari
+ *     drawer, lihat MainActivity.indexHalamanUntukArsip): dihitung pakai
+ *     rumus kasar (panjang teks / perkiraan lebar-tinggi baris), BUKAN
+ *     StaticLayout, supaya tetap instan walau datanya puluhan ribu arsip.
+ *     Sengaja dibuat SEDIKIT BERLEBIH (bukan pas-pasan) supaya arahnya
+ *     aman -- kalaupun meleset, meleset ke arah "kelebihan slot halaman"
+ *     (paling buruk ada halaman nyaris kosong), BUKAN "kekurangan slot"
+ *     (yang berarti balik lagi ke bug teks terpotong).
+ *
+ *  2) PEMOTONGAN PERSIS (untuk render sesungguhnya, per halaman yang
+ *     benar-benar dibuka): pakai StaticLayout mengukur baris demi baris
+ *     dari TEKS ASLI pada lebar sebenarnya, dipotong per halaman begitu
+ *     tingginya akan melebihi area yang tersedia. Ini yang menjamin TIDAK
+ *     ADA baris yang terpotong di tengah pada halaman yang benar-benar
+ *     dibuka pengguna.
+ *
+ * KETERBATASAN YANG DISENGAJA (supaya scope tetap terkendali): paginasi
+ * hanya berlaku untuk konten Tanya-Jawab biasa (txtKontenUtama). Postingan
+ * bertipe "Membagikan Status" (ada blok status yang dibagikan ulang)
+ * TETAP 1 halaman seperti sebelumnya -- kasus ini jauh lebih jarang & lebih
+ * rumit strukturnya (ada 2 blok teks + kotak bersarang), jadi belum
+ * dipaginasi. Kalau ini ternyata sering kepotong juga, kabari saya lagi.
  */
 class BookPageProvider(
     private val context: Context,
@@ -77,32 +94,91 @@ class BookPageProvider(
     private val mainHandler = Handler(Looper.getMainLooper())
     private val warnaKertas = 0xFFFFFDF7.toInt()
     private val warnaSampulBack = Color.rgb(160, 155, 140)
+    private val densitas get() = context.resources.displayMetrics.density
 
-    // Thread pool kecil khusus utk kerja render halaman (fetch foto + gambar
-    // View ke bitmap). Dibatasi 2 thread supaya tidak membanjiri Glide/UI
-    // thread saat banyak halaman diminta beruntun (mis. swipe cepat).
     private val executor = Executors.newFixedThreadPool(2)
     @Volatile private var shutdown = false
 
-    // Cache bitmap final, di-key per idPosting+ukuran (atau kunci khusus utk
-    // sampul). Dibatasi berdasarkan total memori bitmap (bukan jumlah entri)
-    // supaya tidak memicu OOM di buku dengan ribuan halaman.
     private val cacheMaks = (Runtime.getRuntime().maxMemory() / 8).toInt()
     private val cacheBitmap = object : LruCache<String, Bitmap>(cacheMaks) {
         override fun sizeOf(key: String, value: Bitmap): Int = value.byteCount
     }
-
-    // Index halaman yang sedang diproses di background, supaya tidak
-    // dobel-render kalau GL thread minta halaman yang sama berkali-kali
-    // sebelum hasil pertama selesai (lumrah terjadi selama animasi curl).
     private val sedangDiproses = ConcurrentHashMap.newKeySet<String>()
 
-    override fun getPageCount(): Int = ambilData().size + 2 // +sampul depan +sampul belakang
+    // ------------------------------------------------------------------
+    // PETA HALAMAN (estimasi cepat, lihat dokumentasi kelas di atas)
+    // ------------------------------------------------------------------
+    private var wKumulatif = -1
+    private var hKumulatif = -1
+    private var nKumulatif = -1
+    private var kumulatif: IntArray = IntArray(0) // kumulatif[i] = total slot halaman utk arsip[0 until i]
 
-    /** Dipanggil dari GL thread. Index arsip asli untuk index halaman ini, atau null kalau sampul. */
+    private fun pastikanKumulatif(w: Int, h: Int) {
+        val data = ambilData()
+        if (w == wKumulatif && h == hKumulatif && data.size == nKumulatif) return
+        val lebarKontenPx = lebarKonten(w)
+        val arr = IntArray(data.size + 1)
+        for (i in data.indices) {
+            val a = data[i]
+            val tinggiBadanPx = tinggiBadan(h, adaMedia = a.daftarFoto.isNotBlank())
+            arr[i + 1] = arr[i] + perkiraanJumlahHalaman(a.kontenPenuh, lebarKontenPx, tinggiBadanPx)
+        }
+        kumulatif = arr
+        wKumulatif = w; hKumulatif = h; nKumulatif = data.size
+    }
+
+    private fun lebarKonten(w: Int) = (w - ((48 + 16) * densitas)).toInt().coerceAtLeast(1)
+
+    private fun tinggiBadan(h: Int, adaMedia: Boolean): Int {
+        val cadanganChrome = (190 * densitas).toInt() // header + garis + padding + footer dekoratif
+        val cadanganMedia = if (adaMedia) 560 else 0 // ~tinggi blok foto (lihat wadahMultiFoto), sengaja konservatif
+        return (h - cadanganChrome - cadanganMedia).coerceAtLeast((80 * densitas).toInt())
+    }
+
+    private fun perkiraanJumlahHalaman(teks: String, lebarKontenPx: Int, tinggiBadanPx: Int): Int {
+        if (teks.isBlank() || teks.contains("--- Membagikan Status:")) return 1 // lihat batasan di dokumentasi kelas
+        val ukuranFontPx = 14f * densitas
+        // Perkiraan sengaja agak "sempit" (lebar rata-rata karakter dilebihkan,
+        // tinggi baris dilebihkan) supaya jumlah halaman perkiraan cenderung
+        // SAMA ATAU LEBIH BANYAK dari kebutuhan asli -- lihat catatan arah
+        // yang aman di dokumentasi kelas.
+        val karakterPerBaris = max(1f, lebarKontenPx / (ukuranFontPx * 0.55f))
+        val tinggiBarisPx = ukuranFontPx * 1.35f
+        val barisPerHalaman = max(1f, tinggiBadanPx / tinggiBarisPx)
+        val jumlahBaris = ceil(teks.length / karakterPerBaris)
+        return ceil(jumlahBaris / barisPerHalaman).toInt().coerceAtLeast(1)
+    }
+
+    /** Dipakai MainActivity untuk lompat langsung ke arsip tertentu (mis. dari drawer). */
+    fun indexHalamanUntukArsip(posisiArsip: Int): Int {
+        pastikanKumulatif(wKumulatif.coerceAtLeast(1), hKumulatif.coerceAtLeast(1))
+        val data = ambilData()
+        if (posisiArsip !in data.indices) return 0
+        return kumulatif[posisiArsip] + 1 // +1 krn index 0 = sampul depan
+    }
+
+    /** Index arsip asli (abaikan sub-halaman) untuk index halaman ini, atau null kalau sampul. */
     fun indexArsipDari(indexHalaman: Int): Int? {
-        val total = ambilData().size
-        return if (indexHalaman in 1..total) indexHalaman - 1 else null
+        val posisiKonten = indexHalaman - 1
+        if (posisiKonten < 0 || kumulatif.isEmpty() || posisiKonten >= kumulatif.last()) return null
+        return cariArsipIndex(posisiKonten)
+    }
+
+    private fun cariArsipIndex(posisiKonten: Int): Int {
+        var lo = 0
+        var hi = kumulatif.size - 2
+        while (lo < hi) {
+            val mid = (lo + hi + 1) / 2
+            if (kumulatif[mid] <= posisiKonten) lo = mid else hi = mid - 1
+        }
+        return lo
+    }
+
+    override fun getPageCount(): Int {
+        val w = if (wKumulatif > 0) wKumulatif else 1
+        val h = if (hKumulatif > 0) hKumulatif else 1
+        pastikanKumulatif(w, h)
+        return (if (kumulatif.isEmpty()) 0 else kumulatif.last()) + 2 // + sampul depan + belakang
     }
 
     fun shutdown() {
@@ -110,67 +186,61 @@ class BookPageProvider(
         executor.shutdownNow()
     }
 
+    // ------------------------------------------------------------------
     override fun updatePage(page: CurlPage, width: Int, height: Int, index: Int) {
-        val total = ambilData().size
         val w = width.coerceAtLeast(1)
         val h = height.coerceAtLeast(1)
+        pastikanKumulatif(w, h)
+        val totalHalamanKonten = if (kumulatif.isEmpty()) 0 else kumulatif.last()
 
         val cacheKey: String
-        val arsip: ArsipEntity?
+        val tugas: (() -> Bitmap)?
         when {
             index == 0 -> {
                 cacheKey = "sampul_depan:${w}x$h"
-                arsip = null
+                tugas = { renderSampul(w, h, judul = "Pustaka FK", subjudul = "Arsip Fatwa & Kehidupan") }
             }
-            index == total + 1 -> {
+            index == totalHalamanKonten + 1 -> {
                 cacheKey = "sampul_belakang:${w}x$h"
-                arsip = null
+                tugas = { renderSampul(w, h, judul = "Tamat", subjudul = "Pustaka FK") }
             }
             else -> {
-                val a = ambilData().getOrNull(index - 1)
-                if (a == null) {
-                    // Data belum/tidak tersedia (mis. list berubah di tengah jalan) --
-                    // tampilkan halaman kosong alih-alih crash. Tidak perlu cache/async.
+                val posisiKonten = index - 1
+                if (posisiKonten < 0 || posisiKonten >= totalHalamanKonten) {
                     page.setTexture(renderKosong(w, h), CurlPage.SIDE_FRONT)
                     page.setColor(warnaSampulBack, CurlPage.SIDE_BACK)
                     return
                 }
-                arsip = a
-                cacheKey = "${a.idPosting}:${w}x$h"
+                val arsipIndex = cariArsipIndex(posisiKonten)
+                val arsip = ambilData().getOrNull(arsipIndex)
+                if (arsip == null) {
+                    page.setTexture(renderKosong(w, h), CurlPage.SIDE_FRONT)
+                    page.setColor(warnaSampulBack, CurlPage.SIDE_BACK)
+                    return
+                }
+                val subIndex = posisiKonten - kumulatif[arsipIndex]
+                val perkiraanTotalSub = kumulatif[arsipIndex + 1] - kumulatif[arsipIndex]
+                cacheKey = "${arsip.idPosting}:${w}x$h:sub$subIndex"
+                tugas = { renderHalamanArsip(w, h, arsip, index, totalHalamanKonten + 2, subIndex, perkiraanTotalSub) }
             }
         }
 
         val fromCache = cacheBitmap.get(cacheKey)
         if (fromCache != null) {
-            // PENTING: jangan pernah kasih objek Bitmap cache ASLI ke
-            // CurlPage. CurlPage.setTexture()/reset() me-recycle() bitmap
-            // lama begitu diganti -- kalau kita kasih objek cache langsung,
-            // dan objek yang sama juga dipakai mesh lain atau meshnya
-            // di-reset nanti, bitmap di cache ikut ke-recycle dan bikin
-            // crash "trying to use a recycled bitmap" saat dipakai lagi.
-            // Kasih SALINANNYA saja -- murah (cuma copy memori, tanpa
-            // network/inflate ulang), cache tetap utuh & aman dipakai lagi.
             page.setTexture(salinUntukTampil(fromCache, w, h), CurlPage.SIDE_FRONT)
             page.setColor(warnaSampulBack, CurlPage.SIDE_BACK)
+            prefetchTetangga(index, totalHalamanKonten)
             return
         }
 
-        // Belum ada di cache -> tampilkan placeholder INSTAN (gambar langsung
-        // ke Canvas, tanpa inflate View, tanpa menyentuh UI thread), lalu
-        // GL thread lanjut tanpa menunggu.
         page.setTexture(renderPlaceholder(w, h), CurlPage.SIDE_FRONT)
         page.setColor(warnaSampulBack, CurlPage.SIDE_BACK)
 
         if (sedangDiproses.add(cacheKey)) {
             executor.execute {
                 try {
-                    if (shutdown) return@execute
-                    val bmp = when {
-                        index == 0 -> renderSampul(w, h, judul = "Pustaka FK", subjudul = "Arsip Fatwa & Kehidupan")
-                        index == total + 1 -> renderSampul(w, h, judul = "Tamat", subjudul = "Pustaka FK")
-                        else -> renderHalamanArsip(w, h, arsip!!, index, total)
-                    }
                     if (!shutdown) {
+                        val bmp = tugas!!.invoke()
                         cacheBitmap.put(cacheKey, bmp)
                         refreshHalaman(index)
                     }
@@ -181,8 +251,50 @@ class BookPageProvider(
         }
     }
 
-    // ------------------------------------------------------------------
-    // PLACEHOLDER (dipanggil langsung dari GL thread -- harus instan)
+    /**
+     * Render halaman kiri/kanan sekitar `index` di background lebih awal
+     * (tanpa menunggu diminta), supaya waktu SWIPE terasa instan setelah
+     * pengguna pernah singgah sebentar -- bukan cuma waktu dibuka persis.
+     * Hanya jalan kalau belum ada di cache & belum sedang diproses.
+     */
+    private fun prefetchTetangga(index: Int, totalHalamanKonten: Int) {
+        val w = wKumulatif.coerceAtLeast(1)
+        val h = hKumulatif.coerceAtLeast(1)
+        for (tetangga in intArrayOf(index - 1, index + 1, index + 2)) {
+            if (tetangga < 0 || tetangga > totalHalamanKonten + 1) continue
+            // Cek cache dulu SECARA SINKRON (murah) sebelum menjadwalkan apa
+            // pun -- updatePage() ini dipanggil tiap frame utk halaman yg
+            // sedang tampil, jadi kalau tidak dicek dulu, tetangga yg SUDAH
+            // di-cache akan terus-menerus dijadwalkan ulang ke executor tiap
+            // frame (kerja sia-sia, membanjiri thread pool tanpa manfaat).
+            val key = cacheKeyUntuk(halaman = tetangga, w = w, h = h) ?: continue
+            if (cacheBitmap.get(key) != null || sedangDiproses.contains(key)) continue
+            executor.execute {
+                if (shutdown) return@execute
+                try {
+                    updatePage(CurlPage(), w, h, tetangga)
+                } catch (e: Exception) { /* prefetch best-effort, abaikan kegagalan */ }
+            }
+        }
+    }
+
+    /** Kunci cache untuk index halaman ini pada ukuran w/h saat ini, atau null kalau di luar jangkauan. */
+    private fun cacheKeyUntuk(halaman: Int, w: Int, h: Int): String? {
+        val totalHalamanKonten = if (kumulatif.isEmpty()) 0 else kumulatif.last()
+        return when {
+            halaman == 0 -> "sampul_depan:${w}x$h"
+            halaman == totalHalamanKonten + 1 -> "sampul_belakang:${w}x$h"
+            else -> {
+                val posisiKonten = halaman - 1
+                if (posisiKonten < 0 || posisiKonten >= totalHalamanKonten) return null
+                val arsipIndex = cariArsipIndex(posisiKonten)
+                val arsip = ambilData().getOrNull(arsipIndex) ?: return null
+                val subIndex = posisiKonten - kumulatif[arsipIndex]
+                "${arsip.idPosting}:${w}x$h:sub$subIndex"
+            }
+        }
+    }
+
     // ------------------------------------------------------------------
     private fun renderPlaceholder(width: Int, height: Int): Bitmap {
         val bmp = Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888)
@@ -197,10 +309,12 @@ class BookPageProvider(
         return bmp
     }
 
-    /**
-     * Salinan aman dari bitmap cache untuk diserahkan ke CurlPage (yang akan
-     * me-recycle()-nya begitu diganti/direset). Lihat catatan di pemanggil.
-     */
+    private fun renderKosong(width: Int, height: Int): Bitmap {
+        val bmp = Bitmap.createBitmap(width.coerceAtLeast(1), height.coerceAtLeast(1), Bitmap.Config.ARGB_8888)
+        Canvas(bmp).drawColor(warnaKertas)
+        return bmp
+    }
+
     private fun salinUntukTampil(bitmap: Bitmap, width: Int, height: Int): Bitmap {
         return try {
             bitmap.copy(bitmap.config ?: Bitmap.Config.ARGB_8888, false) ?: renderKosong(width, height)
@@ -209,15 +323,6 @@ class BookPageProvider(
         }
     }
 
-    private fun renderKosong(width: Int, height: Int): Bitmap {
-        val bmp = Bitmap.createBitmap(width.coerceAtLeast(1), height.coerceAtLeast(1), Bitmap.Config.ARGB_8888)
-        Canvas(bmp).drawColor(warnaKertas)
-        return bmp
-    }
-
-    // ------------------------------------------------------------------
-    // SAMPUL (dipanggil dari thread background milik `executor`)
-    // ------------------------------------------------------------------
     private fun renderSampul(width: Int, height: Int, judul: String, subjudul: String): Bitmap {
         return renderViewKeBitmapDiMainThread(width, height) {
             val view = LayoutInflater.from(context).inflate(R.layout.item_sampul_depan, null, true)
@@ -228,16 +333,75 @@ class BookPageProvider(
     }
 
     // ------------------------------------------------------------------
+    // PEMOTONGAN TEKS PERSIS (StaticLayout) -- dipanggil dari thread
+    // background milik `executor`, aman melakukan kerja lumayan (bukan
+    // GL thread / bukan UI thread).
+    // ------------------------------------------------------------------
+    private data class RencanaTeks(val potongan: List<IntRange>)
+    private val rencanaCache = ConcurrentHashMap<String, RencanaTeks>()
+
+    private fun ambilRencanaTeks(arsip: ArsipEntity, w: Int, h: Int): RencanaTeks {
+        val key = "${arsip.idPosting}:${w}x$h"
+        rencanaCache[key]?.let { return it }
+
+        val teks = arsip.kontenPenuh.ifBlank { " " }
+        if (teks.contains("--- Membagikan Status:")) {
+            // Tidak dipaginasi (lihat batasan di dokumentasi kelas) -- 1 potongan = teks penuh.
+            val hasil = RencanaTeks(listOf(0..teks.length))
+            rencanaCache[key] = hasil
+            return hasil
+        }
+
+        val lebarKontenPx = lebarKonten(w)
+        val tinggiBadanPx = tinggiBadan(h, adaMedia = arsip.daftarFoto.isNotBlank())
+        val paint = TextPaint(Paint.ANTI_ALIAS_FLAG).apply { textSize = 14f * densitas }
+
+        @Suppress("DEPRECATION")
+        val layout = StaticLayout(teks, paint, lebarKontenPx, android.text.Layout.Alignment.ALIGN_NORMAL, 1f, 0f, false)
+
+        val potongan = mutableListOf<IntRange>()
+        var mulaiBaris = 0
+        var tinggiTerpakai = 0
+        for (baris in 0 until layout.lineCount) {
+            val tinggiBaris = layout.getLineBottom(baris) - layout.getLineTop(baris)
+            if (tinggiTerpakai + tinggiBaris > tinggiBadanPx && baris > mulaiBaris) {
+                potongan.add(layout.getLineStart(mulaiBaris) until layout.getLineStart(baris))
+                mulaiBaris = baris
+                tinggiTerpakai = 0
+            }
+            tinggiTerpakai += tinggiBaris
+        }
+        potongan.add(layout.getLineStart(mulaiBaris) until teks.length)
+
+        val hasil = RencanaTeks(potongan)
+        rencanaCache[key] = hasil
+        return hasil
+    }
+
+    // ------------------------------------------------------------------
     // HALAMAN ARSIP (dipanggil dari thread background milik `executor`)
     // ------------------------------------------------------------------
-    private fun renderHalamanArsip(width: Int, height: Int, arsip: ArsipEntity, indexHalaman: Int, totalArsip: Int): Bitmap {
-        // TAHAP 1 (thread background `executor`, BUKAN GL thread lagi): fetch
-        // foto representatif secara blocking lewat Glide -- aman di sini
-        // karena tidak memblokir GL thread maupun UI thread.
+    private fun renderHalamanArsip(
+        width: Int, height: Int, arsip: ArsipEntity, indexHalaman: Int, totalHalamanBuku: Int,
+        subIndex: Int, perkiraanTotalSub: Int
+    ): Bitmap {
+        val rencana = ambilRencanaTeks(arsip, width, height)
+        // Kalau perkiraan cepat "meleset kurang" (jarang, tapi bisa terjadi --
+        // lihat dokumentasi kelas), subIndex bisa melebihi jumlah potongan
+        // ASLI dari StaticLayout -- amankan dgn menampilkan potongan terakhir
+        // yang tersedia, supaya tidak crash & tetap tidak ada teks yg hilang.
+        val potonganIndex = subIndex.coerceAtMost(rencana.potongan.size - 1)
+        val rentang = rencana.potongan[potonganIndex]
+        val halamanTerakhirDariArsipIni = potonganIndex == rencana.potongan.size - 1
+        val lanjutan = potonganIndex > 0
+
         var fotoRepresentatif: Bitmap? = null
         var isVideo = false
         var jumlahMediaLain = 0
-        if (arsip.daftarFoto.isNotBlank()) {
+        // Foto/video representatif HANYA ditempel di halaman terakhir arsip
+        // ini (lihat dokumentasi kelas: kenapa media selalu dicadangkan di
+        // halaman terakhir, bukan menyebar di tengah teks).
+        if (halamanTerakhirDariArsipIni && arsip.daftarFoto.isNotBlank()) {
             val daftar = arsip.daftarFoto.split(",").map { it.trim() }.filter { it.isNotEmpty() }
             if (daftar.isNotEmpty()) {
                 val pertama = daftar[0]
@@ -247,15 +411,13 @@ class BookPageProvider(
                 fotoRepresentatif = try {
                     Glide.with(context).asBitmap().load(urlBersih)
                         .submit(width, (height * 0.35f).toInt().coerceAtLeast(1))
-                        .get(6, TimeUnit.SECONDS) // batas waktu jaring pengaman kalau jaringan macet
+                        .get(6, TimeUnit.SECONDS)
                 } catch (e: Exception) {
                     null
                 }
             }
         }
 
-        // TAHAP 2: inflate + bind + gambar ke Canvas, WAJIB di UI thread --
-        // dipinjam sebentar lewat Handler, thread background ini menunggu.
         return renderViewKeBitmapDiMainThread(width, height) {
             val view = LayoutInflater.from(context).inflate(R.layout.item_buku, null, true)
             view.background = KertasBergarisDrawable(density = context.resources.displayMetrics.density)
@@ -272,6 +434,7 @@ class BookPageProvider(
             val txtNamaPemilikShared = view.findViewById<TextView>(R.id.txtNamaPemilikShared)
 
             if (kontenBersih.contains("--- Membagikan Status:")) {
+                // Kasus "shared status": belum dipaginasi, tetap seperti sebelumnya.
                 val bagian = kontenBersih.split("\n\n--- Membagikan Status: ")
                 val teksAsli = bagian[0].trim()
                 if (teksAsli.isNotEmpty()) {
@@ -295,7 +458,20 @@ class BookPageProvider(
                     }
                 }
             } else {
-                txtKontenUtama.text = warnaiKontenTanyaJawab(kontenBersih)
+                // Kasus normal (Tanya-Jawab, dsb): potong sesuai `rentang` hasil
+                // StaticLayout, dgn pewarnaan yg tetap konsisten dgn teks penuh.
+                // `rentang` pakai konvensi `start until end` (end EKSKLUSIF) dari
+                // StaticLayout, jadi argumen akhir ke subSequence() harus
+                // `rentang.last + 1`, BUKAN `rentang.last` -- kalau tidak,
+                // karakter terakhir tiap potongan akan hilang.
+                val awal = rentang.first.coerceIn(0, kontenBersih.length)
+                val akhir = (rentang.last + 1).coerceIn(awal, kontenBersih.length)
+                val potonganBerwarna = warnaiKontenTanyaJawab(kontenBersih)
+                    .let { SpannableStringBuilder(it) }
+                    .subSequence(awal, akhir)
+                txtKontenUtama.text = if (lanjutan) {
+                    SpannableStringBuilder("\u21B3 (lanjutan halaman sebelumnya)\n\n").append(potonganBerwarna)
+                } else potonganBerwarna
                 txtKontenUtama.visibility = View.VISIBLE
                 wadahDinamisKonten.setBackgroundResource(0)
                 wadahDinamisKonten.setPadding(0, 0, 0, 0)
@@ -305,11 +481,9 @@ class BookPageProvider(
 
             view.findViewById<TextView>(R.id.txtTanggal).text = arsip.tanggalBaca
             view.findViewById<TextView>(R.id.txtKategori).text = arsip.kategori
-            view.findViewById<TextView>(R.id.txtNomorHalaman).text = "Halaman : $indexHalaman/${totalArsip + 2}"
+            view.findViewById<TextView>(R.id.txtNomorHalaman).text = "Halaman : $indexHalaman/$totalHalamanBuku"
             view.findViewById<ImageView>(R.id.imgProfilAbah)?.setImageResource(R.drawable.profil_abah)
 
-            // Foto/video representatif (kalau ada) -- sudah di-fetch di Tahap 1,
-            // tinggal ditempel, TIDAK ada pemanggilan Glide async di sini.
             val wadahFoto = view.findViewById<android.widget.LinearLayout>(R.id.wadahMultiFoto)
             wadahFoto.removeAllViews()
             if (fotoRepresentatif != null) {
@@ -371,16 +545,6 @@ class BookPageProvider(
     }
 
     // ------------------------------------------------------------------
-    // JEMBATAN THREAD BACKGROUND <-> UI THREAD
-    // ------------------------------------------------------------------
-    /**
-     * Menjalankan [buatView] di UI thread (wajib untuk operasi View), lalu
-     * mengukur/menata/menggambarnya ke Bitmap, dan MENUNGGU (blocking thread
-     * pemanggil -- salah satu thread di `executor`, BUKAN GL thread lagi)
-     * sampai selesai lewat CountDownLatch. Ada batas waktu 4 detik sebagai
-     * jaring pengaman supaya thread background tidak menggantung selamanya
-     * kalau ada yang tidak beres di UI thread.
-     */
     private fun renderViewKeBitmapDiMainThread(width: Int, height: Int, buatView: () -> View): Bitmap {
         val latch = CountDownLatch(1)
         var hasil: Bitmap? = null
