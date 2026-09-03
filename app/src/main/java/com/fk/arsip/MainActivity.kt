@@ -96,6 +96,7 @@ private var byteTerakhirDownloaded: Long = 0L
 private var kecepatanEmaBytesPerSec: Double = 0.0
     private val namaFile = "Master_Data_Arsip_FK_11_Juli_2026.json"
     private val urlKargo = "https://github.com/suyonoion/Pustaka-FK/releases/download/v1.0.0/Master_Data_Arsip_FK_11_Juli_2026.json"
+    private val NAMA_KERJA_INJEKSI = "INJEKSI_MASTER_DATA"
 
     private lateinit var drawerLayout: DrawerLayout
     private lateinit var navViewCustom: LinearLayout
@@ -766,6 +767,54 @@ when (fase) {
         }
     }
 
+    // PENJAGA ANTI-DOBEL: `pantauTekananUnduhan` (polling) dan `pasangSensorPendaratan`
+    // (BroadcastReceiver sistem) SAMA-SAMA mengawasi unduhan yang SAMA. Sebelum
+    // perbaikan ini, keduanya menangani "unduhan selesai" secara TERPISAH --
+    // kalau polling sempat mendeteksi status sukses SEBELUM receiver selesai
+    // me-rename file .temp ke nama final, eksekusiPabrikData() melihat "belum
+    // ada file & data DB belum cukup" lalu MENGUNDUH ULANG DARI NOL. Itulah
+    // sumber bug "looping unduh lagi setelah fase 1-3 selesai".
+    // Perbaikannya: SATU fungsi ini yang menangani "unduhan selesai" (sukses
+    // ATAU gagal), siapa pun yang memanggilnya duluan (poller atau receiver)
+    // yang benar-benar mengeksekusi; yang kedua otomatis diabaikan.
+    private var idUnduhanSudahDitangani: Long = -1L
+
+    private fun tanganiSelesainyaUnduhan(idUnduhan: Long, sukses: Boolean) {
+        synchronized(this) {
+            if (idUnduhanSudahDitangani == idUnduhan) return
+            idUnduhanSudahDitangani = idUnduhan
+        }
+        if (!sukses) {
+            aturVisibilitasOverlayInisialisasi(false)
+            isMesinSibuk = false
+            Toast.makeText(this, "Tekanan unduhan gagal. Cek jaringan.", Toast.LENGTH_LONG).show()
+            return
+        }
+        val fileTempSelesai = File(getExternalFilesDir(null), "$namaFile.temp")
+        val fileAsli = File(getExternalFilesDir(null), namaFile)
+        if (fileAsli.exists()) { fileAsli.delete() }
+
+        val siapDiinjeksi = if (fileTempSelesai.exists()) {
+            fileTempSelesai.renameTo(fileAsli)
+        } else {
+            // Kemungkinan pemanggil lain (poller/receiver) menang duluan lewat
+            // guard di atas TAPI proses rename-nya sendiri belum tercatat di
+            // sini (harusnya tidak terjadi krn guard sudah mengunci di awal --
+            // dijaga tetap aman kalau ternyata file sudah bernama final).
+            fileAsli.exists()
+        }
+
+        if (siapDiinjeksi) {
+            isMesinSibuk = true
+            aturKunciDrawer(true)
+            jalankanMesinInjeksiOtonom(fileAsli.absolutePath)
+        } else {
+            aturVisibilitasOverlayInisialisasi(false)
+            isMesinSibuk = false
+            Toast.makeText(this, "Gagal memproses pendaratan file. Ruang penuh atau terkunci.", Toast.LENGTH_LONG).show()
+        }
+    }
+
     private fun pasangSensorPendaratan(idUnduhan: Long, downloadManager: DownloadManager) {
         val sensorSelesai = object : BroadcastReceiver() {
             override fun onReceive(context: Context?, intent: Intent?) {
@@ -776,28 +825,8 @@ when (fase) {
                     val cursor = downloadManager.query(query)
                     if (cursor != null && cursor.moveToFirst()) {
                         val statusIndex = cursor.getColumnIndex(DownloadManager.COLUMN_STATUS)
-                        if (statusIndex != -1 && cursor.getInt(statusIndex) == DownloadManager.STATUS_SUCCESSFUL) {
-                            val fileTempSelesai = File(getExternalFilesDir(null), "$namaFile.temp")
-                            val fileAsli = File(getExternalFilesDir(null), namaFile)
-                            
-                            // HANCURKAN SISA FILE LAMA SEBELUM MENGELAS NAMA BARU
-                            if (fileAsli.exists()) { fileAsli.delete() }
-                            
-                            if (fileTempSelesai.exists() && fileTempSelesai.renameTo(fileAsli)) {
-                                isMesinSibuk = true
-                                aturKunciDrawer(true)
-                                jalankanMesinInjeksiOtonom(fileAsli.absolutePath)
-                            } else {
-                                // Putus putaran loop dengan mematikan mesin secara paksa jika sistem operasi menolak rename
-                                aturVisibilitasOverlayInisialisasi(false)
-                                isMesinSibuk = false
-                                Toast.makeText(this@MainActivity, "Gagal memproses pendaratan file. Ruang penuh atau terkunci.", Toast.LENGTH_LONG).show()
-                            }
-                        } else {
-                            aturVisibilitasOverlayInisialisasi(false)
-                            isMesinSibuk = false
-                            Toast.makeText(this@MainActivity, "Tekanan unduhan gagal. Cek jaringan.", Toast.LENGTH_LONG).show()
-                        }
+                        val sukses = statusIndex != -1 && cursor.getInt(statusIndex) == DownloadManager.STATUS_SUCCESSFUL
+                        tanganiSelesainyaUnduhan(idUnduhan, sukses)
                     }
                     cursor?.close()
                 }
@@ -920,14 +949,13 @@ private fun pantauTekananUnduhan(idUnduhan: Long, downloadManager: DownloadManag
               
                     withContext(Dispatchers.Main) {
                         perbaruiPanelTelemetri(FaseInjeksi.FASE_4, 0, 0, 0)
-                        eksekusiPabrikData()
+                        tanganiSelesainyaUnduhan(idUnduhan, sukses = true)
                     }
                 } else if (status == DownloadManager.STATUS_FAILED) {
                     isMengunduh = false
                     withContext(Dispatchers.Main) {
                         perbaruiPanelTelemetri(FaseInjeksi.KONEKSI_BURUK, 0, 0, 0)
-                        delay(3000)
-                        eksekusiPabrikData() 
+                        tanganiSelesainyaUnduhan(idUnduhan, sukses = false)
                     }
                 } else {
                     val bytesDownloadedIndex = cursor.getColumnIndex(DownloadManager.COLUMN_BYTES_DOWNLOADED_SO_FAR)
@@ -1037,14 +1065,30 @@ private fun perbaruiDetailKecepatan(persen: Int, byteDiterima: Long, totalByte: 
     
     val manajerKerja = WorkManager.getInstance(applicationContext)
     
-    // PENGUNCI MEKANIS: Jika mesin lama masih menyala, ganti dengan yang baru
+    // PERBAIKAN: dulu pakai KEEP (kebalikan dari niat komentar di atas) --
+    // kalau ada sisa kerja LAMA yg belum tuntas dgn nama unik yg sama
+    // (mis. dari percobaan sebelumnya yg menunjuk ke file yg SUDAH DIHAPUS),
+    // KEEP membuang permintaan baru yg valid ini & malah menjalankan yg lama
+    // -- itu salah satu sumber bug "tiba-tiba mulai unduh lagi" (kerja lama
+    // gagal BOBOT_KURANG krn filenya sudah tidak ada, lalu memicu unduh
+    // ulang). REPLACE memastikan permintaan yg BENAR-BENAR baru & valid ini
+    // (menunjuk ke file yg baru saja dipastikan ada) yang selalu dipakai.
     manajerKerja.enqueueUniqueWork(
-        "INJEKSI_MASTER_DATA", 
-        androidx.work.ExistingWorkPolicy.KEEP, 
+        NAMA_KERJA_INJEKSI, 
+        androidx.work.ExistingWorkPolicy.REPLACE, 
         instruksiKerja
     )
 
-            manajerKerja.getWorkInfoByIdLiveData(instruksiKerja.id).observe(this) { informasiKerja ->
+    // PERBAIKAN: dulu observe by instruksiKerja.id -- kalau ternyata
+    // enqueueUniqueWork tidak memakai request BARU ini (skenario KEEP di
+    // atas), observer ini memantau ID yang YATIM (tidak pernah benar-benar
+    // berjalan), jadi progres/hasil kerja yg SESUNGGUHNYA berjalan tidak
+    // pernah diketahui MainActivity. Observe lewat NAMA UNIK-nya supaya
+    // selalu memantau kerja yang benar-benar aktif untuk nama itu.
+    manajerKerja.getWorkInfosForUniqueWorkLiveData(NAMA_KERJA_INJEKSI).observe(this) { daftarKerja ->
+            val informasiKerja = daftarKerja
+                ?.firstOrNull { it.state == WorkInfo.State.RUNNING || it.state == WorkInfo.State.ENQUEUED }
+                ?: daftarKerja?.firstOrNull()
             if (informasiKerja != null) {
                 val faseAktif = informasiKerja.progress.getInt("FASE", 0)
                 val persentase = informasiKerja.progress.getInt("PERSENTASE", 0)
@@ -1081,7 +1125,15 @@ private fun perbaruiDetailKecepatan(persen: Int, byteDiterima: Long, totalByte: 
                         aturVisibilitasOverlayInisialisasi(false)
                         isMesinSibuk = false
                         if (kodeGagal == "BOBOT_KURANG") {
-                            aktifkanMesinPenyedot() 
+                            // PERBAIKAN: dulu langsung aktifkanMesinPenyedot() (unduh
+                            // ulang dari nol) tanpa cek dulu. Kalau kegagalan ini
+                            // berasal dari sisa kerja LAMA yg menunjuk ke file yg
+                            // sudah dihapus (lihat catatan REPLACE di atas) padahal
+                            // data SEBENARNYA sudah lengkap di database dari proses
+                            // sebelumnya, ini bikin unduh ulang yg tidak perlu.
+                            // eksekusiPabrikData() adalah fungsi keputusan utama --
+                            // dia cek jumlah baris DB dulu sebelum memutuskan unduh.
+                            eksekusiPabrikData()
                         } else {
                             Toast.makeText(this@MainActivity, "Gagal memproses data arsip.", Toast.LENGTH_LONG).show()
                         }
