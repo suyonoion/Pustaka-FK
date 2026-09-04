@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- Latar panel ikon mode baca (panelIkonBaca) -- pil melayang semi-transparan
+<!-- Latar panel ikon mode baca (panelIkonBaca).pil melayang semi-transparan
      di tepi kanan layar, senada dgn warna primary_dark aplikasi. -->
 <shape xmlns:android="http://schemas.android.com/apk/res/android"
     android:shape="rectangle">
