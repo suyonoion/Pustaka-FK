@@ -130,7 +130,11 @@ class BookPageProvider(
     private fun lebarKonten(w: Int) = (w - ((48 + 16) * densitas)).toInt().coerceAtLeast(1)
 
     private fun tinggiBadan(h: Int, adaMedia: Boolean): Int {
-        val cadanganChrome = (190 * densitas).toInt() // header + garis + padding + footer dekoratif
+        // Diturunkan dari 190dp -- blok "Sumber Asli/Bagikan" dekoratif (~44dp)
+        // sekarang dihilangkan total dari setiap halaman (lihat renderHalamanArsip),
+        // jadi sisa chrome cuma header+garis+padding (~146dp), dibulatkan ke
+        // atas dgn sedikit margin aman.
+        val cadanganChrome = (160 * densitas).toInt()
         val cadanganMedia = if (adaMedia) 560 else 0 // ~tinggi blok foto (lihat wadahMultiFoto), sengaja konservatif
         return (h - cadanganChrome - cadanganMedia).coerceAtLeast((80 * densitas).toInt())
     }
@@ -138,12 +142,16 @@ class BookPageProvider(
     private fun perkiraanJumlahHalaman(teks: String, lebarKontenPx: Int, tinggiBadanPx: Int): Int {
         if (teks.isBlank() || teks.contains("--- Membagikan Status:")) return 1 // lihat batasan di dokumentasi kelas
         val ukuranFontPx = 14f * densitas
-        // Perkiraan sengaja agak "sempit" (lebar rata-rata karakter dilebihkan,
-        // tinggi baris dilebihkan) supaya jumlah halaman perkiraan cenderung
-        // SAMA ATAU LEBIH BANYAK dari kebutuhan asli -- lihat catatan arah
-        // yang aman di dokumentasi kelas.
+        // Lebar karakter tetap perkiraan (dilebihkan dikit spy aman), TAPI
+        // tinggi baris SEKARANG pakai angka PERSIS yang sama dgn yg
+        // sungguhan dipaksakan saat render (lihat KertasBergarisDrawable +
+        // TextViewCompat.setLineHeight di renderHalamanArsip) -- BUKAN tinggi
+        // baris alami font. Sebelumnya pakai perkiraan alami (lebih pendek
+        // dari 28dp asli), jadi jumlah baris yg dikira muat per halaman
+        // LEBIH BANYAK dari kenyataan -> ini akar penyebab teks masih
+        // kepotong di halaman lanjutan.
         val karakterPerBaris = max(1f, lebarKontenPx / (ukuranFontPx * 0.55f))
-        val tinggiBarisPx = ukuranFontPx * 1.35f
+        val tinggiBarisPx = KertasBergarisDrawable.TINGGI_BARIS_DP * densitas
         val barisPerHalaman = max(1f, tinggiBadanPx / tinggiBarisPx)
         val jumlahBaris = ceil(teks.length / karakterPerBaris)
         return ceil(jumlahBaris / barisPerHalaman).toInt().coerceAtLeast(1)
@@ -359,17 +367,23 @@ class BookPageProvider(
         @Suppress("DEPRECATION")
         val layout = StaticLayout(teks, paint, lebarKontenPx, android.text.Layout.Alignment.ALIGN_NORMAL, 1f, 0f, false)
 
+        // PENTING: pakai tinggi baris TETAP (samakan dgn TextViewCompat.setLineHeight
+        // di render sungguhan), BUKAN layout.getLineBottom()-getLineTop() yg
+        // merefleksikan tinggi alami font -- StaticLayout di sini HANYA dipakai
+        // utk menentukan DI MANA teks patah baris (word-wrap) pada lebar
+        // tertentu, bukan utk tinggi barisnya. Lihat catatan di
+        // perkiraanJumlahHalaman() utk histori bug yg ini perbaiki.
+        val tinggiBarisTetapPx = (KertasBergarisDrawable.TINGGI_BARIS_DP * densitas).toInt().coerceAtLeast(1)
         val potongan = mutableListOf<IntRange>()
         var mulaiBaris = 0
         var tinggiTerpakai = 0
         for (baris in 0 until layout.lineCount) {
-            val tinggiBaris = layout.getLineBottom(baris) - layout.getLineTop(baris)
-            if (tinggiTerpakai + tinggiBaris > tinggiBadanPx && baris > mulaiBaris) {
+            if (tinggiTerpakai + tinggiBarisTetapPx > tinggiBadanPx && baris > mulaiBaris) {
                 potongan.add(layout.getLineStart(mulaiBaris) until layout.getLineStart(baris))
                 mulaiBaris = baris
                 tinggiTerpakai = 0
             }
-            tinggiTerpakai += tinggiBaris
+            tinggiTerpakai += tinggiBarisTetapPx
         }
         potongan.add(layout.getLineStart(mulaiBaris) until teks.length)
 
@@ -483,6 +497,18 @@ class BookPageProvider(
             view.findViewById<TextView>(R.id.txtKategori).text = arsip.kategori
             view.findViewById<TextView>(R.id.txtNomorHalaman).text = "Halaman : $indexHalaman/$totalHalamanBuku"
             view.findViewById<ImageView>(R.id.imgProfilAbah)?.setImageResource(R.drawable.profil_abah)
+
+            // Profil (avatar+nama+tanggal+kategori) cuma tampil di halaman
+            // PERTAMA arsip ini -- halaman lanjutan sudah ada tanda
+            // "(lanjutan halaman sebelumnya)" sendiri di teksnya, jadi
+            // profil tidak perlu diulang (hemat ruang, sesuai permintaan).
+            // txtNomorHalaman TIDAK ikut disembunyikan -- tetap tampil semua halaman.
+            view.findViewById<View>(R.id.wadahProfilPenulis).visibility = if (lanjutan) View.GONE else View.VISIBLE
+
+            // Blok "Sumber Asli"/"Bagikan" dekoratif dihilangkan total dari
+            // SEMUA halaman -- non-interaktif (cuma gambar di tekstur GL),
+            // aksesnya yang sungguhan sudah ada lewat bar aksi baca di luar.
+            view.findViewById<View>(R.id.wadahFooterDekoratif).visibility = View.GONE
 
             val wadahFoto = view.findViewById<android.widget.LinearLayout>(R.id.wadahMultiFoto)
             wadahFoto.removeAllViews()

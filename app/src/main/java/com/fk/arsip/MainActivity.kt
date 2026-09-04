@@ -105,6 +105,8 @@ private var kecepatanEmaBytesPerSec: Double = 0.0
     private lateinit var curlViewBuku: com.fk.arsip.curl.BudayakanBaca
     private lateinit var bookPageProvider: BookPageProvider
     private lateinit var barAksiBaca: LinearLayout
+    private lateinit var footerBawahUtama: LinearLayout
+    private lateinit var panelIkonBaca: LinearLayout
     // Arsip yang SEDANG tampil di CurlView -- diperbarui lewat
     // BudayakanBaca.PenggantiHalamanListener setiap halaman berganti (baik
     // lewat gesture curl maupun lompat dari grid). Bar aksi (Sumber Asli/
@@ -146,6 +148,8 @@ private var kecepatanEmaBytesPerSec: Double = 0.0
         wadahModeBuku = findViewById(R.id.wadahModeBuku)
         curlViewBuku = findViewById(R.id.curlViewBuku)
         barAksiBaca = findViewById(R.id.barAksiBaca)
+        footerBawahUtama = findViewById(R.id.footerBawahUtama)
+        panelIkonBaca = findViewById(R.id.panelIkonBaca)
         edtPencarian = findViewById<SearchView>(R.id.edtPencarian)
         btnFilterSort = findViewById<ImageButton>(R.id.btnFilterSort)
         btnFilterSort.setOnClickListener {
@@ -208,6 +212,7 @@ private var kecepatanEmaBytesPerSec: Double = 0.0
             runOnUiThread { perbaruiBarAksiBaca(indexBaru) }
         }
         pasangBarAksiBaca()
+        pasangPanelIkonBaca()
 
         onBackPressedDispatcher.addCallback(this, object : OnBackPressedCallback(true) {
             override fun handleOnBackPressed() {
@@ -216,6 +221,8 @@ private var kecepatanEmaBytesPerSec: Double = 0.0
                 } 
                 else if (wadahModeBuku.visibility == View.VISIBLE) {
                 wadahModeBuku.visibility = View.GONE
+                footerBawahUtama.visibility = View.VISIBLE
+                panelIkonBaca.visibility = View.GONE
                 barAksiBaca.visibility = View.GONE
                 recyclerGridMode.visibility = View.VISIBLE
                 kontainerJalurKanan.visibility = View.VISIBLE 
@@ -244,6 +251,8 @@ private var kecepatanEmaBytesPerSec: Double = 0.0
                     
                     // --- INJEKSI KATUP TIMELINE: BUKA PAKSA SEBELUM MEMOMPA DATA ---
                     wadahModeBuku.visibility = View.GONE
+                    footerBawahUtama.visibility = View.VISIBLE
+                    panelIkonBaca.visibility = View.GONE
                     recyclerGridMode.visibility = View.VISIBLE
                     kontainerJalurKanan.visibility = View.VISIBLE
                     recyclerTimeline.visibility = View.VISIBLE
@@ -347,6 +356,8 @@ private fun eksekusiSaringanKombinasi(kategori: String, urutTerlama: Boolean) {
 
             // Injeksi ulang katup antarmuka ke mode default
             wadahModeBuku.visibility = View.GONE
+            footerBawahUtama.visibility = View.VISIBLE
+            panelIkonBaca.visibility = View.GONE
             recyclerGridMode.visibility = View.VISIBLE
             kontainerJalurKanan.visibility = View.VISIBLE
             recyclerTimeline.visibility = View.VISIBLE
@@ -667,6 +678,8 @@ when (fase) {
     
     panelStatusPencarian.visibility = View.VISIBLE 
     wadahModeBuku.visibility = View.GONE
+    footerBawahUtama.visibility = View.VISIBLE
+    panelIkonBaca.visibility = View.GONE
     
     // --- INJEKSI KATUP TIMELINE: BUKA PAKSA ---
     recyclerGridMode.visibility = View.VISIBLE
@@ -1248,6 +1261,8 @@ private fun perbaruiDetailKecepatan(persen: Int, byteDiterima: Long, totalByte: 
         kontainerJalurKanan.visibility = View.GONE 
         recyclerGridMode.visibility = View.GONE
         wadahModeBuku.visibility = View.VISIBLE
+        footerBawahUtama.visibility = View.GONE
+        panelIkonBaca.visibility = View.VISIBLE
         barAksiBaca.visibility = View.VISIBLE
 
         // AKTIFKAN PANEL TELEMETRI DENGAN FORMAT BARU
@@ -1317,6 +1332,49 @@ private fun perbaruiDetailKecepatan(persen: Int, byteDiterima: Long, totalByte: 
                 tampilkanDialogLampiran(arsip)
             }
         }
+    }
+
+    // ==========================================================================
+    // PANEL IKON MODE BACA -- lihat komentar di activity_main.xml
+    // (panelIkonBaca). Drawer/cari/filter di sini cuma jalan pintas ke fungsi
+    // yang SUDAH ADA (biar gampang dijangkau ibu jari saat baca), bukan
+    // fungsi baru. Tombol sisanya (ekspor PDF, tandai, halaman tersimpan,
+    // ukuran teks, mode gelap) BELUM diimplementasi -- sengaja cuma kasih
+    // Toast "segera hadir" dulu supaya tidak terasa mati/tidak merespons,
+    // sambil menunggu fitur aslinya dibangun.
+    // ==========================================================================
+    private fun pasangPanelIkonBaca() {
+        findViewById<View>(R.id.btnBacaDrawer).setOnClickListener {
+            drawerLayout.openDrawer(GravityCompat.START)
+        }
+
+        findViewById<View>(R.id.btnBacaCari).setOnClickListener {
+            // Cari beroperasi di grid, jadi keluar dulu dari mode buku ke
+            // grid, lalu buka & fokuskan kotak pencarian yang sudah ada.
+            if (wadahModeBuku.visibility == View.VISIBLE) {
+                wadahModeBuku.visibility = View.GONE
+                footerBawahUtama.visibility = View.VISIBLE
+                panelIkonBaca.visibility = View.GONE
+                recyclerGridMode.visibility = View.VISIBLE
+                kontainerJalurKanan.visibility = View.VISIBLE
+                recyclerTimeline.visibility = View.VISIBLE
+            }
+            edtPencarian.isIconified = false
+            edtPencarian.requestFocus()
+        }
+
+        findViewById<View>(R.id.btnBacaFilter).setOnClickListener {
+            bukaKatupDialogFilter()
+        }
+
+        val belumTersedia = View.OnClickListener {
+            Toast.makeText(this, "Segera hadir.", Toast.LENGTH_SHORT).show()
+        }
+        findViewById<View>(R.id.btnBacaEksporPdf).setOnClickListener(belumTersedia)
+        findViewById<View>(R.id.btnBacaTandai).setOnClickListener(belumTersedia)
+        findViewById<View>(R.id.btnBacaHalamanTersimpan).setOnClickListener(belumTersedia)
+        findViewById<View>(R.id.btnBacaUkuranTeks).setOnClickListener(belumTersedia)
+        findViewById<View>(R.id.btnBacaModeGelap).setOnClickListener(belumTersedia)
     }
 
     /**
@@ -1464,6 +1522,8 @@ private fun eksekusiLogikaPencarian(kataKunciMentah: String?) {
         withContext(Dispatchers.Main) {
             if (wadahModeBuku.visibility == View.VISIBLE) {
                 wadahModeBuku.visibility = View.GONE
+                footerBawahUtama.visibility = View.VISIBLE
+                panelIkonBaca.visibility = View.GONE
                 recyclerGridMode.visibility = View.VISIBLE
             }
 

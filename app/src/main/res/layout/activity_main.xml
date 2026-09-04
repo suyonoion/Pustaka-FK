@@ -263,6 +263,7 @@
 
             <!-- FOOTER KAMU -->
                             <LinearLayout
+            android:id="@+id/footerBawahUtama"
             android:layout_width="match_parent"
             android:layout_height="35dp"
             android:orientation="horizontal"
@@ -485,6 +486,78 @@
             </LinearLayout>
 
         </FrameLayout>
+
+        <!-- 1C. PANEL IKON MODE BACA -- menempati slot yg sama persis dgn
+        kontainerJalurKanan (rel timeline), tapi HANYA tampil saat mode buku
+        aktif (lihat bukaModeBuku()/panelIkonBaca di MainActivity.kt). Berisi
+        akses cepat drawer/cari/filter (fungsi yg sudah ada, cuma dipindah
+        ke sini biar gampang dijangkau ibu jari saat baca), + beberapa
+        tombol PLACEHOLDER utk fitur yg belum dibangun (lihat komentar tiap
+        tombol) -- ikon di bawah masih sementara, ganti kalau sudah ada aset final. -->
+        <LinearLayout
+            android:id="@+id/panelIkonBaca"
+            android:layout_width="52dp"
+            android:layout_height="wrap_content"
+            android:layout_gravity="end|center_vertical"
+            android:layout_marginEnd="4dp"
+            android:orientation="vertical"
+            android:gravity="center_horizontal"
+            android:background="@drawable/bg_panel_ikon_baca"
+            android:paddingTop="8dp"
+            android:paddingBottom="8dp"
+            android:visibility="gone">
+
+            <ImageButton
+                android:id="@+id/btnBacaDrawer"
+                style="@style/TombolIkonPanelBaca"
+                android:src="@drawable/ic_hamburger_menu"
+                android:contentDescription="Buka menu" />
+
+            <ImageButton
+                android:id="@+id/btnBacaCari"
+                style="@style/TombolIkonPanelBaca"
+                android:src="@android:drawable/ic_menu_search"
+                android:contentDescription="Cari status" />
+
+            <ImageButton
+                android:id="@+id/btnBacaFilter"
+                style="@style/TombolIkonPanelBaca"
+                android:src="@drawable/ic_filter"
+                android:contentDescription="Filter dan urutkan" />
+
+            <View style="@style/PemisahPanelIkonBaca" />
+
+            <!-- PLACEHOLDER -- belum diimplementasi, lihat MainActivity.kt (pasangPanelIkonBaca) -->
+            <ImageButton
+                android:id="@+id/btnBacaEksporPdf"
+                style="@style/TombolIkonPanelBaca"
+                android:src="@android:drawable/ic_menu_save"
+                android:contentDescription="Ekspor ke PDF" />
+
+            <ImageButton
+                android:id="@+id/btnBacaTandai"
+                style="@style/TombolIkonPanelBaca"
+                android:src="@android:drawable/btn_star_big_off"
+                android:contentDescription="Simpan / tandai halaman" />
+
+            <ImageButton
+                android:id="@+id/btnBacaHalamanTersimpan"
+                style="@style/TombolIkonPanelBaca"
+                android:src="@android:drawable/ic_menu_agenda"
+                android:contentDescription="Halaman tersimpan" />
+
+            <ImageButton
+                android:id="@+id/btnBacaUkuranTeks"
+                style="@style/TombolIkonPanelBaca"
+                android:src="@android:drawable/ic_menu_zoom"
+                android:contentDescription="Atur ukuran teks" />
+
+            <ImageButton
+                android:id="@+id/btnBacaModeGelap"
+                style="@style/TombolIkonPanelBaca"
+                android:src="@android:drawable/ic_menu_compass"
+                android:contentDescription="Mode gelap / terang" />
+        </LinearLayout>
 
         <ScrollView
             android:layout_width="match_parent"
