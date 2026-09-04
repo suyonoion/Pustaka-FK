@@ -16,9 +16,9 @@
         android:orientation="horizontal"
         android:gravity="center_vertical"
         android:paddingBottom="12dp">
-        <!-- wadahProfilPenulis: avatar+nama+tanggal+kategori -- DISEMBUNYIKAN
+        <!-- wadahProfilPenulis: avatar+nama+tanggal+kategori. DISEMBUNYIKAN
         di halaman LANJUTAN (subIndex>0), lihat BookPageProvider. txtNomorHalaman
-        di luar wadah ini sengaja TIDAK ikut disembunyikan -- tetap tampil di
+        di luar wadah ini sengaja TIDAK ikut disembunyikan. tetap tampil di
         semua halaman. -->
         <LinearLayout
             android:id="@+id/wadahProfilPenulis"
