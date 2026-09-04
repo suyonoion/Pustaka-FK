@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+
+    <!-- Tombol ikon bulat di panelIkonBaca (drawer/cari/filter mode baca +
+         placeholder fitur mendatang). Ukuran 40dp pas utk jempol, dgn ripple
+         bulat borderless & ikon putih supaya kontras di atas bg_panel_ikon_baca. -->
+    <style name="TombolIkonPanelBaca">
+        <item name="android:layout_width">40dp</item>
+        <item name="android:layout_height">40dp</item>
+        <item name="android:layout_marginTop">4dp</item>
+        <item name="android:layout_marginBottom">4dp</item>
+        <item name="android:padding">8dp</item>
+        <item name="android:background">?android:attr/selectableItemBackgroundBorderless</item>
+        <item name="android:scaleType">fitCenter</item>
+        <item name="android:tint">#FFFFFF</item>
+        <item name="android:clickable">true</item>
+        <item name="android:focusable">true</item>
+    </style>
+
+    <!-- Garis pemisah tipis antar kelompok tombol di panelIkonBaca (mis.
+         antara drawer/cari/filter dgn tombol fitur mendatang). -->
+    <style name="PemisahPanelIkonBaca">
+        <item name="android:layout_width">26dp</item>
+        <item name="android:layout_height">1dp</item>
+        <item name="android:layout_marginTop">4dp</item>
+        <item name="android:layout_marginBottom">4dp</item>
+        <item name="android:background">#33FFFFFF</item>
+    </style>
+
+</resources>

@@ -487,7 +487,13 @@
 
         </FrameLayout>
 
-        <!-- 1C. PANEL IKON MODE BACA menempati slot yg sama persis dgn kontainerJalurKanan (rel timeline), tapi HANYA tampil saat mode buku aktif (lihat bukaModeBuku()/panelIkonBaca di MainActivity.kt). Berisi akses cepat drawer/cari/filter (fungsi yg sudah ada, cuma dipindah ke sini biar gampang dijangkau ibu jari saat baca), + beberapa tombol PLACEHOLDER utk fitur yg belum dibangun (lihat komentar tiap tombol). ikon di bawah masih sementara, ganti kalau sudah ada aset final. -->
+        <!-- 1C. PANEL IKON MODE BACA -- menempati slot yg sama persis dgn
+        kontainerJalurKanan (rel timeline), tapi HANYA tampil saat mode buku
+        aktif (lihat bukaModeBuku()/panelIkonBaca di MainActivity.kt). Berisi
+        akses cepat drawer/cari/filter (fungsi yg sudah ada, cuma dipindah
+        ke sini biar gampang dijangkau ibu jari saat baca), + beberapa
+        tombol PLACEHOLDER utk fitur yg belum dibangun (lihat komentar tiap
+        tombol) -- ikon di bawah masih sementara, ganti kalau sudah ada aset final. -->
         <LinearLayout
             android:id="@+id/panelIkonBaca"
             android:layout_width="52dp"
@@ -521,7 +527,7 @@
 
             <View style="@style/PemisahPanelIkonBaca" />
 
-            <!-- PLACEHOLDER. belum diimplementasi, lihat MainActivity.kt (pasangPanelIkonBaca) -->
+            <!-- PLACEHOLDER -- belum diimplementasi, lihat MainActivity.kt (pasangPanelIkonBaca) -->
             <ImageButton
                 android:id="@+id/btnBacaEksporPdf"
                 style="@style/TombolIkonPanelBaca"
