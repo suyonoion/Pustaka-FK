@@ -140,6 +140,23 @@ private var kecepatanEmaBytesPerSec: Double = 0.0
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
         drawerLayout = findViewById(R.id.drawerLayout)
+        // PERBAIKAN: panelIkonBaca (mode baca) sebelumnya tetap tampil
+        // mengambang di atas area scrim saat drawer dibuka -- terlihat
+        // salah tempat/mengganggu krn drawer tidak menutup penuh lebar
+        // layar. Sembunyikan sementara selagi drawer terbuka, munculkan
+        // lagi begitu ditutup (kalau memang lagi mode baca).
+        drawerLayout.addDrawerListener(object : androidx.drawerlayout.widget.DrawerLayout.SimpleDrawerListener() {
+            override fun onDrawerSlide(drawerView: View, slideOffset: Float) {
+                if (::panelIkonBaca.isInitialized && wadahModeBuku.visibility == View.VISIBLE) {
+                    panelIkonBaca.visibility = if (slideOffset > 0.02f) View.GONE else View.VISIBLE
+                }
+            }
+            override fun onDrawerClosed(drawerView: View) {
+                if (::panelIkonBaca.isInitialized && wadahModeBuku.visibility == View.VISIBLE) {
+                    panelIkonBaca.visibility = View.VISIBLE
+                }
+            }
+        })
         navViewCustom = findViewById(R.id.navViewCustom)
         findViewById<android.widget.ImageView>(R.id.btnMenuDrawer).setOnClickListener {
             drawerLayout.openDrawer(androidx.core.view.GravityCompat.START)

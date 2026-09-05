@@ -140,7 +140,13 @@ class BookPageProvider(
     }
 
     private fun perkiraanJumlahHalaman(teks: String, lebarKontenPx: Int, tinggiBadanPx: Int): Int {
-        if (teks.isBlank() || teks.contains("--- Membagikan Status:")) return 1 // lihat batasan di dokumentasi kelas
+        if (teks.isBlank()) return 1
+        val kb = parseKontenBerbagi(teks)
+        // Utk "shared status", jumlah karakter yg diperhitungkan = teks asli +
+        // teks yg dibagikan ulang (keduanya sekarang ikut dipaginasi, lihat
+        // ambilRencanaTeks) + sedikit ekstra utk header kotak "Status
+        // Dibagikan" (~2 baris) supaya perkiraan tetap condong ke arah aman.
+        val totalKarakter = if (kb != null) kb.teksAsli.length + kb.kontenShared.length + 80 else teks.length
         val ukuranFontPx = 14f * densitas
         // Lebar karakter tetap perkiraan (dilebihkan dikit spy aman), TAPI
         // tinggi baris SEKARANG pakai angka PERSIS yang sama dgn yg
@@ -153,7 +159,7 @@ class BookPageProvider(
         val karakterPerBaris = max(1f, lebarKontenPx / (ukuranFontPx * 0.55f))
         val tinggiBarisPx = KertasBergarisDrawable.TINGGI_BARIS_DP * densitas
         val barisPerHalaman = max(1f, tinggiBadanPx / tinggiBarisPx)
-        val jumlahBaris = ceil(teks.length / karakterPerBaris)
+        val jumlahBaris = ceil(totalKarakter / karakterPerBaris)
         return ceil(jumlahBaris / barisPerHalaman).toInt().coerceAtLeast(1)
     }
 
@@ -344,48 +350,111 @@ class BookPageProvider(
     // PEMOTONGAN TEKS PERSIS (StaticLayout) -- dipanggil dari thread
     // background milik `executor`, aman melakukan kerja lumayan (bukan
     // GL thread / bukan UI thread).
+    //
+    // Sejak perbaikan ini, konten "shared status" (ada blok status yg
+    // dibagikan ulang) IKUT dipaginasi juga -- sebelumnya cuma teks
+    // Tanya-Jawab biasa yg dipaginasi, "shared status" masih 1 halaman
+    // penuh (batasan yg didokumentasikan), dan itu yg menyebabkan bug
+    // "masih terpotong" utk jenis konten ini. Sekarang keduanya dianggap
+    // "unit-unit" yg dialirkan berurutan (baris teks asli, lalu header
+    // kotak "Status Dibagikan", lalu baris teks yg dibagikan), dan
+    // dikelompokkan per halaman berdasarkan tinggi kumulatifnya -- sama
+    // seperti teks biasa, cuma sumbernya gabungan 2 blok teks + 1 header.
     // ------------------------------------------------------------------
-    private data class RencanaTeks(val potongan: List<IntRange>)
+    data class KontenBerbagi(val teksAsli: String, val namaPemilik: String, val kontenShared: String)
+
+    /** Dipakai bersama oleh estimasi cepat & pemotongan persis -- SATU tempat parsing, hindari duplikasi/inkonsistensi. */
+    fun parseKontenBerbagi(kontenBersih: String): KontenBerbagi? {
+        if (!kontenBersih.contains("--- Membagikan Status:")) return null
+        val bagian = kontenBersih.split("\n\n--- Membagikan Status: ")
+        val teksAsli = bagian[0].trim()
+        if (bagian.size <= 1) return KontenBerbagi(teksAsli, "", "")
+        val detail = bagian[1].split(" ---\n", limit = 2)
+        val nama = detail[0].trim()
+        val shared = if (detail.size > 1) detail[1].trim() else ""
+        return KontenBerbagi(teksAsli, nama, shared)
+    }
+
+    /** Satu halaman bisa berisi potongan teks asli, header kotak shared, dan/atau potongan teks shared -- kombinasi mana pun, tergantung di mana batas halaman jatuh. */
+    private data class UnitHalaman(val rentangAsli: IntRange?, val headerShared: Boolean, val rentangShared: IntRange?)
+    private data class RencanaTeks(val potongan: List<UnitHalaman>)
     private val rencanaCache = ConcurrentHashMap<String, RencanaTeks>()
+
+    @Suppress("DEPRECATION")
+    private fun buatStaticLayout(teks: String, paint: TextPaint, lebarPx: Int) =
+        StaticLayout(teks, paint, lebarPx, android.text.Layout.Alignment.ALIGN_NORMAL, 1f, 0f, false)
 
     private fun ambilRencanaTeks(arsip: ArsipEntity, w: Int, h: Int): RencanaTeks {
         val key = "${arsip.idPosting}:${w}x$h"
         rencanaCache[key]?.let { return it }
 
-        val teks = arsip.kontenPenuh.ifBlank { " " }
-        if (teks.contains("--- Membagikan Status:")) {
-            // Tidak dipaginasi (lihat batasan di dokumentasi kelas) -- 1 potongan = teks penuh.
-            val hasil = RencanaTeks(listOf(0..teks.length))
-            rencanaCache[key] = hasil
-            return hasil
-        }
-
+        val teksMentah = arsip.kontenPenuh.ifBlank { " " }
         val lebarKontenPx = lebarKonten(w)
         val tinggiBadanPx = tinggiBadan(h, adaMedia = arsip.daftarFoto.isNotBlank())
         val paint = TextPaint(Paint.ANTI_ALIAS_FLAG).apply { textSize = 14f * densitas }
-
-        @Suppress("DEPRECATION")
-        val layout = StaticLayout(teks, paint, lebarKontenPx, android.text.Layout.Alignment.ALIGN_NORMAL, 1f, 0f, false)
-
-        // PENTING: pakai tinggi baris TETAP (samakan dgn TextViewCompat.setLineHeight
-        // di render sungguhan), BUKAN layout.getLineBottom()-getLineTop() yg
-        // merefleksikan tinggi alami font -- StaticLayout di sini HANYA dipakai
-        // utk menentukan DI MANA teks patah baris (word-wrap) pada lebar
-        // tertentu, bukan utk tinggi barisnya. Lihat catatan di
+        // PENTING: tinggi baris TETAP (samakan dgn TextViewCompat.setLineHeight
+        // di render sungguhan), BUKAN tinggi alami font -- lihat catatan di
         // perkiraanJumlahHalaman() utk histori bug yg ini perbaiki.
         val tinggiBarisTetapPx = (KertasBergarisDrawable.TINGGI_BARIS_DP * densitas).toInt().coerceAtLeast(1)
-        val potongan = mutableListOf<IntRange>()
-        var mulaiBaris = 0
-        var tinggiTerpakai = 0
-        for (baris in 0 until layout.lineCount) {
-            if (tinggiTerpakai + tinggiBarisTetapPx > tinggiBadanPx && baris > mulaiBaris) {
-                potongan.add(layout.getLineStart(mulaiBaris) until layout.getLineStart(baris))
-                mulaiBaris = baris
-                tinggiTerpakai = 0
+
+        data class UnitMentah(val tinggi: Int, val asli: IntRange?, val header: Boolean, val shared: IntRange?)
+        val unitMentah = mutableListOf<UnitMentah>()
+
+        val kb = parseKontenBerbagi(teksMentah)
+        if (kb == null) {
+            val layout = buatStaticLayout(teksMentah, paint, lebarKontenPx)
+            for (baris in 0 until layout.lineCount) {
+                val akhir = if (baris + 1 < layout.lineCount) layout.getLineStart(baris + 1) else teksMentah.length
+                unitMentah.add(UnitMentah(tinggiBarisTetapPx, layout.getLineStart(baris) until akhir, false, null))
             }
-            tinggiTerpakai += tinggiBarisTetapPx
+        } else {
+            if (kb.teksAsli.isNotBlank()) {
+                val layoutAsli = buatStaticLayout(kb.teksAsli, paint, lebarKontenPx)
+                for (baris in 0 until layoutAsli.lineCount) {
+                    val akhir = if (baris + 1 < layoutAsli.lineCount) layoutAsli.getLineStart(baris + 1) else kb.teksAsli.length
+                    unitMentah.add(UnitMentah(tinggiBarisTetapPx, layoutAsli.getLineStart(baris) until akhir, false, null))
+                }
+            }
+            if (kb.namaPemilik.isNotBlank() || kb.kontenShared.isNotBlank()) {
+                // ~header nama+label & padding pembuka kotak "Status Dibagikan" --
+                // perkiraan konservatif spy tidak under-estimate.
+                unitMentah.add(UnitMentah((72 * densitas).toInt(), null, true, null))
+            }
+            if (kb.kontenShared.isNotBlank()) {
+                val lebarSharedPx = (lebarKontenPx - (24 * densitas)).toInt().coerceAtLeast(1) // dikurangi padding kotak
+                val layoutShared = buatStaticLayout(kb.kontenShared, paint, lebarSharedPx)
+                for (baris in 0 until layoutShared.lineCount) {
+                    val akhir = if (baris + 1 < layoutShared.lineCount) layoutShared.getLineStart(baris + 1) else kb.kontenShared.length
+                    unitMentah.add(UnitMentah(tinggiBarisTetapPx, null, false, layoutShared.getLineStart(baris) until akhir))
+                }
+            }
         }
-        potongan.add(layout.getLineStart(mulaiBaris) until teks.length)
+        if (unitMentah.isEmpty()) unitMentah.add(UnitMentah(0, 0 until 0, false, null))
+
+        val potongan = mutableListOf<UnitHalaman>()
+        var idx = 0
+        while (idx < unitMentah.size) {
+            var tinggiTerpakai = 0
+            var asliMulai: Int? = null; var asliAkhir: Int? = null
+            var header = false
+            var sharedMulai: Int? = null; var sharedAkhir: Int? = null
+            var sudahAdaSatu = false
+            while (idx < unitMentah.size) {
+                val u = unitMentah[idx]
+                if (tinggiTerpakai + u.tinggi > tinggiBadanPx && sudahAdaSatu) break
+                u.asli?.let { if (asliMulai == null) asliMulai = it.first; asliAkhir = it.last + 1 }
+                if (u.header) header = true
+                u.shared?.let { if (sharedMulai == null) sharedMulai = it.first; sharedAkhir = it.last + 1 }
+                tinggiTerpakai += u.tinggi
+                sudahAdaSatu = true
+                idx++
+            }
+            potongan.add(UnitHalaman(
+                rentangAsli = if (asliMulai != null) asliMulai!! until asliAkhir!! else null,
+                headerShared = header,
+                rentangShared = if (sharedMulai != null) sharedMulai!! until sharedAkhir!! else null
+            ))
+        }
 
         val hasil = RencanaTeks(potongan)
         rencanaCache[key] = hasil
@@ -405,7 +474,7 @@ class BookPageProvider(
         // ASLI dari StaticLayout -- amankan dgn menampilkan potongan terakhir
         // yang tersedia, supaya tidak crash & tetap tidak ada teks yg hilang.
         val potonganIndex = subIndex.coerceAtMost(rencana.potongan.size - 1)
-        val rentang = rencana.potongan[potonganIndex]
+        val unit = rencana.potongan[potonganIndex]
         val halamanTerakhirDariArsipIni = potonganIndex == rencana.potongan.size - 1
         val lanjutan = potonganIndex > 0
 
@@ -446,44 +515,27 @@ class BookPageProvider(
             val wadahDinamisKonten = view.findViewById<android.widget.LinearLayout>(R.id.wadahDinamisKonten)
             val wadahHeaderShared = view.findViewById<android.widget.LinearLayout>(R.id.wadahHeaderShared)
             val txtNamaPemilikShared = view.findViewById<TextView>(R.id.txtNamaPemilikShared)
+            val kb = parseKontenBerbagi(kontenBersih)
 
-            if (kontenBersih.contains("--- Membagikan Status:")) {
-                // Kasus "shared status": belum dipaginasi, tetap seperti sebelumnya.
-                val bagian = kontenBersih.split("\n\n--- Membagikan Status: ")
-                val teksAsli = bagian[0].trim()
-                if (teksAsli.isNotEmpty()) {
-                    txtKontenUtama.text = teksAsli
-                    txtKontenUtama.visibility = View.VISIBLE
-                } else {
-                    txtKontenUtama.visibility = View.GONE
-                }
-                val bantalanPx = (12 * context.resources.displayMetrics.density).toInt()
-                wadahDinamisKonten.setBackgroundResource(R.drawable.bg_border_sharedpost)
-                wadahDinamisKonten.setPadding(bantalanPx, bantalanPx, bantalanPx, bantalanPx)
-                if (bagian.size > 1) {
-                    val detail = bagian[1].split(" ---\n", limit = 2)
-                    wadahHeaderShared.visibility = View.VISIBLE
-                    txtKontenShared.visibility = View.VISIBLE
-                    txtNamaPemilikShared.text = detail[0].trim()
-                    if (detail.size > 1) {
-                        txtKontenShared.text = detail[1].trim()
-                    } else {
-                        txtKontenShared.visibility = View.GONE
-                    }
-                }
-            } else {
-                // Kasus normal (Tanya-Jawab, dsb): potong sesuai `rentang` hasil
-                // StaticLayout, dgn pewarnaan yg tetap konsisten dgn teks penuh.
-                // `rentang` pakai konvensi `start until end` (end EKSKLUSIF) dari
-                // StaticLayout, jadi argumen akhir ke subSequence() harus
-                // `rentang.last + 1`, BUKAN `rentang.last` -- kalau tidak,
-                // karakter terakhir tiap potongan akan hilang.
+            // Awalan "(lanjutan)" ditempel di teks mana pun yg PALING DULU
+            // muncul di halaman ini (asli lebih dulu kalau ada, kalau tidak
+            // ya di teks shared) -- supaya penanda cuma tampil sekali per
+            // halaman, di posisi paling atas kontennya.
+            var lanjutanSudahDipakai = !lanjutan
+
+            if (kb == null) {
+                // Kasus normal (Tanya-Jawab, dsb): potong sesuai `unit.rentangAsli`
+                // hasil StaticLayout, dgn pewarnaan yg tetap konsisten dgn teks
+                // penuh. Rentang pakai konvensi `start until end` (end EKSKLUSIF),
+                // jadi argumen akhir ke subSequence() harus `+1`.
+                val rentang = unit.rentangAsli ?: (0 until 0)
                 val awal = rentang.first.coerceIn(0, kontenBersih.length)
                 val akhir = (rentang.last + 1).coerceIn(awal, kontenBersih.length)
                 val potonganBerwarna = warnaiKontenTanyaJawab(kontenBersih)
                     .let { SpannableStringBuilder(it) }
                     .subSequence(awal, akhir)
-                txtKontenUtama.text = if (lanjutan) {
+                txtKontenUtama.text = if (!lanjutanSudahDipakai) {
+                    lanjutanSudahDipakai = true
                     SpannableStringBuilder("\u21B3 (lanjutan halaman sebelumnya)\n\n").append(potonganBerwarna)
                 } else potonganBerwarna
                 txtKontenUtama.visibility = View.VISIBLE
@@ -491,6 +543,52 @@ class BookPageProvider(
                 wadahDinamisKonten.setPadding(0, 0, 0, 0)
                 wadahHeaderShared.visibility = View.GONE
                 txtKontenShared.visibility = View.GONE
+            } else {
+                // Kasus "shared status": SEKARANG ikut dipaginasi (lihat
+                // ambilRencanaTeks) -- halaman ini bisa berisi salah satu,
+                // gabungan, atau tak satu pun dari: potongan teks asli,
+                // header kotak "Status Dibagikan", potongan teks shared,
+                // tergantung di mana batas halaman jatuh.
+                if (unit.rentangAsli != null) {
+                    val r = unit.rentangAsli
+                    val awal = r.first.coerceIn(0, kb.teksAsli.length)
+                    val akhir = (r.last + 1).coerceIn(awal, kb.teksAsli.length)
+                    val potongan = kb.teksAsli.substring(awal, akhir)
+                    txtKontenUtama.text = if (!lanjutanSudahDipakai) {
+                        lanjutanSudahDipakai = true
+                        "\u21B3 (lanjutan halaman sebelumnya)\n\n$potongan"
+                    } else potongan
+                    txtKontenUtama.visibility = View.VISIBLE
+                } else {
+                    txtKontenUtama.visibility = View.GONE
+                }
+
+                val kotakTampil = unit.headerShared || unit.rentangShared != null
+                if (kotakTampil) {
+                    val bantalanPx = (12 * context.resources.displayMetrics.density).toInt()
+                    wadahDinamisKonten.setBackgroundResource(R.drawable.bg_border_sharedpost)
+                    wadahDinamisKonten.setPadding(bantalanPx, bantalanPx, bantalanPx, bantalanPx)
+                } else {
+                    wadahDinamisKonten.setBackgroundResource(0)
+                    wadahDinamisKonten.setPadding(0, 0, 0, 0)
+                }
+
+                wadahHeaderShared.visibility = if (unit.headerShared) View.VISIBLE else View.GONE
+                if (unit.headerShared) txtNamaPemilikShared.text = kb.namaPemilik
+
+                if (unit.rentangShared != null) {
+                    val r = unit.rentangShared
+                    val awal = r.first.coerceIn(0, kb.kontenShared.length)
+                    val akhir = (r.last + 1).coerceIn(awal, kb.kontenShared.length)
+                    val potongan = kb.kontenShared.substring(awal, akhir)
+                    txtKontenShared.text = if (!lanjutanSudahDipakai) {
+                        lanjutanSudahDipakai = true
+                        "\u21B3 (lanjutan halaman sebelumnya)\n\n$potongan"
+                    } else potongan
+                    txtKontenShared.visibility = View.VISIBLE
+                } else {
+                    txtKontenShared.visibility = View.GONE
+                }
             }
 
             view.findViewById<TextView>(R.id.txtTanggal).text = arsip.tanggalBaca
