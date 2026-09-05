@@ -107,6 +107,7 @@ private var kecepatanEmaBytesPerSec: Double = 0.0
     private lateinit var barAksiBaca: LinearLayout
     private lateinit var footerBawahUtama: LinearLayout
     private lateinit var panelIkonBaca: LinearLayout
+    private lateinit var toolbarPencarian: LinearLayout
     // Arsip yang SEDANG tampil di CurlView -- diperbarui lewat
     // BudayakanBaca.PenggantiHalamanListener setiap halaman berganti (baik
     // lewat gesture curl maupun lompat dari grid). Bar aksi (Sumber Asli/
@@ -167,6 +168,7 @@ private var kecepatanEmaBytesPerSec: Double = 0.0
         barAksiBaca = findViewById(R.id.barAksiBaca)
         footerBawahUtama = findViewById(R.id.footerBawahUtama)
         panelIkonBaca = findViewById(R.id.panelIkonBaca)
+        toolbarPencarian = findViewById(R.id.toolbarPencarian)
         edtPencarian = findViewById<SearchView>(R.id.edtPencarian)
         btnFilterSort = findViewById<ImageButton>(R.id.btnFilterSort)
         btnFilterSort.setOnClickListener {
@@ -239,6 +241,8 @@ private var kecepatanEmaBytesPerSec: Double = 0.0
                 else if (wadahModeBuku.visibility == View.VISIBLE) {
                 wadahModeBuku.visibility = View.GONE
                 footerBawahUtama.visibility = View.VISIBLE
+                toolbarPencarian.visibility = View.VISIBLE
+                panelStatusPencarian.visibility = View.VISIBLE
                 panelIkonBaca.visibility = View.GONE
                 barAksiBaca.visibility = View.GONE
                 recyclerGridMode.visibility = View.VISIBLE
@@ -269,6 +273,8 @@ private var kecepatanEmaBytesPerSec: Double = 0.0
                     // --- INJEKSI KATUP TIMELINE: BUKA PAKSA SEBELUM MEMOMPA DATA ---
                     wadahModeBuku.visibility = View.GONE
                     footerBawahUtama.visibility = View.VISIBLE
+                    toolbarPencarian.visibility = View.VISIBLE
+                    panelStatusPencarian.visibility = View.VISIBLE
                     panelIkonBaca.visibility = View.GONE
                     recyclerGridMode.visibility = View.VISIBLE
                     kontainerJalurKanan.visibility = View.VISIBLE
@@ -374,6 +380,8 @@ private fun eksekusiSaringanKombinasi(kategori: String, urutTerlama: Boolean) {
             // Injeksi ulang katup antarmuka ke mode default
             wadahModeBuku.visibility = View.GONE
             footerBawahUtama.visibility = View.VISIBLE
+            toolbarPencarian.visibility = View.VISIBLE
+            panelStatusPencarian.visibility = View.VISIBLE
             panelIkonBaca.visibility = View.GONE
             recyclerGridMode.visibility = View.VISIBLE
             kontainerJalurKanan.visibility = View.VISIBLE
@@ -696,6 +704,8 @@ when (fase) {
     panelStatusPencarian.visibility = View.VISIBLE 
     wadahModeBuku.visibility = View.GONE
     footerBawahUtama.visibility = View.VISIBLE
+    toolbarPencarian.visibility = View.VISIBLE
+    panelStatusPencarian.visibility = View.VISIBLE
     panelIkonBaca.visibility = View.GONE
     
     // --- INJEKSI KATUP TIMELINE: BUKA PAKSA ---
@@ -1281,9 +1291,15 @@ private fun perbaruiDetailKecepatan(persen: Int, byteDiterima: Long, totalByte: 
         footerBawahUtama.visibility = View.GONE
         panelIkonBaca.visibility = View.VISIBLE
         barAksiBaca.visibility = View.VISIBLE
+        // PERBAIKAN: toolbar (hamburger/cari/filter) & panelStatusPencarian
+        // (pil hijau "Semua Status - X Status") disembunyikan saat mode baca
+        // -- sebelumnya tetap tampil, menutupi & tidak relevan (isinya label
+        // grid, bukan status halaman yg sedang dibaca). Akses drawer/cari/
+        // filter sekarang lewat panelIkonBaca.
+        toolbarPencarian.visibility = View.GONE
 
         // AKTIFKAN PANEL TELEMETRI DENGAN FORMAT BARU
-        panelStatusPencarian.visibility = View.VISIBLE
+        panelStatusPencarian.visibility = View.GONE
         loadingPencarian.visibility = View.GONE
         
         val totalVolume = daftarArsipAktif.size
@@ -1371,6 +1387,8 @@ private fun perbaruiDetailKecepatan(persen: Int, byteDiterima: Long, totalByte: 
             if (wadahModeBuku.visibility == View.VISIBLE) {
                 wadahModeBuku.visibility = View.GONE
                 footerBawahUtama.visibility = View.VISIBLE
+                toolbarPencarian.visibility = View.VISIBLE
+                panelStatusPencarian.visibility = View.VISIBLE
                 panelIkonBaca.visibility = View.GONE
                 recyclerGridMode.visibility = View.VISIBLE
                 kontainerJalurKanan.visibility = View.VISIBLE
@@ -1540,6 +1558,8 @@ private fun eksekusiLogikaPencarian(kataKunciMentah: String?) {
             if (wadahModeBuku.visibility == View.VISIBLE) {
                 wadahModeBuku.visibility = View.GONE
                 footerBawahUtama.visibility = View.VISIBLE
+                toolbarPencarian.visibility = View.VISIBLE
+                panelStatusPencarian.visibility = View.VISIBLE
                 panelIkonBaca.visibility = View.GONE
                 recyclerGridMode.visibility = View.VISIBLE
             }

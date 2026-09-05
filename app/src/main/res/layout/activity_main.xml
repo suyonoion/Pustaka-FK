@@ -20,6 +20,7 @@
             android:background="@color/bg_halaman">
             <!-- TOOLBAR KAMU -->
             <LinearLayout
+    android:id="@+id/toolbarPencarian"
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
     android:orientation="horizontal"
@@ -416,77 +417,6 @@
                 android:indeterminateTint="@color/primary"
                 android:visibility="visible" />
         </FrameLayout>
-        <!-- Layar Kaca Pengaman (Letakkan di atas pelat utama) -->
-        <include layout="@layout/layout_inisialisasi_mesin" android:layout_gravity="center"/>
-    
-    </FrameLayout>
-
-    <!-- KOMPARTEMEN 2: LACI NAVIGASI -->
-    <LinearLayout
-        android:id="@+id/navViewCustom"
-        android:layout_width="280dp"
-        android:layout_height="match_parent"
-        android:layout_gravity="start"
-        android:background="#FAFAFA"
-        android:orientation="vertical"
-        android:clickable="true"
-        android:focusable="true">
-
-        <FrameLayout
-            android:layout_width="match_parent"
-            android:layout_height="180dp">
-
-            <!-- 1. GAMBAR VECTOR BACKGROUND (bg_header_drawer.xml) -->
-            <ImageView
-                android:layout_width="match_parent"
-                android:layout_height="match_parent"
-                android:scaleType="centerCrop"
-                android:src="@drawable/bg_header_drawer" />
-
-            <!-- 2. OVERLAY HITAM TRANSPARAN (Agar teks & foto kontras) -->
-            <View
-                android:layout_width="match_parent"
-                android:layout_height="match_parent"
-                android:background="#80000000" /> 
-
-            <!-- 3. KONTEN FOTO PROFIL DAN TEKS -->
-            <LinearLayout
-                android:layout_width="match_parent"
-                android:layout_height="match_parent"
-                android:orientation="vertical"
-                android:gravity="bottom"
-                android:padding="16dp">
-
-                <com.google.android.material.imageview.ShapeableImageView
-    android:id="@+id/fotoProfilAbah"
-    android:layout_width="72dp"
-    android:layout_height="72dp"
-    android:scaleType="centerCrop"
-    android:src="@drawable/profil_abah" 
-    app:shapeAppearanceOverlay="@style/ShapeAppearance.PustakaFK.Circle"
-    app:strokeWidth="1.5dp"
-    app:strokeColor="#80CBC4" 
-    android:layout_marginBottom="12dp" />
-
-                <TextView
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:text="Fatwa Kehidupan"
-                    android:textColor="#FFFFFF"
-                    android:textStyle="bold"
-                    android:textSize="18sp"
-                    android:layout_marginTop="8dp"/>
-
-                <TextView
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:text="Arsip Status Digital"
-                    android:textColor="#E0E0E0"
-                    android:textSize="12sp"/>
-            </LinearLayout>
-
-        </FrameLayout>
-
         <!-- 1C. PANEL IKON MODE BACA — menempati slot yg sama persis dgn
         kontainerJalurKanan (rel timeline), tapi HANYA tampil saat mode buku
         aktif (lihat bukaModeBuku()/panelIkonBaca di MainActivity.kt). Berisi
@@ -558,6 +488,78 @@
                 android:src="@android:drawable/ic_menu_compass"
                 android:contentDescription="Mode gelap / terang" />
         </LinearLayout>
+
+        <!-- Layar Kaca Pengaman (Letakkan di atas pelat utama) -->
+        <include layout="@layout/layout_inisialisasi_mesin" android:layout_gravity="center"/>
+    
+    </FrameLayout>
+
+    <!-- KOMPARTEMEN 2: LACI NAVIGASI -->
+    <LinearLayout
+        android:id="@+id/navViewCustom"
+        android:layout_width="280dp"
+        android:layout_height="match_parent"
+        android:layout_gravity="start"
+        android:background="#FAFAFA"
+        android:orientation="vertical"
+        android:clickable="true"
+        android:focusable="true">
+
+        <FrameLayout
+            android:layout_width="match_parent"
+            android:layout_height="180dp">
+
+            <!-- 1. GAMBAR VECTOR BACKGROUND (bg_header_drawer.xml) -->
+            <ImageView
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"
+                android:scaleType="centerCrop"
+                android:src="@drawable/bg_header_drawer" />
+
+            <!-- 2. OVERLAY HITAM TRANSPARAN (Agar teks & foto kontras) -->
+            <View
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"
+                android:background="#80000000" /> 
+
+            <!-- 3. KONTEN FOTO PROFIL DAN TEKS -->
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"
+                android:orientation="vertical"
+                android:gravity="bottom"
+                android:padding="16dp">
+
+                <com.google.android.material.imageview.ShapeableImageView
+    android:id="@+id/fotoProfilAbah"
+    android:layout_width="72dp"
+    android:layout_height="72dp"
+    android:scaleType="centerCrop"
+    android:src="@drawable/profil_abah" 
+    app:shapeAppearanceOverlay="@style/ShapeAppearance.PustakaFK.Circle"
+    app:strokeWidth="1.5dp"
+    app:strokeColor="#80CBC4" 
+    android:layout_marginBottom="12dp" />
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="Fatwa Kehidupan"
+                    android:textColor="#FFFFFF"
+                    android:textStyle="bold"
+                    android:textSize="18sp"
+                    android:layout_marginTop="8dp"/>
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="Arsip Status Digital"
+                    android:textColor="#E0E0E0"
+                    android:textSize="12sp"/>
+            </LinearLayout>
+
+        </FrameLayout>
+
 
         <ScrollView
             android:layout_width="match_parent"
