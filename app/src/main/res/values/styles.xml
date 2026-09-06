@@ -7,8 +7,8 @@
     <style name="TombolIkonPanelBaca">
         <item name="android:layout_width">40dp</item>
         <item name="android:layout_height">40dp</item>
-        <item name="android:layout_marginTop">4dp</item>
-        <item name="android:layout_marginBottom">4dp</item>
+        <item name="android:layout_marginStart">4dp</item>
+        <item name="android:layout_marginEnd">4dp</item>
         <item name="android:padding">8dp</item>
         <item name="android:background">?android:attr/selectableItemBackgroundBorderless</item>
         <item name="android:scaleType">fitCenter</item>
@@ -18,12 +18,13 @@
     </style>
 
     <!-- Garis pemisah tipis antar kelompok tombol di panelIkonBaca (mis.
-         antara drawer/cari/filter dgn tombol fitur mendatang). -->
+         antara drawer/cari/filter dgn tombol fitur mendatang). Sekarang
+         panel horizontal, jadi pemisah ini vertikal (bukan lagi horizontal). -->
     <style name="PemisahPanelIkonBaca">
-        <item name="android:layout_width">26dp</item>
-        <item name="android:layout_height">1dp</item>
-        <item name="android:layout_marginTop">4dp</item>
-        <item name="android:layout_marginBottom">4dp</item>
+        <item name="android:layout_width">1dp</item>
+        <item name="android:layout_height">26dp</item>
+        <item name="android:layout_marginStart">4dp</item>
+        <item name="android:layout_marginEnd">4dp</item>
         <item name="android:background">#33FFFFFF</item>
     </style>
 
