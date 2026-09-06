@@ -127,21 +127,14 @@
         PLACEHOLDER utk fitur yg belum dibangun (lihat komentar tiap
         tombol) — ikon di bawah masih sementara, ganti kalau sudah ada
         aset final. -->
-        <HorizontalScrollView
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginHorizontal="12dp"
-            android:layout_marginTop="8dp"
-            android:scrollbars="none">
         <LinearLayout
             android:id="@+id/panelIkonBaca"
-            android:layout_width="wrap_content"
+            android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:orientation="horizontal"
-            android:gravity="center_vertical"
+            android:gravity="center"
             android:background="@drawable/bg_panel_ikon_baca"
-            android:paddingStart="8dp"
-            android:paddingEnd="8dp"
+            android:paddingVertical="6dp"
             android:visibility="gone">
 
             <ImageButton
@@ -195,7 +188,6 @@
                 android:src="@android:drawable/ic_menu_compass"
                 android:contentDescription="Mode gelap / terang" />
         </LinearLayout>
-        </HorizontalScrollView>
 
 
             <!-- WADAH MULTI-JALUR: HAPUS KONTANER KANAN LAMA -->

@@ -135,8 +135,16 @@ class BookPageProvider(
         // jadi sisa chrome cuma header+garis+padding (~146dp), dibulatkan ke
         // atas dgn sedikit margin aman.
         val cadanganChrome = (160 * densitas).toInt()
-        val cadanganMedia = if (adaMedia) 560 else 0 // ~tinggi blok foto (lihat wadahMultiFoto), sengaja konservatif
+        val cadanganMedia = if (adaMedia) CADANGAN_MEDIA_PX else 0
         return (h - cadanganChrome - cadanganMedia).coerceAtLeast((80 * densitas).toInt())
+    }
+
+    companion object {
+        // ~tinggi blok foto (lihat wadahMultiFoto), sengaja konservatif.
+        // SATU tempat -- dipakai baik di tinggiBadan() (utk hitung cepat
+        // per-arsip) maupun ambilRencanaTeks() (utk redistribusi 2-tahap),
+        // supaya keduanya konsisten dan tidak drift satu sama lain.
+        private const val CADANGAN_MEDIA_PX = 560
     }
 
     private fun perkiraanJumlahHalaman(teks: String, lebarKontenPx: Int, tinggiBadanPx: Int): Int {
@@ -390,7 +398,16 @@ class BookPageProvider(
 
         val teksMentah = arsip.kontenPenuh.ifBlank { " " }
         val lebarKontenPx = lebarKonten(w)
-        val tinggiBadanPx = tinggiBadan(h, adaMedia = arsip.daftarFoto.isNotBlank())
+        val adaMedia = arsip.daftarFoto.isNotBlank()
+        // PENTING: pengelompokan tahap 1 SELALU pakai budget PENUH (anggap
+        // tidak ada media), BUKAN tinggiBadan(h, adaMedia) -- kalau media
+        // langsung dikurangkan di sini, SEMUA halaman arsip ini (termasuk
+        // yg jauh dari halaman terakhir) kehilangan jatah tinggi utk ruang
+        // foto yg sebenarnya cuma dipakai di 1 halaman -- itu penyebab bug
+        // "banyak ruang kosong di halaman yg bukan halaman terakhir". Media
+        // baru diperhitungkan BELAKANGAN, cuma utk kelompok paling akhir
+        // (lihat redistribusi di bawah).
+        val budgetPenuh = tinggiBadan(h, adaMedia = false)
         val paint = TextPaint(Paint.ANTI_ALIAS_FLAG).apply { textSize = 14f * densitas }
         // PENTING: tinggi baris TETAP (samakan dgn TextViewCompat.setLineHeight
         // di render sungguhan), BUKAN tinggi alami font -- lihat catatan di
@@ -431,29 +448,63 @@ class BookPageProvider(
         }
         if (unitMentah.isEmpty()) unitMentah.add(UnitMentah(0, 0 until 0, false, null))
 
-        val potongan = mutableListOf<UnitHalaman>()
-        var idx = 0
-        while (idx < unitMentah.size) {
-            var tinggiTerpakai = 0
+        // TAHAP 1: kelompokkan pakai budget PENUH -- simpan sbg rentang INDEX
+        // ke unitMentah (bukan langsung gabung ke char-range) supaya kelompok
+        // TERAKHIR bisa dipecah lagi di tahap 2 kalau perlu.
+        val kelompokIndex = mutableListOf<IntRange>()
+        run {
+            var idx = 0
+            while (idx < unitMentah.size) {
+                var tinggiTerpakai = 0
+                var mulai = idx
+                var sudahAdaSatu = false
+                while (idx < unitMentah.size) {
+                    val u = unitMentah[idx]
+                    if (tinggiTerpakai + u.tinggi > budgetPenuh && sudahAdaSatu) break
+                    tinggiTerpakai += u.tinggi
+                    sudahAdaSatu = true
+                    idx++
+                }
+                kelompokIndex.add(mulai until idx)
+            }
+        }
+
+        // TAHAP 2: kalau arsip ini ada media, media itu HANYA tampil di
+        // kelompok/halaman PALING AKHIR (lihat renderHalamanArsip). Cek
+        // apakah kelompok terakhir + cadangan media masih muat di budget
+        // penuh -- kalau tidak, sisihkan unit-unit paling belakang dari
+        // kelompok itu ke kelompok BARU (halaman baru), supaya kelompok
+        // terakhir yg lama jadi cukup kecil utk berbagi tempat dgn foto.
+        if (adaMedia && kelompokIndex.isNotEmpty()) {
+            val budgetDenganMedia = tinggiBadan(h, adaMedia = true)
+            val terakhir = kelompokIndex.last()
+            var tinggiKelompokTerakhir = terakhir.sumOf { unitMentah[it].tinggi }
+            if (tinggiKelompokTerakhir > budgetDenganMedia && terakhir.count() > 1) {
+                var batasBaru = terakhir.last
+                while (batasBaru > terakhir.first && tinggiKelompokTerakhir > budgetDenganMedia) {
+                    tinggiKelompokTerakhir -= unitMentah[batasBaru].tinggi
+                    batasBaru--
+                }
+                kelompokIndex[kelompokIndex.size - 1] = terakhir.first..batasBaru
+                kelompokIndex.add((batasBaru + 1)..terakhir.last)
+            }
+        }
+
+        val potongan = kelompokIndex.map { rentangIdx ->
             var asliMulai: Int? = null; var asliAkhir: Int? = null
             var header = false
             var sharedMulai: Int? = null; var sharedAkhir: Int? = null
-            var sudahAdaSatu = false
-            while (idx < unitMentah.size) {
-                val u = unitMentah[idx]
-                if (tinggiTerpakai + u.tinggi > tinggiBadanPx && sudahAdaSatu) break
+            for (i in rentangIdx) {
+                val u = unitMentah[i]
                 u.asli?.let { if (asliMulai == null) asliMulai = it.first; asliAkhir = it.last + 1 }
                 if (u.header) header = true
                 u.shared?.let { if (sharedMulai == null) sharedMulai = it.first; sharedAkhir = it.last + 1 }
-                tinggiTerpakai += u.tinggi
-                sudahAdaSatu = true
-                idx++
             }
-            potongan.add(UnitHalaman(
+            UnitHalaman(
                 rentangAsli = if (asliMulai != null) asliMulai!! until asliAkhir!! else null,
                 headerShared = header,
                 rentangShared = if (sharedMulai != null) sharedMulai!! until sharedAkhir!! else null
-            ))
+            )
         }
 
         val hasil = RencanaTeks(potongan)
