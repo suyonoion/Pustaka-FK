@@ -141,23 +141,6 @@ private var kecepatanEmaBytesPerSec: Double = 0.0
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
         drawerLayout = findViewById(R.id.drawerLayout)
-        // PERBAIKAN: panelIkonBaca (mode baca) sebelumnya tetap tampil
-        // mengambang di atas area scrim saat drawer dibuka -- terlihat
-        // salah tempat/mengganggu krn drawer tidak menutup penuh lebar
-        // layar. Sembunyikan sementara selagi drawer terbuka, munculkan
-        // lagi begitu ditutup (kalau memang lagi mode baca).
-        drawerLayout.addDrawerListener(object : androidx.drawerlayout.widget.DrawerLayout.SimpleDrawerListener() {
-            override fun onDrawerSlide(drawerView: View, slideOffset: Float) {
-                if (::panelIkonBaca.isInitialized && wadahModeBuku.visibility == View.VISIBLE) {
-                    panelIkonBaca.visibility = if (slideOffset > 0.02f) View.GONE else View.VISIBLE
-                }
-            }
-            override fun onDrawerClosed(drawerView: View) {
-                if (::panelIkonBaca.isInitialized && wadahModeBuku.visibility == View.VISIBLE) {
-                    panelIkonBaca.visibility = View.VISIBLE
-                }
-            }
-        })
         navViewCustom = findViewById(R.id.navViewCustom)
         findViewById<android.widget.ImageView>(R.id.btnMenuDrawer).setOnClickListener {
             drawerLayout.openDrawer(androidx.core.view.GravityCompat.START)
@@ -473,6 +456,26 @@ when (fase) {
         super.onConfigurationChanged(newConfig)
         sesuaikanKompartemenGrid() 
     }    
+
+    override fun onPause() {
+        super.onPause()
+        // WAJIB utk GLSurfaceView (curlViewBuku) -- tanpa ini, thread render
+        // GL TIDAK PERNAH berhenti walau Activity sudah di-pause/ditutup,
+        // terus hidup di background sambil masih memegang referensi ke
+        // Bitmap/View instance lama. Ini akar penyebab crash native
+        // "Segmentation fault" di GLThread yang terjadi setelah app ditutup
+        // lalu dibuka lagi beberapa saat kemudian.
+        if (::curlViewBuku.isInitialized) {
+            curlViewBuku.onPause()
+        }
+    }
+
+    override fun onResume() {
+        super.onResume()
+        if (::curlViewBuku.isInitialized) {
+            curlViewBuku.onResume()
+        }
+    }
 
     override fun onDestroy() {
         super.onDestroy()
@@ -1382,20 +1385,19 @@ private fun perbaruiDetailKecepatan(persen: Int, byteDiterima: Long, totalByte: 
         }
 
         findViewById<View>(R.id.btnBacaCari).setOnClickListener {
-            // Cari beroperasi di grid, jadi keluar dulu dari mode buku ke
-            // grid, lalu buka & fokuskan kotak pencarian yang sudah ada.
-            if (wadahModeBuku.visibility == View.VISIBLE) {
-                wadahModeBuku.visibility = View.GONE
-                footerBawahUtama.visibility = View.VISIBLE
+            // PERBAIKAN: dulu keluar dulu ke grid sebelum bisa cari -- itu
+            // yg bikin mode buku hilang & posisi halaman lupa. Sekarang
+            // TETAP di mode buku, cukup tampilkan/sembunyikan kolom
+            // pencarian di tempatnya semula (toggle), tanpa menyentuh
+            // wadahModeBuku/grid sama sekali.
+            if (toolbarPencarian.visibility == View.VISIBLE) {
+                toolbarPencarian.visibility = View.GONE
+                edtPencarian.clearFocus()
+            } else {
                 toolbarPencarian.visibility = View.VISIBLE
-                panelStatusPencarian.visibility = View.VISIBLE
-                panelIkonBaca.visibility = View.GONE
-                recyclerGridMode.visibility = View.VISIBLE
-                kontainerJalurKanan.visibility = View.VISIBLE
-                recyclerTimeline.visibility = View.VISIBLE
+                edtPencarian.isIconified = false
+                edtPencarian.requestFocus()
             }
-            edtPencarian.isIconified = false
-            edtPencarian.requestFocus()
         }
 
         findViewById<View>(R.id.btnBacaFilter).setOnClickListener {

@@ -243,7 +243,7 @@ class BookPageProvider(
                 val subIndex = posisiKonten - kumulatif[arsipIndex]
                 val perkiraanTotalSub = kumulatif[arsipIndex + 1] - kumulatif[arsipIndex]
                 cacheKey = "${arsip.idPosting}:${w}x$h:sub$subIndex"
-                tugas = { renderHalamanArsip(w, h, arsip, index, totalHalamanKonten + 2, subIndex, perkiraanTotalSub) }
+                tugas = { renderHalamanArsip(w, h, arsip, arsipIndex + 1, ambilData().size, subIndex, perkiraanTotalSub) }
             }
         }
 
@@ -408,11 +408,17 @@ class BookPageProvider(
         // baru diperhitungkan BELAKANGAN, cuma utk kelompok paling akhir
         // (lihat redistribusi di bawah).
         val budgetPenuh = tinggiBadan(h, adaMedia = false)
-        val paint = TextPaint(Paint.ANTI_ALIAS_FLAG).apply { textSize = 14f * densitas }
         // PENTING: tinggi baris TETAP (samakan dgn TextViewCompat.setLineHeight
         // di render sungguhan), BUKAN tinggi alami font -- lihat catatan di
         // perkiraanJumlahHalaman() utk histori bug yg ini perbaiki.
         val tinggiBarisTetapPx = (KertasBergarisDrawable.TINGGI_BARIS_DP * densitas).toInt().coerceAtLeast(1)
+        // Cadangkan 1 baris tambahan dari budget PENUH utk penanda
+        // "Selanjutnya >>" -- baru benar-benar ditampilkan belakangan kalau
+        // halaman ini TERNYATA bukan halaman terakhir arsipnya (lihat
+        // renderHalamanArsip). Dicadangkan di SEMUA halaman spy selalu ada
+        // ruang, bukan cuma dihitung setelah tahu halaman mana yg terakhir.
+        val budgetUntukPembagian = (budgetPenuh - tinggiBarisTetapPx).coerceAtLeast(tinggiBarisTetapPx)
+        val paint = TextPaint(Paint.ANTI_ALIAS_FLAG).apply { textSize = 14f * densitas }
 
         data class UnitMentah(val tinggi: Int, val asli: IntRange?, val header: Boolean, val shared: IntRange?)
         val unitMentah = mutableListOf<UnitMentah>()
@@ -460,7 +466,7 @@ class BookPageProvider(
                 var sudahAdaSatu = false
                 while (idx < unitMentah.size) {
                     val u = unitMentah[idx]
-                    if (tinggiTerpakai + u.tinggi > budgetPenuh && sudahAdaSatu) break
+                    if (tinggiTerpakai + u.tinggi > budgetUntukPembagian && sudahAdaSatu) break
                     tinggiTerpakai += u.tinggi
                     sudahAdaSatu = true
                     idx++
@@ -516,7 +522,7 @@ class BookPageProvider(
     // HALAMAN ARSIP (dipanggil dari thread background milik `executor`)
     // ------------------------------------------------------------------
     private fun renderHalamanArsip(
-        width: Int, height: Int, arsip: ArsipEntity, indexHalaman: Int, totalHalamanBuku: Int,
+        width: Int, height: Int, arsip: ArsipEntity, nomorArsip: Int, totalArsip: Int,
         subIndex: Int, perkiraanTotalSub: Int
     ): Bitmap {
         val rencana = ambilRencanaTeks(arsip, width, height)
@@ -573,6 +579,13 @@ class BookPageProvider(
             // ya di teks shared) -- supaya penanda cuma tampil sekali per
             // halaman, di posisi paling atas kontennya.
             var lanjutanSudahDipakai = !lanjutan
+            // Penanda "Selanjutnya >>" ditempel di teks yg PALING BELAKANG
+            // tampil di halaman ini -- HANYA kalau halaman ini BUKAN halaman
+            // terakhir arsipnya (masih ada isi lagi di halaman berikutnya).
+            // Ruang utk baris ini sudah dicadangkan sejak paginasi (lihat
+            // budgetUntukPembagian di ambilRencanaTeks), jadi aman tidak
+            // menyebabkan overflow/potongan baru.
+            val penandaLanjut = if (!halamanTerakhirDariArsipIni) "\n\nSelanjutnya >>" else ""
 
             if (kb == null) {
                 // Kasus normal (Tanya-Jawab, dsb): potong sesuai `unit.rentangAsli`
@@ -585,10 +598,13 @@ class BookPageProvider(
                 val potonganBerwarna = warnaiKontenTanyaJawab(kontenBersih)
                     .let { SpannableStringBuilder(it) }
                     .subSequence(awal, akhir)
-                txtKontenUtama.text = if (!lanjutanSudahDipakai) {
+                val builder = SpannableStringBuilder()
+                if (!lanjutanSudahDipakai) {
                     lanjutanSudahDipakai = true
-                    SpannableStringBuilder("\u21B3 (lanjutan halaman sebelumnya)\n\n").append(potonganBerwarna)
-                } else potonganBerwarna
+                    builder.append("\u21B3 (lanjutan halaman sebelumnya)\n\n")
+                }
+                builder.append(potonganBerwarna).append(penandaLanjut)
+                txtKontenUtama.text = builder
                 txtKontenUtama.visibility = View.VISIBLE
                 wadahDinamisKonten.setBackgroundResource(0)
                 wadahDinamisKonten.setPadding(0, 0, 0, 0)
@@ -599,7 +615,11 @@ class BookPageProvider(
                 // ambilRencanaTeks) -- halaman ini bisa berisi salah satu,
                 // gabungan, atau tak satu pun dari: potongan teks asli,
                 // header kotak "Status Dibagikan", potongan teks shared,
-                // tergantung di mana batas halaman jatuh.
+                // tergantung di mana batas halaman jatuh. Penanda
+                // "Selanjutnya >>" ditempel di teks shared kalau ada (karena
+                // itu yg paling belakang tampil), kalau tidak ada baru di teks asli.
+                val penandaUntukAsli = if (unit.rentangShared == null) penandaLanjut else ""
+                val penandaUntukShared = if (unit.rentangShared != null) penandaLanjut else ""
                 if (unit.rentangAsli != null) {
                     val r = unit.rentangAsli
                     val awal = r.first.coerceIn(0, kb.teksAsli.length)
@@ -607,8 +627,8 @@ class BookPageProvider(
                     val potongan = kb.teksAsli.substring(awal, akhir)
                     txtKontenUtama.text = if (!lanjutanSudahDipakai) {
                         lanjutanSudahDipakai = true
-                        "\u21B3 (lanjutan halaman sebelumnya)\n\n$potongan"
-                    } else potongan
+                        "\u21B3 (lanjutan halaman sebelumnya)\n\n$potongan$penandaUntukAsli"
+                    } else "$potongan$penandaUntukAsli"
                     txtKontenUtama.visibility = View.VISIBLE
                 } else {
                     txtKontenUtama.visibility = View.GONE
@@ -634,8 +654,8 @@ class BookPageProvider(
                     val potongan = kb.kontenShared.substring(awal, akhir)
                     txtKontenShared.text = if (!lanjutanSudahDipakai) {
                         lanjutanSudahDipakai = true
-                        "\u21B3 (lanjutan halaman sebelumnya)\n\n$potongan"
-                    } else potongan
+                        "\u21B3 (lanjutan halaman sebelumnya)\n\n$potongan$penandaUntukShared"
+                    } else "$potongan$penandaUntukShared"
                     txtKontenShared.visibility = View.VISIBLE
                 } else {
                     txtKontenShared.visibility = View.GONE
@@ -644,7 +664,13 @@ class BookPageProvider(
 
             view.findViewById<TextView>(R.id.txtTanggal).text = arsip.tanggalBaca
             view.findViewById<TextView>(R.id.txtKategori).text = arsip.kategori
-            view.findViewById<TextView>(R.id.txtNomorHalaman).text = "Halaman : $indexHalaman/$totalHalamanBuku"
+            // PERBAIKAN: dulu pakai nomor HALAMAN FISIK/total halaman fisik --
+            // begitu 1 status kepecah jadi beberapa halaman, total ini ikut
+            // membengkak (mis. 50 status jadi "53 halaman") padahal dari sudut
+            // pandang pengguna tetap "50 status". Sekarang label pakai nomor
+            // STATUS (arsip), bukan nomor halaman fisik -- beberapa halaman
+            // lanjutan dari status yg sama akan menampilkan nomor yg SAMA.
+            view.findViewById<TextView>(R.id.txtNomorHalaman).text = "Halaman : $nomorArsip/$totalArsip"
             view.findViewById<ImageView>(R.id.imgProfilAbah)?.setImageResource(R.drawable.profil_abah)
 
             // Profil (avatar+nama+tanggal+kategori) cuma tampil di halaman
