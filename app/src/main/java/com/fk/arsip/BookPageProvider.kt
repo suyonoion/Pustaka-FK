@@ -229,60 +229,39 @@ class BookPageProvider(
     }
 
     // ------------------------------------------------------------------
-    override fun updatePage(page: CurlPage, width: Int, height: Int, index: Int) {
-        val w = width.coerceAtLeast(1)
-        val h = height.coerceAtLeast(1)
-        pastikanKumulatif(w, h)
-        val totalHalamanKonten = if (kumulatif.isEmpty()) 0 else kumulatif.last()
+    /** Hasil resolusi index halaman -> cacheKey + tugas render latar belakangnya (tanpa efek samping). */
+    private data class ResolusiHalaman(val cacheKey: String, val tugas: () -> Bitmap)
 
-        val cacheKey: String
-        val tugas: (() -> Bitmap)?
-        when {
-            index == 0 -> {
-                cacheKey = "sampul_depan:${w}x$h"
-                tugas = { renderSampul(w, h, judul = "Pustaka FK", subjudul = "Arsip Fatwa & Kehidupan") }
+    private fun resolusiHalaman(index: Int, w: Int, h: Int): ResolusiHalaman? {
+        val totalHalamanKonten = if (kumulatif.isEmpty()) 0 else kumulatif.last()
+        return when {
+            index == 0 -> ResolusiHalaman("sampul_depan:${w}x$h") {
+                renderSampul(w, h, judul = "Pustaka FK", subjudul = "Arsip Fatwa & Kehidupan")
             }
-            index == totalHalamanKonten + 1 -> {
-                cacheKey = "sampul_belakang:${w}x$h"
-                tugas = { renderSampul(w, h, judul = "Tamat", subjudul = "Pustaka FK") }
+            index == totalHalamanKonten + 1 -> ResolusiHalaman("sampul_belakang:${w}x$h") {
+                renderSampul(w, h, judul = "Tamat", subjudul = "Pustaka FK")
             }
             else -> {
                 val posisiKonten = index - 1
-                if (posisiKonten < 0 || posisiKonten >= totalHalamanKonten) {
-                    page.setTexture(renderKosong(w, h), CurlPage.SIDE_FRONT)
-                    page.setColor(warnaSampulBack, CurlPage.SIDE_BACK)
-                    return
-                }
+                if (posisiKonten < 0 || posisiKonten >= totalHalamanKonten) return null
                 val arsipIndex = cariArsipIndex(posisiKonten)
-                val arsip = ambilData().getOrNull(arsipIndex)
-                if (arsip == null) {
-                    page.setTexture(renderKosong(w, h), CurlPage.SIDE_FRONT)
-                    page.setColor(warnaSampulBack, CurlPage.SIDE_BACK)
-                    return
-                }
+                val arsip = ambilData().getOrNull(arsipIndex) ?: return null
                 val subIndex = posisiKonten - kumulatif[arsipIndex]
                 val perkiraanTotalSub = kumulatif[arsipIndex + 1] - kumulatif[arsipIndex]
-                cacheKey = "${arsip.idPosting}:${w}x$h:sub$subIndex"
-                tugas = { renderHalamanArsip(w, h, arsip, arsipIndex + 1, ambilData().size, subIndex, perkiraanTotalSub) }
+                ResolusiHalaman("${arsip.idPosting}:${w}x$h:sub$subIndex") {
+                    renderHalamanArsip(w, h, arsip, arsipIndex + 1, ambilData().size, subIndex, perkiraanTotalSub)
+                }
             }
         }
+    }
 
-        val fromCache = cacheBitmap.get(cacheKey)
-        if (fromCache != null) {
-            page.setTexture(salinUntukTampil(fromCache, w, h), CurlPage.SIDE_FRONT)
-            page.setColor(warnaSampulBack, CurlPage.SIDE_BACK)
-            prefetchTetangga(index, totalHalamanKonten)
-            return
-        }
-
-        page.setTexture(renderPlaceholder(w, h), CurlPage.SIDE_FRONT)
-        page.setColor(warnaSampulBack, CurlPage.SIDE_BACK)
-
+    /** Menjadwalkan render latar belakang utk `cacheKey` kalau belum sedang diproses; hasil masuk cache & memicu refreshHalaman(index). */
+    private fun mintaRenderLatarBelakang(cacheKey: String, tugas: () -> Bitmap, index: Int) {
         if (sedangDiproses.add(cacheKey)) {
             executor.execute {
                 try {
                     if (!shutdown) {
-                        val bmp = tugas!!.invoke()
+                        val bmp = tugas()
                         cacheBitmap.put(cacheKey, bmp)
                         refreshHalaman(index)
                     }
@@ -293,47 +272,59 @@ class BookPageProvider(
         }
     }
 
+    override fun updatePage(page: CurlPage, width: Int, height: Int, index: Int) {
+        val w = width.coerceAtLeast(1)
+        val h = height.coerceAtLeast(1)
+        pastikanKumulatif(w, h)
+        val totalHalamanKonten = if (kumulatif.isEmpty()) 0 else kumulatif.last()
+
+        val resolusi = resolusiHalaman(index, w, h)
+        if (resolusi == null) {
+            page.setTexture(renderKosong(w, h), CurlPage.SIDE_FRONT)
+            page.setColor(warnaSampulBack, CurlPage.SIDE_BACK)
+            return
+        }
+
+        val fromCache = cacheBitmap.get(resolusi.cacheKey)
+        if (fromCache != null) {
+            page.setTexture(salinUntukTampil(fromCache, w, h), CurlPage.SIDE_FRONT)
+            page.setColor(warnaSampulBack, CurlPage.SIDE_BACK)
+            prefetchTetangga(index, totalHalamanKonten, w, h)
+            return
+        }
+
+        page.setTexture(renderPlaceholder(w, h), CurlPage.SIDE_FRONT)
+        page.setColor(warnaSampulBack, CurlPage.SIDE_BACK)
+        mintaRenderLatarBelakang(resolusi.cacheKey, resolusi.tugas, index)
+    }
+
     /**
      * Render halaman kiri/kanan sekitar `index` di background lebih awal
      * (tanpa menunggu diminta), supaya waktu SWIPE terasa instan setelah
      * pengguna pernah singgah sebentar -- bukan cuma waktu dibuka persis.
      * Hanya jalan kalau belum ada di cache & belum sedang diproses.
+     *
+     * PERBAIKAN PENTING: versi lama membuat `CurlPage()` sekali-pakai dan
+     * memanggil updatePage() dengannya dari THREAD BACKGROUND -- itu berarti
+     * CurlPage.setTexture() (yang me-recycle() bitmap lama) ikut tersentuh
+     * DI LUAR GL thread, melanggar kontrak GLSurfaceView (CurlPage/CurlMesh
+     * cuma boleh disentuh dari GL thread). Ini kemungkinan besar penyebab
+     * crash native "freePixels" (segfault di GLThread) yang terjadi lagi
+     * setelah fitur prefetch ditambahkan. Sekarang prefetch CUMA mengisi
+     * cache lewat resolusiHalaman()+mintaRenderLatarBelakang() -- TIDAK
+     * PERNAH membuat atau menyentuh objek CurlPage sama sekali.
      */
-    private fun prefetchTetangga(index: Int, totalHalamanKonten: Int) {
-        val w = wKumulatif.coerceAtLeast(1)
-        val h = hKumulatif.coerceAtLeast(1)
+    private fun prefetchTetangga(index: Int, totalHalamanKonten: Int, w: Int, h: Int) {
         for (tetangga in intArrayOf(index - 1, index + 1, index + 2)) {
             if (tetangga < 0 || tetangga > totalHalamanKonten + 1) continue
+            val resolusi = resolusiHalaman(tetangga, w, h) ?: continue
             // Cek cache dulu SECARA SINKRON (murah) sebelum menjadwalkan apa
             // pun -- updatePage() ini dipanggil tiap frame utk halaman yg
             // sedang tampil, jadi kalau tidak dicek dulu, tetangga yg SUDAH
             // di-cache akan terus-menerus dijadwalkan ulang ke executor tiap
             // frame (kerja sia-sia, membanjiri thread pool tanpa manfaat).
-            val key = cacheKeyUntuk(halaman = tetangga, w = w, h = h) ?: continue
-            if (cacheBitmap.get(key) != null || sedangDiproses.contains(key)) continue
-            executor.execute {
-                if (shutdown) return@execute
-                try {
-                    updatePage(CurlPage(), w, h, tetangga)
-                } catch (e: Exception) { /* prefetch best-effort, abaikan kegagalan */ }
-            }
-        }
-    }
-
-    /** Kunci cache untuk index halaman ini pada ukuran w/h saat ini, atau null kalau di luar jangkauan. */
-    private fun cacheKeyUntuk(halaman: Int, w: Int, h: Int): String? {
-        val totalHalamanKonten = if (kumulatif.isEmpty()) 0 else kumulatif.last()
-        return when {
-            halaman == 0 -> "sampul_depan:${w}x$h"
-            halaman == totalHalamanKonten + 1 -> "sampul_belakang:${w}x$h"
-            else -> {
-                val posisiKonten = halaman - 1
-                if (posisiKonten < 0 || posisiKonten >= totalHalamanKonten) return null
-                val arsipIndex = cariArsipIndex(posisiKonten)
-                val arsip = ambilData().getOrNull(arsipIndex) ?: return null
-                val subIndex = posisiKonten - kumulatif[arsipIndex]
-                "${arsip.idPosting}:${w}x$h:sub$subIndex"
-            }
+            if (cacheBitmap.get(resolusi.cacheKey) != null || sedangDiproses.contains(resolusi.cacheKey)) continue
+            mintaRenderLatarBelakang(resolusi.cacheKey, resolusi.tugas, tetangga)
         }
     }
 
