@@ -172,6 +172,26 @@ class BookPageProvider(
     }
 
     /** Dipakai MainActivity untuk lompat langsung ke arsip tertentu (mis. dari drawer). */
+    /**
+     * true kalau BookPageProvider sudah pernah tahu ukuran halaman
+     * sungguhan (dari updatePage() yang sudah pernah dipanggil GL thread).
+     * Dipakai MainActivity SEBELUM memanggil indexHalamanUntukArsip() --
+     * lihat catatan panjang di fungsi itu soal kenapa ini penting.
+     */
+    fun ukuranSudahDiketahui(): Boolean = wKumulatif > 0 && hKumulatif > 0
+
+    /**
+     * Dipakai MainActivity utk lompat langsung ke arsip tertentu (mis. dari
+     * drawer/grid). PENTING: hasilnya cuma benar kalau ukuran halaman
+     * SUNGGUHAN sudah diketahui (lihat ukuranSudahDiketahui()) -- kalau
+     * dipanggil SEBELUM itu (mis. sesaat setelah wadahModeBuku baru saja
+     * diset VISIBLE, sebelum CurlView sempat di-layout & merender apa pun),
+     * pastikanKumulatif() di bawah ini terpaksa jalan dgn ukuran 1x1 asal-
+     * asalan, menghasilkan perkiraan jumlah halaman per arsip yang jauh
+     * meleset (bisa berkali-kali lipat) -- itu sebabnya lompat ke arsip
+     * no.5 pernah malah mendarat di halaman ~387. MainActivity WAJIB
+     * menunggu ukuranSudahDiketahui()==true dulu sebelum memanggil ini.
+     */
     fun indexHalamanUntukArsip(posisiArsip: Int): Int {
         pastikanKumulatif(wKumulatif.coerceAtLeast(1), hKumulatif.coerceAtLeast(1))
         val data = ambilData()
@@ -394,8 +414,17 @@ class BookPageProvider(
 
     private fun ambilRencanaTeks(arsip: ArsipEntity, w: Int, h: Int): RencanaTeks {
         val key = "${arsip.idPosting}:${w}x$h"
-        rencanaCache[key]?.let { return it }
-
+        // PENTING: computeIfAbsent (bukan cek-lalu-simpan biasa) -- utk
+        // status yang SANGAT panjang, prefetch tetangga + navigasi langsung
+        // pengguna bisa sama-sama minta rencana arsip yang SAMA hampir
+        // bersamaan dari 2 thread executor berbeda. Cek-lalu-simpan biasa
+        // rawan race: dua-duanya sama-sama cache-miss lalu dua-duanya
+        // menghitung ulang StaticLayout PENUH secara paralel -- pemborosan
+        // yang bisa terasa sebagai "lama/tidak jelas responnya" pas
+        // menyentuh status panjang. computeIfAbsent bersifat atomik per
+        // key: thread kedua otomatis menunggu hasil thread pertama alih-
+        // alih ikut menghitung ulang dari nol.
+        return rencanaCache.computeIfAbsent(key) {
         val teksMentah = arsip.kontenPenuh.ifBlank { " " }
         val lebarKontenPx = lebarKonten(w)
         val adaMedia = arsip.daftarFoto.isNotBlank()
@@ -514,8 +543,8 @@ class BookPageProvider(
         }
 
         val hasil = RencanaTeks(potongan)
-        rencanaCache[key] = hasil
-        return hasil
+        hasil
+        }
     }
 
     // ------------------------------------------------------------------

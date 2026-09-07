@@ -1316,6 +1316,18 @@ private fun perbaruiDetailKecepatan(persen: Int, byteDiterima: Long, totalByte: 
         txtStatusPencarian.text = "$labelKategori • $totalVolume Status"
         
         delay(100) 
+        // PERBAIKAN: dulu langsung lompat di sini -- kalau ini kali PERTAMA
+        // masuk mode buku sejak app dibuka, CurlView belum sempat di-layout
+        // & belum tahu ukuran halaman sungguhan sama sekali, jadi hitungan
+        // peta halamannya asal-asalan (lihat catatan panjang di
+        // BookPageProvider.indexHalamanUntukArsip) -- itu sebabnya lompat ke
+        // arsip no.5 pernah malah mendarat di halaman ~387. Tunggu dulu
+        // (maksimal ~1 detik) sampai ukurannya sungguhan diketahui.
+        var percobaan = 0
+        while (!bookPageProvider.ukuranSudahDiketahui() && percobaan < 60) {
+            delay(16)
+            percobaan++
+        }
         // CurlView baca `daftarArsipAktif` langsung (lihat BookPageProvider).
         // Sejak paginasi ditambahkan, 1 arsip bisa menempati lebih dari 1
         // halaman, jadi index halaman TIDAK LAGI selalu `posisi + 1` --
