@@ -154,21 +154,30 @@ class BookPageProvider(
         // teks yg dibagikan ulang (keduanya sekarang ikut dipaginasi, lihat
         // ambilRencanaTeks) + sedikit ekstra utk header kotak "Status
         // Dibagikan" (~2 baris) supaya perkiraan tetap condong ke arah aman.
-        val totalKarakter = if (kb != null) kb.teksAsli.length + kb.kontenShared.length + 80 else teks.length
+        val teksUntukDihitung = if (kb != null) "${kb.teksAsli}\n${kb.kontenShared}" else teks
+        val totalKarakter = teksUntukDihitung.length + if (kb != null) 80 else 0
         val ukuranFontPx = 14f * densitas
-        // Lebar karakter tetap perkiraan (dilebihkan dikit spy aman), TAPI
-        // tinggi baris SEKARANG pakai angka PERSIS yang sama dgn yg
-        // sungguhan dipaksakan saat render (lihat KertasBergarisDrawable +
-        // TextViewCompat.setLineHeight di renderHalamanArsip) -- BUKAN tinggi
-        // baris alami font. Sebelumnya pakai perkiraan alami (lebih pendek
-        // dari 28dp asli), jadi jumlah baris yg dikira muat per halaman
-        // LEBIH BANYAK dari kenyataan -> ini akar penyebab teks masih
-        // kepotong di halaman lanjutan.
-        val karakterPerBaris = max(1f, lebarKontenPx / (ukuranFontPx * 0.55f))
+        // PERBAIKAN: dulu cuma menghitung dari total karakter / karakter-per-
+        // baris -- ini UNDER-ESTIMATE parah utk konten dgn banyak baris
+        // PENDEK & banyak baris KOSONG antar-paragraf (gaya penulisan umum
+        // di arsip ini: poin-poin pendek dipisah baris kosong). Baris kosong
+        // ikut makan 1 baris penuh tapi menyumbang 0 karakter ke hitungan
+        // panjang -- jadi perkiraan lama bisa jauh lebih kecil dari
+        // kebutuhan asli, menyebabkan slot halaman kehabisan sebelum teks
+        // sungguhan habis (teks "hilang" di tengah, padahal ada tanda
+        // "Selanjutnya >>" yg menjanjikan lanjutannya). Sekarang jumlah
+        // baris = MAKS(dari perkiraan lebar/panjang, dari jumlah baris
+        // eksplisit "\n" -- baris eksplisit menjamin batas bawah yg tidak
+        // mungkin di-under-estimate).
+        val jumlahBarisEksplisit = teksUntukDihitung.count { it == '\n' } + 1
+        val karakterPerBaris = max(1f, lebarKontenPx / (ukuranFontPx * 0.62f)) // 0.55->0.62: char dianggap lebih lebar, lebih konservatif
         val tinggiBarisPx = KertasBergarisDrawable.TINGGI_BARIS_DP * densitas
         val barisPerHalaman = max(1f, tinggiBadanPx / tinggiBarisPx)
-        val jumlahBaris = ceil(totalKarakter / karakterPerBaris)
-        return ceil(jumlahBaris / barisPerHalaman).toInt().coerceAtLeast(1)
+        val jumlahBarisDariPanjang = ceil(totalKarakter / karakterPerBaris)
+        val jumlahBaris = max(jumlahBarisEksplisit.toFloat(), jumlahBarisDariPanjang)
+        // +1 halaman ekstra sbg jaring pengaman terakhir -- lebih baik ada
+        // 1 halaman nyaris kosong di ujung drpd teks kehabisan slot lagi.
+        return (ceil(jumlahBaris / barisPerHalaman).toInt() + 1).coerceAtLeast(1)
     }
 
     /** Dipakai MainActivity untuk lompat langsung ke arsip tertentu (mis. dari drawer). */
@@ -569,7 +578,17 @@ class BookPageProvider(
                 val urlBersih = pertama.removePrefix("video:").removePrefix("image:")
                 jumlahMediaLain = daftar.size - 1
                 fotoRepresentatif = try {
-                    Glide.with(context).asBitmap().load(urlBersih)
+                    // PENTING: Glide.with(context) -- context = Activity --
+                    // mengikat request ke lifecycle Activity, jadi begitu
+                    // Activity dihancurkan (app+recents ditutup), Glide
+                    // OTOMATIS mendaur ulang bitmap yang masih terkait,
+                    // padahal thread background ini (di luar lifecycle
+                    // Activity secara sengaja) masih memegang/memakainya
+                    // utk menggambar halaman. Itu race condition penyebab
+                    // crash "freePixels" di thread utama saat app ditutup.
+                    // applicationContext TIDAK terikat lifecycle Activity,
+                    // jadi aman dipakai oleh pipeline background ini.
+                    Glide.with(context.applicationContext).asBitmap().load(urlBersih)
                         .submit(width, (height * 0.35f).toInt().coerceAtLeast(1))
                         .get(6, TimeUnit.SECONDS)
                 } catch (e: Exception) {
