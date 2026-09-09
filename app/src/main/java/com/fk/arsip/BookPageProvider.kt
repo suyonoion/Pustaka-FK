@@ -175,9 +175,13 @@ class BookPageProvider(
         val barisPerHalaman = max(1f, tinggiBadanPx / tinggiBarisPx)
         val jumlahBarisDariPanjang = ceil(totalKarakter / karakterPerBaris)
         val jumlahBaris = max(jumlahBarisEksplisit.toFloat(), jumlahBarisDariPanjang)
-        // +1 halaman ekstra sbg jaring pengaman terakhir -- lebih baik ada
-        // 1 halaman nyaris kosong di ujung drpd teks kehabisan slot lagi.
-        return (ceil(jumlahBaris / barisPerHalaman).toInt() + 1).coerceAtLeast(1)
+        // PERBAIKAN: dulu ada "+1 halaman" flat ke SEMUA status apa pun
+        // panjangnya -- mayoritas status di arsip ini pendek (cuma butuh 1
+        // halaman), jadi hampir semuanya jadi 2 halaman & total membengkak
+        // nyaris 2x lipat ("double halaman"). Dihapus -- perhitungan baris
+        // eksplisit + karakter-per-baris yg lebih konservatif di atas
+        // sudah cukup sbg margin aman, tanpa perlu tambahan rata utk semua.
+        return ceil(jumlahBaris / barisPerHalaman).toInt().coerceAtLeast(1)
     }
 
     /** Dipakai MainActivity untuk lompat langsung ke arsip tertentu (mis. dari drawer). */
