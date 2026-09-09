@@ -112,19 +112,62 @@ class BookPageProvider(
     private var hKumulatif = -1
     private var nKumulatif = -1
     private var kumulatif: IntArray = IntArray(0) // kumulatif[i] = total slot halaman utk arsip[0 until i]
+    // Jumlah halaman PERSIS (bukan perkiraan) per arsip, begitu diketahui
+    // dari ambilRencanaTeks() -- lihat catatan panjang di bawah kenapa ini
+    // krusial utk memperbaiki bug "teks kehabisan slot padahal masih ada
+    // lanjutan".
+    private val jumlahPersisDiketahui = ConcurrentHashMap<String, Int>()
+    @Volatile private var kumulatifKotor = false
 
+    /**
+     * PENTING -- histori bug yg diperbaiki di sini: kumulatif[] dulu HANYA
+     * dibangun dari perkiraanJumlahHalaman() (rumus cepat berbasis panjang
+     * teks) utk SEMUA 17934+ arsip sekaligus, supaya tidak perlu mengukur
+     * StaticLayout persis ke semuanya (mahal kalau dilakukan sekaligus).
+     * Masalahnya: rumus cepat itu, sebaik apa pun disetel, tetap bisa
+     * meleset utk gaya tulisan tertentu (banyak baris pendek + baris kosong
+     * antar-paragraf) -- kalau MELESET KE ARAH KURANG utk satu arsip, slot
+     * halaman globalnya kehabisan SEBELUM teks aslinya habis, dan sisa
+     * teksnya jadi TIDAK TERJANGKAU sama sekali lewat swipe (lompat ke
+     * arsip lain, bukan lanjutan arsip yg sama) -- walau halaman terakhir
+     * yg masih terjangkau sempat menampilkan "Selanjutnya >>" yg menyesatkan.
+     *
+     * Perbaikannya: begitu ambilRencanaTeks() menghitung jumlah halaman
+     * PERSIS suatu arsip (StaticLayout asli, bukan perkiraan) -- yg terjadi
+     * begitu HALAMAN PERTAMA arsip itu dirender (baik krn user membacanya
+     * langsung, MAUPUN krn prefetchTetangga merender halaman² di
+     * sekitarnya lebih dulu) -- angka PERSIS itu disimpan di
+     * jumlahPersisDiketahui, dan kumulatif[] ditandai kotor supaya dihitung
+     * ULANG memakai angka persis itu (bukan lagi perkiraan) utk arsip
+     * tersebut. Karena satu panggilan ambilRencanaTeks() menghitung SELURUH
+     * potongan arsip sekaligus (bukan per sub-halaman), angka persis ini
+     * biasanya sudah diketahui SEBELUM user benar-benar sampai ke batas
+     * slot perkiraan yg lama -- jadi petanya sempat mengoreksi diri
+     * sebelum user "kehabisan jalan".
+     *
+     * Ini TIDAK sepenuhnya menghilangkan kemungkinan meleset pada kunjungan
+     * PERTAMA ke suatu arsip yg belum pernah disentuh/di-prefetch sama
+     * sekali (mis. lompat jauh dari drawer ke arsip yg estimasinya kurang),
+     * tapi utk pola pemakaian normal (baca berurutan / lompat lalu baca
+     * dari situ) ini memperbaiki kasus yg dilaporkan berulang kali.
+     */
     private fun pastikanKumulatif(w: Int, h: Int) {
         val data = ambilData()
-        if (w == wKumulatif && h == hKumulatif && data.size == nKumulatif) return
+        if (w == wKumulatif && h == hKumulatif && data.size == nKumulatif && !kumulatifKotor) return
         val lebarKontenPx = lebarKonten(w)
         val arr = IntArray(data.size + 1)
         for (i in data.indices) {
             val a = data[i]
-            val tinggiBadanPx = tinggiBadan(h, adaMedia = a.daftarFoto.isNotBlank())
-            arr[i + 1] = arr[i] + perkiraanJumlahHalaman(a.kontenPenuh, lebarKontenPx, tinggiBadanPx)
+            val kunciPersis = "${a.idPosting}:${w}x$h"
+            val jumlah = jumlahPersisDiketahui[kunciPersis] ?: run {
+                val tinggiBadanPx = tinggiBadan(h, adaMedia = a.daftarFoto.isNotBlank())
+                perkiraanJumlahHalaman(a.kontenPenuh, lebarKontenPx, tinggiBadanPx)
+            }
+            arr[i + 1] = arr[i] + jumlah
         }
         kumulatif = arr
         wKumulatif = w; hKumulatif = h; nKumulatif = data.size
+        kumulatifKotor = false
     }
 
     private fun lebarKonten(w: Int) = (w - ((48 + 16) * densitas)).toInt().coerceAtLeast(1)
@@ -547,6 +590,15 @@ class BookPageProvider(
         }
 
         val hasil = RencanaTeks(potongan)
+        // Catat jumlah PERSIS supaya pastikanKumulatif() bisa memakai angka
+        // ini alih-alih perkiraan utk arsip ini ke depannya -- lihat
+        // dokumentasi panjang di pastikanKumulatif() soal kenapa ini
+        // memperbaiki bug "teks kehabisan slot padahal masih ada lanjutan".
+        val kunciPersis = "${arsip.idPosting}:${w}x$h"
+        val sebelumnya = jumlahPersisDiketahui.put(kunciPersis, hasil.potongan.size)
+        if (sebelumnya != hasil.potongan.size) {
+            kumulatifKotor = true
+        }
         hasil
         }
     }
