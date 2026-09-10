@@ -1322,11 +1322,33 @@ private fun perbaruiDetailKecepatan(persen: Int, byteDiterima: Long, totalByte: 
         // peta halamannya asal-asalan (lihat catatan panjang di
         // BookPageProvider.indexHalamanUntukArsip) -- itu sebabnya lompat ke
         // arsip no.5 pernah malah mendarat di halaman ~387. Tunggu dulu
-        // (maksimal ~1 detik) sampai ukurannya sungguhan diketahui.
+        // sampai ukurannya sungguhan diketahui.
+        // PERBAIKAN LAGI: batas tunggu semula cuma ~1 detik (60x16ms) --
+        // ternyata TIDAK CUKUP tepat setelah inisialisasi data baru selesai
+        // (grid baru saja memuat ribuan item, main thread masih sibuk),
+        // sehingga bug lompat-ke-halaman-salah balik lagi persis di momen
+        // itu. Dinaikkan jadi ~6 detik -- ini cuma terjadi SEKALI per sesi
+        // app (masuk mode buku berikutnya langsung tahu ukurannya, tanpa
+        // perlu menunggu sama sekali), jadi aman dilonggarkan banyak.
+        //
+        // PERBAIKAN TAMBAHAN: supaya pengguna tidak mengira app diam/macet
+        // selama menunggu ini (walau biasanya cuma sepersekian detik, bisa
+        // terasa lama tepat setelah inisialisasi berat) -- tampilkan
+        // indikator loading kecil yg sudah ada, TAPI HANYA kalau tunggunya
+        // benar-benar diperlukan (ukuran belum diketahui sama sekali).
+        // Jalur cepat (semua kunjungan berikutnya dalam sesi yg sama) tidak
+        // menampilkan apa-apa krn ukurannya sudah langsung diketahui.
+        val perluMenunggu = !bookPageProvider.ukuranSudahDiketahui()
+        if (perluMenunggu) {
+            tampilkanIndikator("Menyiapkan halaman...", true)
+        }
         var percobaan = 0
-        while (!bookPageProvider.ukuranSudahDiketahui() && percobaan < 60) {
+        while (!bookPageProvider.ukuranSudahDiketahui() && percobaan < 375) {
             delay(16)
             percobaan++
+        }
+        if (perluMenunggu) {
+            tampilkanIndikator("", false)
         }
         // CurlView baca `daftarArsipAktif` langsung (lihat BookPageProvider).
         // Sejak paginasi ditambahkan, 1 arsip bisa menempati lebih dari 1
