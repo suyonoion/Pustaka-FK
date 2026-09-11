@@ -222,6 +222,19 @@ private var kecepatanEmaBytesPerSec: Double = 0.0
                     drawerLayout.closeDrawer(androidx.core.view.GravityCompat.START)
                 } 
                 else if (wadahModeBuku.visibility == View.VISIBLE) {
+                // PERBAIKAN: sebelumnya visibility CurlView (curlViewBuku,
+                // di dalam wadahModeBuku) di-toggle GONE/VISIBLE langsung
+                // TANPA memanggil onPause()/onResume() resminya. Karena
+                // GLSurfaceView (SurfaceView) mengikat siklus hidup
+                // Surface-nya ke visibility, tiap toggle ini diam-diam
+                // menghancurkan & membuat ULANG GLThread (naskah crash Anda
+                // menunjukkan "GLThread 1378" -- artinya sudah recreate
+                // ribuan kali) TANPA lewat jalur pause/resume resmi
+                // GLSurfaceView yang sudah teruji menangani teardown thread
+                // dengan aman. Memanggil onPause() di sini memastikan
+                // GLThread berhenti secara terkendali sebelum Surface-nya
+                // ikut dihancurkan oleh perubahan visibility.
+                curlViewBuku.onPause()
                 wadahModeBuku.visibility = View.GONE
                 footerBawahUtama.visibility = View.VISIBLE
                 toolbarPencarian.visibility = View.VISIBLE
@@ -254,6 +267,8 @@ private var kecepatanEmaBytesPerSec: Double = 0.0
                     imm.hideSoftInputFromWindow(edtPencarian.windowToken, 0)
                     
                     // --- INJEKSI KATUP TIMELINE: BUKA PAKSA SEBELUM MEMOMPA DATA ---
+                    // PERBAIKAN: lihat catatan lengkap di handleOnBackPressed() di atas.
+                    curlViewBuku.onPause()
                     wadahModeBuku.visibility = View.GONE
                     footerBawahUtama.visibility = View.VISIBLE
                     toolbarPencarian.visibility = View.VISIBLE
@@ -361,6 +376,8 @@ private fun eksekusiSaringanKombinasi(kategori: String, urutTerlama: Boolean) {
             edtPencarian.clearFocus()
 
             // Injeksi ulang katup antarmuka ke mode default
+            // PERBAIKAN: lihat catatan lengkap di handleOnBackPressed() di atas.
+            curlViewBuku.onPause()
             wadahModeBuku.visibility = View.GONE
             footerBawahUtama.visibility = View.VISIBLE
             toolbarPencarian.visibility = View.VISIBLE
@@ -705,6 +722,8 @@ when (fase) {
     tampilkanIndikator(muatanTeks, false)
     
     panelStatusPencarian.visibility = View.VISIBLE 
+    // PERBAIKAN: lihat catatan lengkap di handleOnBackPressed() di atas.
+    curlViewBuku.onPause()
     wadahModeBuku.visibility = View.GONE
     footerBawahUtama.visibility = View.VISIBLE
     toolbarPencarian.visibility = View.VISIBLE
@@ -1369,6 +1388,12 @@ private fun perbaruiDetailKecepatan(persen: Int, byteDiterima: Long, totalByte: 
         kontainerJalurKanan.visibility = View.GONE 
         recyclerGridMode.visibility = View.GONE
         wadahModeBuku.visibility = View.VISIBLE
+        // PERBAIKAN: pasangan dari curlViewBuku.onPause() yang sekarang
+        // dipanggil di setiap titik penutupan mode buku (lihat catatan
+        // lengkap di handleOnBackPressed()). onResume() mengembalikan
+        // GLThread lewat jalur resmi GLSurfaceView, bukan implisit lewat
+        // perubahan visibility semata.
+        curlViewBuku.onResume()
         footerBawahUtama.visibility = View.GONE
         panelIkonBaca.visibility = View.VISIBLE
         barAksiBaca.visibility = View.VISIBLE
@@ -1670,6 +1695,8 @@ private fun eksekusiLogikaPencarian(kataKunciMentah: String?) {
 
         withContext(Dispatchers.Main) {
             if (wadahModeBuku.visibility == View.VISIBLE) {
+                // PERBAIKAN: lihat catatan lengkap di handleOnBackPressed() di atas.
+                curlViewBuku.onPause()
                 wadahModeBuku.visibility = View.GONE
                 footerBawahUtama.visibility = View.VISIBLE
                 toolbarPencarian.visibility = View.VISIBLE
