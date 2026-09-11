@@ -255,6 +255,38 @@ class BookPageProvider(
         return kumulatif[posisiArsip] + 1 // +1 krn index 0 = sampul depan
     }
 
+    /**
+     * PERBAIKAN BUG "LOMPAT JAUH MENDARAT DI ARSIP SEBELUMNYA": kalau target
+     * lompatan belum pernah dibuka/di-prefetch sama sekali, kumulatif[]
+     * SEPENUHNYA mengandalkan perkiraanJumlahHalaman() (rumus kasar) utk
+     * SEMUA arsip sebelum target. Kalau salah SATU SAJA dari arsip² tepat
+     * sebelum target itu di-UNDER-estimate (isi teksnya butuh lebih banyak
+     * halaman dari perkiraan), titik mendarat yg dihitung dari kumulatif[]
+     * masih jatuh di DALAM sisa/overflow arsip sebelumnya itu -- persis
+     * gejala yg dilaporkan: buka arsip #1000, yang mendarat isinya #999.
+     *
+     * Fix: SEBELUM menghitung indexHalamanUntukArsip() utk sebuah lompatan
+     * jauh, hitung jumlah halaman PERSIS (bukan perkiraan, StaticLayout
+     * sungguhan) utk target + beberapa arsip TEPAT SEBELUMNYA saja (bukan
+     * seluruh 17900+ arsip -- cuma yg beberapa langkah sebelum target yg
+     * benar2 menentukan titik mendarat). Method ini harus dipanggil dari
+     * THREAD BACKGROUND (StaticLayout bukan kerja instan) SEBELUM memanggil
+     * indexHalamanUntukArsip() dari UI thread.
+     */
+    fun pastikanEksakDiSekitar(posisiArsip: Int, jendela: Int = 5) {
+        if (wKumulatif <= 0 || hKumulatif <= 0) return
+        val data = ambilData()
+        val mulai = (posisiArsip - jendela + 1).coerceAtLeast(0)
+        val akhir = posisiArsip.coerceAtMost(data.size - 1)
+        if (mulai > akhir) return
+        for (i in mulai..akhir) {
+            val arsip = data[i]
+            val kunci = "${arsip.idPosting}:${wKumulatif}x$hKumulatif"
+            if (jumlahPersisDiketahui.containsKey(kunci)) continue
+            ambilRencanaTeks(arsip, wKumulatif, hKumulatif)
+        }
+    }
+
     /** Index arsip asli (abaikan sub-halaman) untuk index halaman ini, atau null kalau sampul. */
     fun indexArsipDari(indexHalaman: Int): Int? {
         val posisiKonten = indexHalaman - 1

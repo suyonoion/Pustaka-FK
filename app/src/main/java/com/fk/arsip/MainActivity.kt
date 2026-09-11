@@ -234,7 +234,7 @@ private var kecepatanEmaBytesPerSec: Double = 0.0
                 // dengan aman. Memanggil onPause() di sini memastikan
                 // GLThread berhenti secara terkendali sebelum Surface-nya
                 // ikut dihancurkan oleh perubahan visibility.
-                curlViewBuku.onPause()
+                pauseCurlViewAman()
                 wadahModeBuku.visibility = View.GONE
                 footerBawahUtama.visibility = View.VISIBLE
                 toolbarPencarian.visibility = View.VISIBLE
@@ -267,8 +267,8 @@ private var kecepatanEmaBytesPerSec: Double = 0.0
                     imm.hideSoftInputFromWindow(edtPencarian.windowToken, 0)
                     
                     // --- INJEKSI KATUP TIMELINE: BUKA PAKSA SEBELUM MEMOMPA DATA ---
-                    // PERBAIKAN: lihat catatan lengkap di handleOnBackPressed() di atas.
-                    curlViewBuku.onPause()
+                    // PERBAIKAN: lihat catatan lengkap di pauseCurlViewAman() di atas.
+                    pauseCurlViewAman()
                     wadahModeBuku.visibility = View.GONE
                     footerBawahUtama.visibility = View.VISIBLE
                     toolbarPencarian.visibility = View.VISIBLE
@@ -376,8 +376,8 @@ private fun eksekusiSaringanKombinasi(kategori: String, urutTerlama: Boolean) {
             edtPencarian.clearFocus()
 
             // Injeksi ulang katup antarmuka ke mode default
-            // PERBAIKAN: lihat catatan lengkap di handleOnBackPressed() di atas.
-            curlViewBuku.onPause()
+            // PERBAIKAN: lihat catatan lengkap di pauseCurlViewAman() di atas.
+            pauseCurlViewAman()
             wadahModeBuku.visibility = View.GONE
             footerBawahUtama.visibility = View.VISIBLE
             toolbarPencarian.visibility = View.VISIBLE
@@ -474,6 +474,35 @@ when (fase) {
         sesuaikanKompartemenGrid() 
     }    
 
+    // PERBAIKAN CRASH LANJUTAN: curlViewBuku.onPause()/onResume() dulu dipanggil
+    // dari 8 tempat berbeda (Activity.onPause/onResume + 6 titik buka/tutup mode
+    // buku dari Patch sebelumnya) TANPA saling tahu satu sama lain. Akibatnya bisa
+    // terjadi onResume() dipanggil DUA KALI BERURUTAN tanpa onPause() di antaranya
+    // -- persis terjadi pas TAP PERTAMA membuka mode buku setelah cold start:
+    // Activity.onResume() sudah resume duluan (1), lalu bukaModeBuku() resume LAGI (2).
+    // GLSurfaceView.onResume() yang dipanggil dobel tanpa pause yang benar bisa
+    // membuat GLThread lama & baru tumpang-tindih menangani EGL context yang sama --
+    // kandidat kuat penyebab SIGSEGV BitmapWrapper::freePixels yang masih terjadi
+    // di reproduksi "app di-kill dari recent lalu dibuka lagi, tap status pertama".
+    // Fix: SEMUA titik panggil onPause()/onResume() dialihkan lewat 2 fungsi ini,
+    // yang menjamin hanya benar-benar memanggil GLSurfaceView kalau state-nya
+    // memang berubah (tidak pernah dobel-pause atau dobel-resume).
+    private var curlViewSedangResume = false
+
+    private fun pauseCurlViewAman() {
+        if (::curlViewBuku.isInitialized && curlViewSedangResume) {
+            curlViewBuku.onPause()
+            curlViewSedangResume = false
+        }
+    }
+
+    private fun resumeCurlViewAman() {
+        if (::curlViewBuku.isInitialized && !curlViewSedangResume) {
+            curlViewBuku.onResume()
+            curlViewSedangResume = true
+        }
+    }
+
     override fun onPause() {
         super.onPause()
         // WAJIB utk GLSurfaceView (curlViewBuku) -- tanpa ini, thread render
@@ -482,16 +511,12 @@ when (fase) {
         // Bitmap/View instance lama. Ini akar penyebab crash native
         // "Segmentation fault" di GLThread yang terjadi setelah app ditutup
         // lalu dibuka lagi beberapa saat kemudian.
-        if (::curlViewBuku.isInitialized) {
-            curlViewBuku.onPause()
-        }
+        pauseCurlViewAman()
     }
 
     override fun onResume() {
         super.onResume()
-        if (::curlViewBuku.isInitialized) {
-            curlViewBuku.onResume()
-        }
+        resumeCurlViewAman()
     }
 
     override fun onDestroy() {
@@ -722,8 +747,8 @@ when (fase) {
     tampilkanIndikator(muatanTeks, false)
     
     panelStatusPencarian.visibility = View.VISIBLE 
-    // PERBAIKAN: lihat catatan lengkap di handleOnBackPressed() di atas.
-    curlViewBuku.onPause()
+    // PERBAIKAN: lihat catatan lengkap di pauseCurlViewAman() di atas.
+    pauseCurlViewAman()
     wadahModeBuku.visibility = View.GONE
     footerBawahUtama.visibility = View.VISIBLE
     toolbarPencarian.visibility = View.VISIBLE
@@ -1388,12 +1413,12 @@ private fun perbaruiDetailKecepatan(persen: Int, byteDiterima: Long, totalByte: 
         kontainerJalurKanan.visibility = View.GONE 
         recyclerGridMode.visibility = View.GONE
         wadahModeBuku.visibility = View.VISIBLE
-        // PERBAIKAN: pasangan dari curlViewBuku.onPause() yang sekarang
-        // dipanggil di setiap titik penutupan mode buku (lihat catatan
-        // lengkap di handleOnBackPressed()). onResume() mengembalikan
-        // GLThread lewat jalur resmi GLSurfaceView, bukan implisit lewat
-        // perubahan visibility semata.
-        curlViewBuku.onResume()
+        // PERBAIKAN: pasangan dari pauseCurlViewAman() yang dipanggil di setiap
+        // titik penutupan mode buku (lihat catatan lengkap di atas dekat
+        // definisi pauseCurlViewAman()/resumeCurlViewAman()). Dijamin idempoten
+        // -- tidak akan resume dobel kalau Activity.onResume() sudah resume
+        // duluan (mis. tap pertama setelah cold start).
+        resumeCurlViewAman()
         footerBawahUtama.visibility = View.GONE
         panelIkonBaca.visibility = View.VISIBLE
         barAksiBaca.visibility = View.VISIBLE
@@ -1452,6 +1477,14 @@ private fun perbaruiDetailKecepatan(persen: Int, byteDiterima: Long, totalByte: 
         }
         if (perluMenunggu) {
             tampilkanIndikator("", false)
+        }
+        // PERBAIKAN BUG "LOMPAT #1000 MALAH MENDARAT DI #999": lihat catatan
+        // lengkap di BookPageProvider.pastikanEksakDiSekitar(). StaticLayout
+        // utk segelintir arsip ini sedikit kerja CPU -- dijalankan di
+        // Dispatchers.Default (background), bukan main thread, supaya tidak
+        // bikin macet UI walau cuma sepersekian detik.
+        withContext(Dispatchers.Default) {
+            bookPageProvider.pastikanEksakDiSekitar(posisi)
         }
         // CurlView baca `daftarArsipAktif` langsung (lihat BookPageProvider).
         // Sejak paginasi ditambahkan, 1 arsip bisa menempati lebih dari 1
@@ -1695,8 +1728,8 @@ private fun eksekusiLogikaPencarian(kataKunciMentah: String?) {
 
         withContext(Dispatchers.Main) {
             if (wadahModeBuku.visibility == View.VISIBLE) {
-                // PERBAIKAN: lihat catatan lengkap di handleOnBackPressed() di atas.
-                curlViewBuku.onPause()
+                // PERBAIKAN: lihat catatan lengkap di pauseCurlViewAman() di atas.
+                pauseCurlViewAman()
                 wadahModeBuku.visibility = View.GONE
                 footerBawahUtama.visibility = View.VISIBLE
                 toolbarPencarian.visibility = View.VISIBLE
