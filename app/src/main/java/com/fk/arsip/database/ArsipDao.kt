@@ -9,8 +9,13 @@ import androidx.room.Query
 @Dao
 interface ArsipDao {
     // Katup Injeksi Massal: Memompa ratusan blok data sekaligus dalam satu putaran mesin
+    // PERBAIKAN: dijadikan `suspend fun` -- versi non-suspend sebelumnya BUKAN
+    // titik cancel yang sah untuk coroutine Worker, sehingga saat
+    // ExistingWorkPolicy.REPLACE membatalkan worker lama, insert yang sedang
+    // berjalan (hingga 500 baris) tetap tuntas dulu sebelum pembatalan
+    // benar-benar tereksekusi -- salah satu penyebab "2x injeksi" di Fase 5.
     @Insert(onConflict = OnConflictStrategy.REPLACE)
-    fun injeksiMassal(arsip: List<ArsipEntity>)
+    suspend fun injeksiMassal(arsip: List<ArsipEntity>)
 
     // Tuas Penyedot Total: Menarik data secara berurutan dari yang paling baru
     @Query("SELECT * FROM tabel_arsip ORDER BY waktuRilis DESC")

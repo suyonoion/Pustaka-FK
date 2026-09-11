@@ -790,6 +790,15 @@ when (fase) {
                 return@launch
             }
 
+            // PERBAIKAN BUG #1: cek ruang kosong SEBELUM kedua cabang di bawah
+            // ini -- keduanya menulis ke disk (rename file / unduh baru +
+            // injeksi ke SQLite). Kalau tidak cukup, hentikan total di sini
+            // dengan dialog, jangan lanjut lalu gagal ambigu di tengah jalan.
+            if (!cekKapasitasTangkiMemadai(this@MainActivity)) {
+                withContext(Dispatchers.Main) { tampilkanDialogRuangKurang() }
+                return@launch
+            }
+
             if (berkasLokal.exists() && berkasLokal.length() >= bobotMinimum) {
                 withContext(Dispatchers.Main) {
                     isMesinSibuk = true
@@ -828,9 +837,22 @@ when (fase) {
             idUnduhanSudahDitangani = idUnduhan
         }
         if (!sukses) {
+            // PERBAIKAN: sebelumnya jalur gagal ini hanya menyembunyikan
+            // overlay & menampilkan Toast -- grid/timeline TIDAK PERNAH
+            // diberi data (pompaDataKeLayar/muatDataAwalKeSasis tidak
+            // dipanggil), sehingga teks skeleton default "Memuat status..."
+            // tertahan selamanya di layar meski proses sudah berhenti.
             aturVisibilitasOverlayInisialisasi(false)
             isMesinSibuk = false
             Toast.makeText(this, "Tekanan unduhan gagal. Cek jaringan.", Toast.LENGTH_LONG).show()
+            lifecycleScope.launch(Dispatchers.IO) {
+                val lenganRobot = ArsipDatabase.operasikanMesin(this@MainActivity).arsipDao()
+                val dataTersisa = lenganRobot.tarikSemuaArsip()
+                withContext(Dispatchers.Main) {
+                    pompaDataKeLayar(dataTersisa)
+                    muatDataAwalKeSasis(dataTersisa)
+                }
+            }
             return
         }
         val fileTempSelesai = File(getExternalFilesDir(null), "$namaFile.temp")
@@ -855,6 +877,14 @@ when (fase) {
             aturVisibilitasOverlayInisialisasi(false)
             isMesinSibuk = false
             Toast.makeText(this, "Gagal memproses pendaratan file. Ruang penuh atau terkunci.", Toast.LENGTH_LONG).show()
+            lifecycleScope.launch(Dispatchers.IO) {
+                val lenganRobot = ArsipDatabase.operasikanMesin(this@MainActivity).arsipDao()
+                val dataTersisa = lenganRobot.tarikSemuaArsip()
+                withContext(Dispatchers.Main) {
+                    pompaDataKeLayar(dataTersisa)
+                    muatDataAwalKeSasis(dataTersisa)
+                }
+            }
         }
     }
 
@@ -875,7 +905,19 @@ when (fase) {
                 }
             }
         }
-        registerReceiver(sensorSelesai, IntentFilter(DownloadManager.ACTION_DOWNLOAD_COMPLETE))
+        // PERBAIKAN: sejak Android 13 (API 33), registerReceiver() WAJIB
+        // menyertakan salah satu dari RECEIVER_EXPORTED / RECEIVER_NOT_EXPORTED,
+        // kalau tidak app CRASH (SecurityException) tepat saat unduhan dimulai
+        // di semua device Android 13+ (targetSdk project ini = 34). Broadcast
+        // ACTION_DOWNLOAD_COMPLETE ini murni dipakai secara internal untuk
+        // memantau unduhan milik app sendiri, jadi aman pakai NOT_EXPORTED
+        // (tidak perlu diakses app lain).
+        androidx.core.content.ContextCompat.registerReceiver(
+            this,
+            sensorSelesai,
+            IntentFilter(DownloadManager.ACTION_DOWNLOAD_COMPLETE),
+            androidx.core.content.ContextCompat.RECEIVER_NOT_EXPORTED
+        )
     }
 
 
@@ -1101,33 +1143,64 @@ private fun perbaruiDetailKecepatan(persen: Int, byteDiterima: Long, totalByte: 
 }
     // SIRKUIT BARU: Antena Pemantau Sinyal Kerja WorkManager Latar Belakang
     private fun jalankanMesinInjeksiOtonom(jalurFileJson: String) {
-    val kargo = workDataOf("URI_JSON_KARGO" to jalurFileJson)
-    val instruksiKerja = OneTimeWorkRequestBuilder<MesinInjeksiWorker>()
-        .setInputData(kargo)
-        .build()
-    
     val manajerKerja = WorkManager.getInstance(applicationContext)
-    
-    // PERBAIKAN: dulu pakai KEEP (kebalikan dari niat komentar di atas) --
-    // kalau ada sisa kerja LAMA yg belum tuntas dgn nama unik yg sama
-    // (mis. dari percobaan sebelumnya yg menunjuk ke file yg SUDAH DIHAPUS),
-    // KEEP membuang permintaan baru yg valid ini & malah menjalankan yg lama
-    // -- itu salah satu sumber bug "tiba-tiba mulai unduh lagi" (kerja lama
-    // gagal BOBOT_KURANG krn filenya sudah tidak ada, lalu memicu unduh
-    // ulang). REPLACE memastikan permintaan yg BENAR-BENAR baru & valid ini
-    // (menunjuk ke file yg baru saja dipastikan ada) yang selalu dipakai.
-    manajerKerja.enqueueUniqueWork(
-        NAMA_KERJA_INJEKSI, 
-        androidx.work.ExistingWorkPolicy.REPLACE, 
-        instruksiKerja
-    )
 
-    // PERBAIKAN: dulu observe by instruksiKerja.id -- kalau ternyata
+    // PERBAIKAN BUG "2X INJEKSI": sebelumnya fungsi ini SELALU langsung
+    // enqueueUniqueWork(..., REPLACE, ...) tanpa cek dulu apakah worker
+    // dengan nama unik yang sama sedang AKTIF (RUNNING/ENQUEUED). Kalau
+    // eksekusiPabrikData() dipanggil ulang di onCreate() tepat ketika
+    // WorkManager sendiri sedang auto-resume worker LAMA yang belum
+    // selesai (mis. setelah app di-force-close pertengahan Fase 5),
+    // REPLACE ini menabrak worker lama yang MASIH BENAR-BENAR BERJALAN --
+    // untuk sesaat ada 2 worker menulis ke tabel yang sama (lihat catatan
+    // isStopped() di MesinInjeksiWorker). Sekarang: cek dulu status kerja
+    // yang ada; kalau memang masih aktif, JANGAN enqueue baru -- cukup
+    // sambung observer ke worker yang sudah berjalan itu.
+    lifecycleScope.launch(Dispatchers.IO) {
+        val kerjaAktifSaatIni = manajerKerja.getWorkInfosForUniqueWork(NAMA_KERJA_INJEKSI).get()
+        val masihAktif = kerjaAktifSaatIni?.any {
+            it.state == WorkInfo.State.RUNNING || it.state == WorkInfo.State.ENQUEUED
+        } ?: false
+
+        if (!masihAktif) {
+            // PERBAIKAN: dulu pakai KEEP (kebalikan dari niat komentar di atas) --
+            // kalau ada sisa kerja LAMA yg belum tuntas dgn nama unik yg sama
+            // (mis. dari percobaan sebelumnya yg menunjuk ke file yg SUDAH DIHAPUS),
+            // KEEP membuang permintaan baru yg valid ini & malah menjalankan yg lama
+            // -- itu salah satu sumber bug "tiba-tiba mulai unduh lagi" (kerja lama
+            // gagal BOBOT_KURANG krn filenya sudah tidak ada, lalu memicu unduh
+            // ulang). REPLACE memastikan permintaan yg BENAR-BENAR baru & valid ini
+            // (menunjuk ke file yg baru saja dipastikan ada) yang selalu dipakai --
+            // TAPI kini hanya dieksekusi kalau memang tidak ada kerja yg sedang
+            // AKTIF, jadi tidak lagi menabrak worker yg masih berjalan.
+            val kargo = workDataOf("URI_JSON_KARGO" to jalurFileJson)
+            val instruksiKerja = OneTimeWorkRequestBuilder<MesinInjeksiWorker>()
+                .setInputData(kargo)
+                .build()
+            manajerKerja.enqueueUniqueWork(
+                NAMA_KERJA_INJEKSI,
+                androidx.work.ExistingWorkPolicy.REPLACE,
+                instruksiKerja
+            )
+        }
+
+        withContext(Dispatchers.Main) { pasangObserverInjeksi(manajerKerja) }
+    }
+}
+
+    // PERBAIKAN: dipisah jadi fungsi sendiri supaya bisa dipanggil baik
+    // setelah enqueue worker BARU, maupun saat ternyata worker LAMA masih
+    // aktif (lihat jalankanMesinInjeksiOtonom() di atas) -- di kedua kasus
+    // MainActivity tetap perlu memantau progres kerja yang benar-benar
+    // berjalan.
+    //
+    // Dulu observe by instruksiKerja.id -- kalau ternyata
     // enqueueUniqueWork tidak memakai request BARU ini (skenario KEEP di
     // atas), observer ini memantau ID yang YATIM (tidak pernah benar-benar
     // berjalan), jadi progres/hasil kerja yg SESUNGGUHNYA berjalan tidak
     // pernah diketahui MainActivity. Observe lewat NAMA UNIK-nya supaya
     // selalu memantau kerja yang benar-benar aktif untuk nama itu.
+    private fun pasangObserverInjeksi(manajerKerja: WorkManager) {
     manajerKerja.getWorkInfosForUniqueWorkLiveData(NAMA_KERJA_INJEKSI).observe(this) { daftarKerja ->
             val informasiKerja = daftarKerja
                 ?.firstOrNull { it.state == WorkInfo.State.RUNNING || it.state == WorkInfo.State.ENQUEUED }
@@ -1177,6 +1250,11 @@ private fun perbaruiDetailKecepatan(persen: Int, byteDiterima: Long, totalByte: 
                             // eksekusiPabrikData() adalah fungsi keputusan utama --
                             // dia cek jumlah baris DB dulu sebelum memutuskan unduh.
                             eksekusiPabrikData()
+                        } else if (kodeGagal == "DIBATALKAN") {
+                            // Worker LAMA berhenti krn digantikan worker BARU yang valid
+                            // (lihat isStopped() di MesinInjeksiWorker) -- ini normal,
+                            // bukan error ke user. Observer akan tetap menerima update
+                            // dari worker BARU yang menggantikannya.
                         } else {
                             Toast.makeText(this@MainActivity, "Gagal memproses data arsip.", Toast.LENGTH_LONG).show()
                         }
@@ -1709,11 +1787,40 @@ private fun eksekusiLogikaPencarian(kataKunciMentah: String?) {
 }
 
 private fun cekKapasitasTangkiMemadai(konteks: Context): Boolean {
-    val batasAmanMB = 150L // Batas toleransi ruang kosong 150 MB
+    // PERBAIKAN: dinaikkan dari 150MB -> 500MB. File JSON ~50-100MB, tapi
+    // proses butuh ruang untuk: file .temp (unduhan) + file final (rename,
+    // bukan overwrite in-place) + database SQLite hasil injeksi ~17900 baris
+    // + WAL journal SQLite selama transaksi berlangsung. 150MB terbukti
+    // tidak cukup & menyebabkan ENOSPC di tengah proses.
+    val batasAmanMB = 500L
     val tangki = konteks.getExternalFilesDir(android.os.Environment.DIRECTORY_DOWNLOADS)
     val sisaRuangByte = tangki?.freeSpace ?: 0L
     val sisaRuangMB = sisaRuangByte / (1024 * 1024)
     return sisaRuangMB > batasAmanMB
+}
+
+// PERBAIKAN BUG UTAMA #1: sebelumnya cekKapasitasTangkiMemadai() dibuat
+// TAPI TIDAK PERNAH DIPANGGIL di manapun (dead code). Saat storage < 500MB,
+// unduhan gagal (ENOSPC) -> Toast "Tekanan unduhan gagal" muncul, TAPI
+// grid/timeline tidak pernah diisi data apa pun (jalur gagal tidak memanggil
+// pompaDataKeLayar/muatDataAwalKeSasis) sehingga teks skeleton default
+// "Memuat status..." tertahan selamanya di layar. Fungsi ini memutus rantai
+// tersebut: cek ruang SEBELUM mulai inisialisasi apa pun, kalau tidak cukup
+// tampilkan dialog & HENTIKAN proses (bukan lanjut lalu gagal di tengah jalan).
+private fun tampilkanDialogRuangKurang() {
+    aturVisibilitasOverlayInisialisasi(false)
+    isMesinSibuk = false
+    hentikanRotasiNasehat()
+    AlertDialog.Builder(this)
+        .setTitle("Ruang Penyimpanan Tidak Cukup")
+        .setMessage("Aplikasi membutuhkan minimal 500 MB ruang kosong untuk mengunduh & menyusun arsip data. Mohon kosongkan ruang penyimpanan perangkat Anda, lalu coba lagi.")
+        .setCancelable(false)
+        .setPositiveButton("Coba Lagi") { dialog, _ ->
+            dialog.dismiss()
+            eksekusiPabrikData()
+        }
+        .setNegativeButton("Keluar Aplikasi") { _, _ -> finish() }
+        .show()
 }
 
 private fun perbaruiVisualStepper(faseAktif: FaseInjeksi) {

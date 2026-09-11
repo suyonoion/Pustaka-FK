@@ -482,23 +482,40 @@ public class BudayakanBaca extends GLSurfaceView implements View.OnTouchListener
 	 * page is on left side it's flipped over).
 	 * 
 	 * Current index is rounded to closest value divisible with 2.
+	 *
+	 * PERBAIKAN CRASH NATIVE (SIGSEGV di BitmapWrapper::freePixels):
+	 * Sebelumnya fungsi ini dipanggil dari UI thread (lihat
+	 * MainActivity.bukaModeBuku()) dan langsung memanggil updatePages(),
+	 * yang lewat CurlPage.reset()/setTexture() me-recycle() Bitmap SECARA
+	 * LANGSUNG di UI thread -- tanpa lock apa pun. Di saat yang sama,
+	 * CurlMesh.onDrawFrame() (berjalan di GL THREAD, hanya synchronized
+	 * pada CurlMesh, BUKAN pada CurlPage) membaca & me-recycle() Bitmap
+	 * yang SAMA. Dua thread menyentuh objek Bitmap yang sama tanpa
+	 * sinkronisasi -> double-free/use-after-free -> SIGSEGV native.
+	 * Fix: seperti refreshPageTexture(), semua sentuhan ke CurlPage/Bitmap
+	 * WAJIB terjadi di GL thread lewat queueEvent().
 	 */
-	public void setCurrentIndex(int index) {
-		if (mPageProvider == null || index < 0) {
-			mCurrentIndex = 0;
-		} else {
-			if (mAllowLastPageCurl) {
-				mCurrentIndex = Math.min(index, mPageProvider.getPageCount());
-			} else {
-				mCurrentIndex = Math.min(index,
-						mPageProvider.getPageCount() - 1);
+	public void setCurrentIndex(final int index) {
+		queueEvent(new Runnable() {
+			@Override
+			public void run() {
+				if (mPageProvider == null || index < 0) {
+					mCurrentIndex = 0;
+				} else {
+					if (mAllowLastPageCurl) {
+						mCurrentIndex = Math.min(index, mPageProvider.getPageCount());
+					} else {
+						mCurrentIndex = Math.min(index,
+								mPageProvider.getPageCount() - 1);
+					}
+				}
+				updatePages();
+				requestRender();
+				if (mPenggantiHalamanListener != null) {
+					mPenggantiHalamanListener.onHalamanBerganti(mCurrentIndex);
+				}
 			}
-		}
-		updatePages();
-		requestRender();
-		if (mPenggantiHalamanListener != null) {
-			mPenggantiHalamanListener.onHalamanBerganti(mCurrentIndex);
-		}
+		});
 	}
 
 	/**
@@ -522,12 +539,25 @@ public class BudayakanBaca extends GLSurfaceView implements View.OnTouchListener
 
 	/**
 	 * Update/set page provider.
+	 *
+	 * PERBAIKAN CRASH NATIVE: sama seperti setCurrentIndex() di atas --
+	 * dulu dipanggil sinkron dari onCreate() (UI thread) tepat saat GL
+	 * surface baru saja dibuat, sehingga bisa race dengan
+	 * onSurfaceCreated()/onPageSizeChanged() (GL thread) yang menyentuh
+	 * CurlPage yang sama. Sekarang dimarshal ke GL thread lewat
+	 * queueEvent() supaya tidak ada lagi akses Bitmap dari 2 thread
+	 * sekaligus.
 	 */
-	public void setPageProvider(PageProvider pageProvider) {
-		mPageProvider = pageProvider;
-		mCurrentIndex = 0;
-		updatePages();
-		requestRender();
+	public void setPageProvider(final PageProvider pageProvider) {
+		queueEvent(new Runnable() {
+			@Override
+			public void run() {
+				mPageProvider = pageProvider;
+				mCurrentIndex = 0;
+				updatePages();
+				requestRender();
+			}
+		});
 	}
 
 	/**

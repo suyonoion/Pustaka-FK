@@ -53,6 +53,20 @@ try {
     var indeks = 0
 
     while (reader.hasNext()) {
+    // PERBAIKAN "2X INJEKSI": cek isStopped() SETIAP iterasi, bukan cuma
+    // bergantung pada suspend-cancellation di setProgress()/injeksiMassal().
+    // Sebelumnya, saat ExistingWorkPolicy.REPLACE membatalkan worker ini
+    // (mis. karena eksekusiPabrikData() dipanggil ulang di onCreate sementara
+    // WorkManager sendiri sedang auto-resume worker yang sama setelah app
+    // di-force-close), instance LAMA ini bisa sempat memproses ratusan baris
+    // lagi (sampai batch 500 penuh) SEBELUM pembatalan benar-benar berhenti
+    // -- bertabrakan dengan worker BARU yang di waktu bersamaan sudah
+    // memanggil kurasTangkiKotor() & mulai menginjeksi dari awal ke tabel
+    // yang sama. Berhenti secepat mungkin di sini menutup jendela race itu.
+    if (isStopped) {
+        reader.close()
+        return@withContext Result.failure(workDataOf("KODE_GAGAL" to "DIBATALKAN"))
+    }
     // Naikkan frekuensi pelaporan panel agar tidak melompat patah-patah
     if (indeks % 200 == 0 || indeks == estimasiTotalItem) {
         // Ganti coerceAtMost dengan coerceIn untuk limit batas bawah dan atas absolut
