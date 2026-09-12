@@ -151,8 +151,7 @@ class BookPageProvider(
      * tapi utk pola pemakaian normal (baca berurutan / lompat lalu baca
      * dari situ) ini memperbaiki kasus yg dilaporkan berulang kali.
      */
-    private fun pastikanKumulatif(w: Int, h: Int) {
-        val data = ambilData()
+    private fun pastikanKumulatif(w: Int, h: Int, data: List<ArsipEntity>) {
         if (w == wKumulatif && h == hKumulatif && data.size == nKumulatif && !kumulatifKotor) return
         val lebarKontenPx = lebarKonten(w)
         val arr = IntArray(data.size + 1)
@@ -249,9 +248,25 @@ class BookPageProvider(
      * menunggu ukuranSudahDiketahui()==true dulu sebelum memanggil ini.
      */
     fun indexHalamanUntukArsip(posisiArsip: Int): Int {
-        pastikanKumulatif(wKumulatif.coerceAtLeast(1), hKumulatif.coerceAtLeast(1))
         val data = ambilData()
-        if (posisiArsip !in data.indices) return 0
+        return indexHalamanUntukArsip(posisiArsip, data)
+    }
+
+    private fun indexHalamanUntukArsip(posisiArsip: Int, data: List<ArsipEntity>): Int {
+        pastikanKumulatif(wKumulatif.coerceAtLeast(1), hKumulatif.coerceAtLeast(1), data)
+        // PERBAIKAN CRASH "app baru dibuka": dulu fungsi ini panggil ambilData()
+        // SENDIRI di sini, TERPISAH dari snapshot yg baru saja dipakai
+        // pastikanKumulatif() di atas (yg sebelum perbaikan ini juga
+        // memanggil ambilData() sendiri, terpisah lagi). Kalau daftar arsip
+        // berubah PERSIS di antara dua panggilan ambilData() yg terpisah itu
+        // (mis. masih dimuat/disortir di background saat app BARU dibuka --
+        // cocok dgn laporan "crash cuma pas app baru dipakai, hilang setelah
+        // jalan semalaman"), kumulatif[] yg terbentuk dari snapshot LAMA bisa
+        // lebih PENDEK dari yg diasumsikan snapshot BARU -> kumulatif[posisiArsip]
+        // di bawah bisa ArrayIndexOutOfBoundsException. Sekarang SATU `data`
+        // yg sama dipakai dari awal sampai akhir fungsi ini, dan index-nya
+        // dicek terhadap kumulatif.size juga (bukan cuma data.indices).
+        if (posisiArsip !in data.indices || posisiArsip >= kumulatif.size) return 0
         return kumulatif[posisiArsip] + 1 // +1 krn index 0 = sampul depan
     }
 
@@ -283,14 +298,14 @@ class BookPageProvider(
      * #200 maupun #17000 dgn biaya yg sama-sama kecil.
      */
     fun indexHalamanUntukArsipAman(posisiArsip: Int, maxIterasi: Int = 5): Int {
-        val data = ambilData()
+        val data = ambilData() // SATU snapshot dipakai konsisten sepanjang seluruh operasi ini
         if (posisiArsip !in data.indices) return 0
-        var hasil = indexHalamanUntukArsip(posisiArsip)
+        var hasil = indexHalamanUntukArsip(posisiArsip, data)
         var iterasi = 0
         while (iterasi < maxIterasi) {
             val posisiMendarat = indexArsipDari(hasil) ?: posisiArsip
             if (posisiMendarat == posisiArsip) break
-            val mulai = minOf(posisiMendarat, posisiArsip)
+            val mulai = minOf(posisiMendarat, posisiArsip).coerceAtLeast(0)
             val akhir = maxOf(posisiMendarat, posisiArsip).coerceAtMost(data.size - 1)
             for (i in mulai..akhir) {
                 val arsip = data.getOrNull(i) ?: continue
@@ -299,7 +314,7 @@ class BookPageProvider(
                     ambilRencanaTeks(arsip, wKumulatif, hKumulatif)
                 }
             }
-            hasil = indexHalamanUntukArsip(posisiArsip) // kumulatif dibangun ulang krn kumulatifKotor=true
+            hasil = indexHalamanUntukArsip(posisiArsip, data) // kumulatif dibangun ulang krn kumulatifKotor=true
             iterasi++
         }
         return hasil
@@ -346,7 +361,8 @@ class BookPageProvider(
     override fun getPageCount(): Int {
         val w = if (wKumulatif > 0) wKumulatif else 1
         val h = if (hKumulatif > 0) hKumulatif else 1
-        pastikanKumulatif(w, h)
+        val data = ambilData()
+        pastikanKumulatif(w, h, data)
         return (if (kumulatif.isEmpty()) 0 else kumulatif.last()) + 2 // + sampul depan + belakang
     }
 
@@ -359,7 +375,7 @@ class BookPageProvider(
     /** Hasil resolusi index halaman -> cacheKey + tugas render latar belakangnya (tanpa efek samping). */
     private data class ResolusiHalaman(val cacheKey: String, val tugas: () -> Bitmap)
 
-    private fun resolusiHalaman(index: Int, w: Int, h: Int): ResolusiHalaman? {
+    private fun resolusiHalaman(index: Int, w: Int, h: Int, data: List<ArsipEntity>): ResolusiHalaman? {
         val totalHalamanKonten = if (kumulatif.isEmpty()) 0 else kumulatif.last()
         return when {
             index == 0 -> ResolusiHalaman("sampul_depan:${w}x$h") {
@@ -372,11 +388,22 @@ class BookPageProvider(
                 val posisiKonten = index - 1
                 if (posisiKonten < 0 || posisiKonten >= totalHalamanKonten) return null
                 val arsipIndex = cariArsipIndex(posisiKonten)
-                val arsip = ambilData().getOrNull(arsipIndex) ?: return null
+                // PERBAIKAN: dulu ambilData() dipanggil LAGI di sini & di baris
+                // renderHalamanArsip() bawah -- terpisah dari snapshot yg dipakai
+                // utk membangun `kumulatif`/`arsipIndex` di atas. Kalau daftar
+                // arsip berubah (mis. masih dimuat/disortir di background pas
+                // app baru dibuka) TEPAT di antara dua panggilan ambilData() itu,
+                // arsipIndex yg valid utk snapshot LAMA bisa OUT OF BOUNDS utk
+                // snapshot BARU -> ArrayIndexOutOfBoundsException / crash --
+                // persis pola "crash cuma pas app baru dibuka, hilang setelah
+                // jalan lama (daftar arsip sudah stabil)". Sekarang SATU
+                // snapshot `data` dipakai konsisten dari awal sampai akhir.
+                val arsip = data.getOrNull(arsipIndex) ?: return null
+                if (arsipIndex + 1 >= kumulatif.size) return null
                 val subIndex = posisiKonten - kumulatif[arsipIndex]
                 val perkiraanTotalSub = kumulatif[arsipIndex + 1] - kumulatif[arsipIndex]
                 ResolusiHalaman("${arsip.idPosting}:${w}x$h:sub$subIndex") {
-                    renderHalamanArsip(w, h, arsip, arsipIndex + 1, ambilData().size, subIndex, perkiraanTotalSub)
+                    renderHalamanArsip(w, h, arsip, arsipIndex + 1, data.size, subIndex, perkiraanTotalSub)
                 }
             }
         }
@@ -402,10 +429,11 @@ class BookPageProvider(
     override fun updatePage(page: CurlPage, width: Int, height: Int, index: Int) {
         val w = width.coerceAtLeast(1)
         val h = height.coerceAtLeast(1)
-        pastikanKumulatif(w, h)
+        val data = ambilData()
+        pastikanKumulatif(w, h, data)
         val totalHalamanKonten = if (kumulatif.isEmpty()) 0 else kumulatif.last()
 
-        val resolusi = resolusiHalaman(index, w, h)
+        val resolusi = resolusiHalaman(index, w, h, data)
         if (resolusi == null) {
             page.setTexture(renderKosong(w, h), CurlPage.SIDE_FRONT)
             page.setColor(warnaSampulBack, CurlPage.SIDE_BACK)
@@ -416,7 +444,7 @@ class BookPageProvider(
         if (fromCache != null) {
             page.setTexture(salinUntukTampil(fromCache, w, h), CurlPage.SIDE_FRONT)
             page.setColor(warnaSampulBack, CurlPage.SIDE_BACK)
-            prefetchTetangga(index, totalHalamanKonten, w, h)
+            prefetchTetangga(index, totalHalamanKonten, w, h, data)
             return
         }
 
@@ -441,10 +469,10 @@ class BookPageProvider(
      * cache lewat resolusiHalaman()+mintaRenderLatarBelakang() -- TIDAK
      * PERNAH membuat atau menyentuh objek CurlPage sama sekali.
      */
-    private fun prefetchTetangga(index: Int, totalHalamanKonten: Int, w: Int, h: Int) {
+    private fun prefetchTetangga(index: Int, totalHalamanKonten: Int, w: Int, h: Int, data: List<ArsipEntity>) {
         for (tetangga in intArrayOf(index - 1, index + 1, index + 2)) {
             if (tetangga < 0 || tetangga > totalHalamanKonten + 1) continue
-            val resolusi = resolusiHalaman(tetangga, w, h) ?: continue
+            val resolusi = resolusiHalaman(tetangga, w, h, data) ?: continue
             // Cek cache dulu SECARA SINKRON (murah) sebelum menjadwalkan apa
             // pun -- updatePage() ini dipanggil tiap frame utk halaman yg
             // sedang tampil, jadi kalau tidak dicek dulu, tetangga yg SUDAH
