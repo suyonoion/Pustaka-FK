@@ -256,22 +256,61 @@ class BookPageProvider(
     }
 
     /**
-     * PERBAIKAN BUG "LOMPAT JAUH MENDARAT DI ARSIP SEBELUMNYA": kalau target
-     * lompatan belum pernah dibuka/di-prefetch sama sekali, kumulatif[]
-     * SEPENUHNYA mengandalkan perkiraanJumlahHalaman() (rumus kasar) utk
-     * SEMUA arsip sebelum target. Kalau salah SATU SAJA dari arsip² tepat
-     * sebelum target itu di-UNDER-estimate (isi teksnya butuh lebih banyak
-     * halaman dari perkiraan), titik mendarat yg dihitung dari kumulatif[]
-     * masih jatuh di DALAM sisa/overflow arsip sebelumnya itu -- persis
-     * gejala yg dilaporkan: buka arsip #1000, yang mendarat isinya #999.
+     * PERBAIKAN BUG "LOMPAT JAUH MENDARAT DI ARSIP LAIN": kalau target
+     * lompatan (atau arsip-arsip sebelumnya) belum pernah dibuka/di-prefetch
+     * sama sekali, kumulatif[] SEPENUHNYA mengandalkan perkiraanJumlahHalaman()
+     * (rumus kasar) -- bisa meleset ke arah KURANG (mendarat di arsip
+     * SEBELUM target, mis. #1000 -> tampil #999) MAUPUN ke arah LEBIH
+     * (mendarat di arsip SESUDAH target, mis. #200 -> tampil #215),
+     * tergantung gaya tulisan arsip-arsip yang dilewati.
      *
-     * Fix: SEBELUM menghitung indexHalamanUntukArsip() utk sebuah lompatan
-     * jauh, hitung jumlah halaman PERSIS (bukan perkiraan, StaticLayout
-     * sungguhan) utk target + beberapa arsip TEPAT SEBELUMNYA saja (bukan
-     * seluruh 17900+ arsip -- cuma yg beberapa langkah sebelum target yg
-     * benar2 menentukan titik mendarat). Method ini harus dipanggil dari
-     * THREAD BACKGROUND (StaticLayout bukan kerja instan) SEBELUM memanggil
-     * indexHalamanUntukArsip() dari UI thread.
+     * PERBAIKAN SEBELUMNYA (pastikanEksakDiSekitar dengan jendela tetap)
+     * cuma menghitung PERSIS beberapa arsip TEPAT SEBELUM target -- itu
+     * cukup utk drift kecil (1 arsip), TAPI TIDAK CUKUP kalau semua arsip
+     * di sesi ini masih 100% perkiraan (drift bisa berapa saja, mis. +15
+     * arsip pada kasus #200->#215) -- sementara memperbesar jendela supaya
+     * "aman utk semua jarak" bikin STATICLAYOUT dijalankan utk ratusan/ribuan
+     * arsip SEBELUM setiap lompatan, terlalu lambat di device rendah.
+     *
+     * Fix yang lebih benar: LOMPAT DULU pakai perkiraan (instan), lalu
+     * VERIFIKASI apakah hasilnya benar-benar memetakan balik ke posisi yang
+     * diminta (indexArsipDari). Kalau TIDAK, hitung PERSIS hanya utk arsip-
+     * arsip di RENTANG SELISIHnya saja (antara posisi diminta & posisi yg
+     * ternyata mendarat -- biasanya cuma beberapa/puluhan arsip, TIDAK
+     * PERNAH seluruh prefix, brp pun jauhnya target), lalu hitung ulang &
+     * verifikasi lagi. Biaya SELALU sebanding dgn besar drift-nya, bukan
+     * dgn jarak lompatannya -- makanya bisa dipakai utk lompat ke arsip
+     * #200 maupun #17000 dgn biaya yg sama-sama kecil.
+     */
+    fun indexHalamanUntukArsipAman(posisiArsip: Int, maxIterasi: Int = 5): Int {
+        val data = ambilData()
+        if (posisiArsip !in data.indices) return 0
+        var hasil = indexHalamanUntukArsip(posisiArsip)
+        var iterasi = 0
+        while (iterasi < maxIterasi) {
+            val posisiMendarat = indexArsipDari(hasil) ?: posisiArsip
+            if (posisiMendarat == posisiArsip) break
+            val mulai = minOf(posisiMendarat, posisiArsip)
+            val akhir = maxOf(posisiMendarat, posisiArsip).coerceAtMost(data.size - 1)
+            for (i in mulai..akhir) {
+                val arsip = data.getOrNull(i) ?: continue
+                val kunci = "${arsip.idPosting}:${wKumulatif}x$hKumulatif"
+                if (!jumlahPersisDiketahui.containsKey(kunci)) {
+                    ambilRencanaTeks(arsip, wKumulatif, hKumulatif)
+                }
+            }
+            hasil = indexHalamanUntukArsip(posisiArsip) // kumulatif dibangun ulang krn kumulatifKotor=true
+            iterasi++
+        }
+        return hasil
+    }
+
+    /**
+     * Versi pemanasan opsional: hitung PERSIS beberapa arsip tepat sebelum
+     * target LEBIH DULU (dipanggil paralel/sebelum indexHalamanUntukArsipAman)
+     * supaya kasus paling umum (drift kecil, 1-2 arsip) sudah benar di
+     * percobaan PERTAMA tanpa perlu iterasi koreksi sama sekali. Tetap aman
+     * dipanggil brp pun jauhnya target krn jendelanya tetap kecil & tetap.
      */
     fun pastikanEksakDiSekitar(posisiArsip: Int, jendela: Int = 5) {
         if (wKumulatif <= 0 || hKumulatif <= 0) return

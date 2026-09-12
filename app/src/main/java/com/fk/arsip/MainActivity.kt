@@ -1478,11 +1478,13 @@ private fun perbaruiDetailKecepatan(persen: Int, byteDiterima: Long, totalByte: 
         if (perluMenunggu) {
             tampilkanIndikator("", false)
         }
-        // PERBAIKAN BUG "LOMPAT #1000 MALAH MENDARAT DI #999": lihat catatan
-        // lengkap di BookPageProvider.pastikanEksakDiSekitar(). StaticLayout
-        // utk segelintir arsip ini sedikit kerja CPU -- dijalankan di
-        // Dispatchers.Default (background), bukan main thread, supaya tidak
-        // bikin macet UI walau cuma sepersekian detik.
+        // PERBAIKAN: pastikanEksakDiSekitar() (jendela kecil & tetap) dulu
+        // sbg pemanasan murah, lalu indexHalamanUntukArsipAman() memverifikasi
+        // & mengoreksi diri sendiri kalau MASIH meleset (lihat catatan
+        // lengkap di BookPageProvider.indexHalamanUntukArsipAman()) --
+        // menutup kasus meleset besar (mis. #200 mendarat di #215) yg tidak
+        // tertutup jendela tetap saja, TANPA perlu menghitung PERSIS seluruh
+        // arsip sebelum target (tetap cepat brp pun jauhnya lompatan).
         withContext(Dispatchers.Default) {
             bookPageProvider.pastikanEksakDiSekitar(posisi)
         }
@@ -1490,7 +1492,10 @@ private fun perbaruiDetailKecepatan(persen: Int, byteDiterima: Long, totalByte: 
         // Sejak paginasi ditambahkan, 1 arsip bisa menempati lebih dari 1
         // halaman, jadi index halaman TIDAK LAGI selalu `posisi + 1` --
         // dihitung lewat BookPageProvider yg tahu peta halaman sebenarnya.
-        curlViewBuku.setCurrentIndex(bookPageProvider.indexHalamanUntukArsip(posisi))
+        val indexTarget = withContext(Dispatchers.Default) {
+            bookPageProvider.indexHalamanUntukArsipAman(posisi)
+        }
+        curlViewBuku.setCurrentIndex(indexTarget)
         
         curlViewBuku.post {
             isMesinSibuk = false 
@@ -1736,6 +1741,14 @@ private fun eksekusiLogikaPencarian(kataKunciMentah: String?) {
                 panelStatusPencarian.visibility = View.VISIBLE
                 panelIkonBaca.visibility = View.GONE
                 recyclerGridMode.visibility = View.VISIBLE
+                // PERBAIKAN BUG: timeline kanan (kontainerJalurKanan) lupa
+                // dikembalikan ke VISIBLE di jalur ini -- satu-satunya jalur
+                // keluar mode-buku yang tidak melakukannya (bandingkan jalur
+                // keluar lain: back-pressed, ganti kategori/filter, dll,
+                // yang semuanya sudah menyertakan baris ini). Akibatnya:
+                // pencarian yang dilakukan SAAT sedang di mode buku membuka
+                // grid hasil pencarian tapi timeline kanan tetap tersembunyi.
+                kontainerJalurKanan.visibility = View.VISIBLE
             }
 
             pompaDataKeLayar(hasilSaringanPresisi)
