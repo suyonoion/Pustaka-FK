@@ -108,6 +108,23 @@ class BookPageProvider(
     // ------------------------------------------------------------------
     // PETA HALAMAN (estimasi cepat, lihat dokumentasi kelas di atas)
     // ------------------------------------------------------------------
+    // PERBAIKAN CRASH NATIVE (SIGSEGV Bitmap, terjadi spesifik saat lompat
+    // langsung dari grid HALAMAN UTAMA yg berisi SELURUH ~18000 arsip, tapi
+    // TIDAK terjadi kalau lewat kategori drawer yg datanya jauh lebih kecil):
+    // `kumulatif`/`wKumulatif`/`hKumulatif`/`nKumulatif` dibaca-tulis dari GL
+    // thread (lewat updatePage()/getPageCount(), tiap frame render) SEKALIGUS
+    // dari Dispatchers.Default (lewat indexHalamanUntukArsipAman() yg
+    // ditambahkan utk memperbaiki bug lompat-meleset) TANPA SINKRONISASI SAMA
+    // SEKALI. Utk daftar KECIL (kategori), rebuild kumulatif[] nyaris instan
+    // shg jendela race-nya nyaris nol -- tapi utk SELURUH ~18000 arsip
+    // (grid utama, sesi baru = pasti butuh beberapa iterasi koreksi krn semua
+    // masih estimasi murni), rebuild ini makan waktu jauh lebih lama, jendela
+    // race melebar drastis, dan race pada array/field bersama ini merusak
+    // memori heap -- muncul sbg crash Bitmap di tempat yg kelihatannya tidak
+    // berhubungan (memory corruption tidak selalu crash persis di titik
+    // race-nya terjadi). Semua akses ke field-field ini sekarang WAJIB lewat
+    // `kumulatifLock`.
+    private val kumulatifLock = Any()
     private var wKumulatif = -1
     private var hKumulatif = -1
     private var nKumulatif = -1
@@ -152,21 +169,23 @@ class BookPageProvider(
      * dari situ) ini memperbaiki kasus yg dilaporkan berulang kali.
      */
     private fun pastikanKumulatif(w: Int, h: Int, data: List<ArsipEntity>) {
-        if (w == wKumulatif && h == hKumulatif && data.size == nKumulatif && !kumulatifKotor) return
-        val lebarKontenPx = lebarKonten(w)
-        val arr = IntArray(data.size + 1)
-        for (i in data.indices) {
-            val a = data[i]
-            val kunciPersis = "${a.idPosting}:${w}x$h"
-            val jumlah = jumlahPersisDiketahui[kunciPersis] ?: run {
-                val tinggiBadanPx = tinggiBadan(h, adaMedia = a.daftarFoto.isNotBlank())
-                perkiraanJumlahHalaman(a.kontenPenuh, lebarKontenPx, tinggiBadanPx)
+        synchronized(kumulatifLock) {
+            if (w == wKumulatif && h == hKumulatif && data.size == nKumulatif && !kumulatifKotor) return
+            val lebarKontenPx = lebarKonten(w)
+            val arr = IntArray(data.size + 1)
+            for (i in data.indices) {
+                val a = data[i]
+                val kunciPersis = "${a.idPosting}:${w}x$h"
+                val jumlah = jumlahPersisDiketahui[kunciPersis] ?: run {
+                    val tinggiBadanPx = tinggiBadan(h, adaMedia = a.daftarFoto.isNotBlank())
+                    perkiraanJumlahHalaman(a.kontenPenuh, lebarKontenPx, tinggiBadanPx)
+                }
+                arr[i + 1] = arr[i] + jumlah
             }
-            arr[i + 1] = arr[i] + jumlah
+            kumulatif = arr
+            wKumulatif = w; hKumulatif = h; nKumulatif = data.size
+            kumulatifKotor = false
         }
-        kumulatif = arr
-        wKumulatif = w; hKumulatif = h; nKumulatif = data.size
-        kumulatifKotor = false
     }
 
     private fun lebarKonten(w: Int) = (w - ((48 + 16) * densitas)).toInt().coerceAtLeast(1)
@@ -266,8 +285,10 @@ class BookPageProvider(
         // di bawah bisa ArrayIndexOutOfBoundsException. Sekarang SATU `data`
         // yg sama dipakai dari awal sampai akhir fungsi ini, dan index-nya
         // dicek terhadap kumulatif.size juga (bukan cuma data.indices).
-        if (posisiArsip !in data.indices || posisiArsip >= kumulatif.size) return 0
-        return kumulatif[posisiArsip] + 1 // +1 krn index 0 = sampul depan
+        if (posisiArsip !in data.indices) return 0
+        return synchronized(kumulatifLock) {
+            if (posisiArsip >= kumulatif.size) 0 else kumulatif[posisiArsip] + 1 // +1 krn index 0 = sampul depan
+        }
     }
 
     /**
@@ -307,11 +328,18 @@ class BookPageProvider(
             if (posisiMendarat == posisiArsip) break
             val mulai = minOf(posisiMendarat, posisiArsip).coerceAtLeast(0)
             val akhir = maxOf(posisiMendarat, posisiArsip).coerceAtMost(data.size - 1)
+            // PERBAIKAN RACE: w/h dibaca SEKALI, KONSISTEN, di bawah lock yang
+            // sama dgn yg melindungi kumulatif[] -- sebelumnya dibaca langsung
+            // tanpa lock di sini, bisa "robek" (baca w dari satu rebuild, h
+            // dari rebuild lain) kalau GL thread kebetulan sedang menulis
+            // field yg sama scr bersamaan (lihat catatan panjang di atas
+            // dekat deklarasi kumulatifLock).
+            val (wSnap, hSnap) = synchronized(kumulatifLock) { wKumulatif to hKumulatif }
             for (i in mulai..akhir) {
                 val arsip = data.getOrNull(i) ?: continue
-                val kunci = "${arsip.idPosting}:${wKumulatif}x$hKumulatif"
+                val kunci = "${arsip.idPosting}:${wSnap}x$hSnap"
                 if (!jumlahPersisDiketahui.containsKey(kunci)) {
-                    ambilRencanaTeks(arsip, wKumulatif, hKumulatif)
+                    ambilRencanaTeks(arsip, wSnap, hSnap)
                 }
             }
             hasil = indexHalamanUntukArsip(posisiArsip, data) // kumulatif dibangun ulang krn kumulatifKotor=true
@@ -328,26 +356,30 @@ class BookPageProvider(
      * dipanggil brp pun jauhnya target krn jendelanya tetap kecil & tetap.
      */
     fun pastikanEksakDiSekitar(posisiArsip: Int, jendela: Int = 5) {
-        if (wKumulatif <= 0 || hKumulatif <= 0) return
+        val (wSnap, hSnap) = synchronized(kumulatifLock) { wKumulatif to hKumulatif }
+        if (wSnap <= 0 || hSnap <= 0) return
         val data = ambilData()
         val mulai = (posisiArsip - jendela + 1).coerceAtLeast(0)
         val akhir = posisiArsip.coerceAtMost(data.size - 1)
         if (mulai > akhir) return
         for (i in mulai..akhir) {
             val arsip = data[i]
-            val kunci = "${arsip.idPosting}:${wKumulatif}x$hKumulatif"
+            val kunci = "${arsip.idPosting}:${wSnap}x$hSnap"
             if (jumlahPersisDiketahui.containsKey(kunci)) continue
-            ambilRencanaTeks(arsip, wKumulatif, hKumulatif)
+            ambilRencanaTeks(arsip, wSnap, hSnap)
         }
     }
 
     /** Index arsip asli (abaikan sub-halaman) untuk index halaman ini, atau null kalau sampul. */
     fun indexArsipDari(indexHalaman: Int): Int? {
         val posisiKonten = indexHalaman - 1
-        if (posisiKonten < 0 || kumulatif.isEmpty() || posisiKonten >= kumulatif.last()) return null
-        return cariArsipIndex(posisiKonten)
+        return synchronized(kumulatifLock) {
+            if (posisiKonten < 0 || kumulatif.isEmpty() || posisiKonten >= kumulatif.last()) null
+            else cariArsipIndex(posisiKonten)
+        }
     }
 
+    /** WAJIB dipanggil dari dalam synchronized(kumulatifLock) -- tidak mengunci sendiri. */
     private fun cariArsipIndex(posisiKonten: Int): Int {
         var lo = 0
         var hi = kumulatif.size - 2
@@ -363,7 +395,9 @@ class BookPageProvider(
         val h = if (hKumulatif > 0) hKumulatif else 1
         val data = ambilData()
         pastikanKumulatif(w, h, data)
-        return (if (kumulatif.isEmpty()) 0 else kumulatif.last()) + 2 // + sampul depan + belakang
+        return synchronized(kumulatifLock) {
+            (if (kumulatif.isEmpty()) 0 else kumulatif.last()) + 2 // + sampul depan + belakang
+        }
     }
 
     fun shutdown() {
@@ -375,9 +409,9 @@ class BookPageProvider(
     /** Hasil resolusi index halaman -> cacheKey + tugas render latar belakangnya (tanpa efek samping). */
     private data class ResolusiHalaman(val cacheKey: String, val tugas: () -> Bitmap)
 
-    private fun resolusiHalaman(index: Int, w: Int, h: Int, data: List<ArsipEntity>): ResolusiHalaman? {
+    private fun resolusiHalaman(index: Int, w: Int, h: Int, data: List<ArsipEntity>): ResolusiHalaman? = synchronized(kumulatifLock) {
         val totalHalamanKonten = if (kumulatif.isEmpty()) 0 else kumulatif.last()
-        return when {
+        return@synchronized when {
             index == 0 -> ResolusiHalaman("sampul_depan:${w}x$h") {
                 renderSampul(w, h, judul = "Pustaka FK", subjudul = "Arsip Fatwa & Kehidupan")
             }
@@ -386,7 +420,7 @@ class BookPageProvider(
             }
             else -> {
                 val posisiKonten = index - 1
-                if (posisiKonten < 0 || posisiKonten >= totalHalamanKonten) return null
+                if (posisiKonten < 0 || posisiKonten >= totalHalamanKonten) return@synchronized null
                 val arsipIndex = cariArsipIndex(posisiKonten)
                 // PERBAIKAN: dulu ambilData() dipanggil LAGI di sini & di baris
                 // renderHalamanArsip() bawah -- terpisah dari snapshot yg dipakai
@@ -397,9 +431,12 @@ class BookPageProvider(
                 // snapshot BARU -> ArrayIndexOutOfBoundsException / crash --
                 // persis pola "crash cuma pas app baru dibuka, hilang setelah
                 // jalan lama (daftar arsip sudah stabil)". Sekarang SATU
-                // snapshot `data` dipakai konsisten dari awal sampai akhir.
-                val arsip = data.getOrNull(arsipIndex) ?: return null
-                if (arsipIndex + 1 >= kumulatif.size) return null
+                // snapshot `data` dipakai konsisten dari awal sampai akhir, DAN
+                // seluruh pembacaan kumulatif[] di fungsi ini terjadi dalam SATU
+                // blok synchronized yang sama (bukan dicicil per-baris) supaya
+                // tidak "robek" oleh rebuild dari thread lain di tengah jalan.
+                val arsip = data.getOrNull(arsipIndex) ?: return@synchronized null
+                if (arsipIndex + 1 >= kumulatif.size) return@synchronized null
                 val subIndex = posisiKonten - kumulatif[arsipIndex]
                 val perkiraanTotalSub = kumulatif[arsipIndex + 1] - kumulatif[arsipIndex]
                 ResolusiHalaman("${arsip.idPosting}:${w}x$h:sub$subIndex") {
@@ -431,7 +468,7 @@ class BookPageProvider(
         val h = height.coerceAtLeast(1)
         val data = ambilData()
         pastikanKumulatif(w, h, data)
-        val totalHalamanKonten = if (kumulatif.isEmpty()) 0 else kumulatif.last()
+        val totalHalamanKonten = synchronized(kumulatifLock) { if (kumulatif.isEmpty()) 0 else kumulatif.last() }
 
         val resolusi = resolusiHalaman(index, w, h, data)
         if (resolusi == null) {

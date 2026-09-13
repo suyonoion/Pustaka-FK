@@ -197,6 +197,15 @@ private var kecepatanEmaBytesPerSec: Double = 0.0
         }
         curlViewBuku.setPageProvider(bookPageProvider)
         curlViewBuku.setBackgroundColor(android.graphics.Color.parseColor("#00251A"))
+        // PERBAIKAN TUMPANG TINDIH VISUAL: SurfaceView (curlViewBuku) dikomposit
+        // di layer terpisah oleh sistem, TIDAK mengikuti urutan gambar View biasa
+        // -- bringToFront() antar recyclerGridMode/wadahModeBuku tidak menjamin
+        // urutan tampil SurfaceView-nya sendiri. setZOrderOnTop(false) eksplisit
+        // (bukan cuma mengandalkan default) memastikan ia selalu dikomposit DI
+        // BELAKANG seluruh window -- FrameLayout pembungkusnya di
+        // activity_main.xml juga sudah diberi background solid sbg lapis
+        // pengaman kedua utk celah yang tidak tertutup recyclerGridMode.
+        curlViewBuku.setZOrderOnTop(false)
         // PERBAIKAN EKSPERIMENTAL "crash cuma pas buka mode baca PERTAMA KALI
         // dari grid utama setelah app di-force-close & dibuka lagi, tapi aman
         // kalau lewat kategori drawer dulu": pola ini (selalu gagal di
