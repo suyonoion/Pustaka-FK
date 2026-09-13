@@ -197,6 +197,24 @@ private var kecepatanEmaBytesPerSec: Double = 0.0
         }
         curlViewBuku.setPageProvider(bookPageProvider)
         curlViewBuku.setBackgroundColor(android.graphics.Color.parseColor("#00251A"))
+        // PERBAIKAN EKSPERIMENTAL "crash cuma pas buka mode baca PERTAMA KALI
+        // dari grid utama setelah app di-force-close & dibuka lagi, tapi aman
+        // kalau lewat kategori drawer dulu": pola ini (selalu gagal di
+        // percobaan PERTAMA -- apa pun kontennya -- lalu sukses seterusnya
+        // setelah SATU kali sukses lewat jalur manapun) adalah ciri khas
+        // operasi GL/EGL PERTAMA di context yang baru dibuat lebih rawan
+        // drpd operasi berikutnya, bukan soal konten spesifik. Karena Surface
+        // curlViewBuku baru benar-benar dibuat pas wadahModeBuku PERTAMA KALI
+        // divisible-kan (lihat bukaModeBukuKeAtas()), operasi GL "pertama" itu
+        // selalu kebetulan bertepatan dgn konten SPESIFIK yg user tap duluan.
+        // Fix: buat wadahModeBuku visible (Surface tercipta, cover page
+        // ter-render) SEDINI MUNGKIN & SENYAP -- recyclerGridMode langsung
+        // di-bringToFront() lagi supaya user TETAP melihat grid seperti
+        // biasa, tidak ada apa pun yg berubah scr visual. Dengan begini,
+        // operasi GL pertama yg sesungguhnya terjadi memakai KONTEN NETRAL
+        // (halaman sampul, bukan arsip user), jauh sebelum tap pertama user.
+        wadahModeBuku.visibility = View.VISIBLE
+        recyclerGridMode.bringToFront()
         curlViewBuku.setSizeChangedObserver(object : com.fk.arsip.curl.BudayakanBaca.SizeChangedObserver {
             override fun onSizeChanged(w: Int, h: Int) {
                 if (w > h) {
@@ -221,7 +239,7 @@ private var kecepatanEmaBytesPerSec: Double = 0.0
                 if (drawerLayout.isDrawerOpen(androidx.core.view.GravityCompat.START)) {
                     drawerLayout.closeDrawer(androidx.core.view.GravityCompat.START)
                 } 
-                else if (wadahModeBuku.visibility == View.VISIBLE) {
+                else if (sedangModeBuku) {
                 // PERBAIKAN: sebelumnya visibility CurlView (curlViewBuku,
                 // di dalam wadahModeBuku) di-toggle GONE/VISIBLE langsung
                 // TANPA memanggil onPause()/onResume() resminya. Karena
@@ -234,8 +252,7 @@ private var kecepatanEmaBytesPerSec: Double = 0.0
                 // dengan aman. Memanggil onPause() di sini memastikan
                 // GLThread berhenti secara terkendali sebelum Surface-nya
                 // ikut dihancurkan oleh perubahan visibility.
-                pauseCurlViewAman()
-                wadahModeBuku.visibility = View.GONE
+                tutupModeBukuKeGrid()
                 footerBawahUtama.visibility = View.VISIBLE
                 toolbarPencarian.visibility = View.VISIBLE
                 panelStatusPencarian.visibility = View.VISIBLE
@@ -267,9 +284,8 @@ private var kecepatanEmaBytesPerSec: Double = 0.0
                     imm.hideSoftInputFromWindow(edtPencarian.windowToken, 0)
                     
                     // --- INJEKSI KATUP TIMELINE: BUKA PAKSA SEBELUM MEMOMPA DATA ---
-                    // PERBAIKAN: lihat catatan lengkap di pauseCurlViewAman() di atas.
-                    pauseCurlViewAman()
-                    wadahModeBuku.visibility = View.GONE
+                    // PERBAIKAN: lihat catatan lengkap di tutupModeBukuKeGrid() di atas.
+                    tutupModeBukuKeGrid()
                     footerBawahUtama.visibility = View.VISIBLE
                     toolbarPencarian.visibility = View.VISIBLE
                     panelStatusPencarian.visibility = View.VISIBLE
@@ -376,9 +392,8 @@ private fun eksekusiSaringanKombinasi(kategori: String, urutTerlama: Boolean) {
             edtPencarian.clearFocus()
 
             // Injeksi ulang katup antarmuka ke mode default
-            // PERBAIKAN: lihat catatan lengkap di pauseCurlViewAman() di atas.
-            pauseCurlViewAman()
-            wadahModeBuku.visibility = View.GONE
+            // PERBAIKAN: lihat catatan lengkap di tutupModeBukuKeGrid() di atas.
+            tutupModeBukuKeGrid()
             footerBawahUtama.visibility = View.VISIBLE
             toolbarPencarian.visibility = View.VISIBLE
             panelStatusPencarian.visibility = View.VISIBLE
@@ -487,6 +502,45 @@ when (fase) {
     // Fix: SEMUA titik panggil onPause()/onResume() dialihkan lewat 2 fungsi ini,
     // yang menjamin hanya benar-benar memanggil GLSurfaceView kalau state-nya
     // memang berubah (tidak pernah dobel-pause atau dobel-resume).
+    // PERBAIKAN CRASH NATIVE BERULANG (SIGSEGV BitmapWrapper::freePixels,
+    // GLThread): 2 percobaan sebelumnya (queueEvent utk setCurrentIndex/
+    // setPageProvider, lalu guard idempoten onPause()/onResume()) TIDAK
+    // menghilangkan crash yang sama persis di transisi "tutup dari recent
+    // -> buka lagi -> buka mode baca". Akar masalah yang lebih mendasar:
+    // toggle wadahModeBuku.visibility GONE/VISIBLE membuat GLSurfaceView
+    // (curlViewBuku di dalamnya) MENGHANCURKAN & MEMBUAT ULANG Surface+GLThread-
+    // nya SETIAP KALI mode buku dibuka/ditutup (SurfaceView mengikat siklus
+    // hidup Surface ke visibility) -- operasi ini sendiri yang rawan di
+    // implementasi GLSurfaceView/EGL Android 5.1 OPPO (device lama, drivernya
+    // dikenal kurang matang utk teardown/recreate EGL context berulang-ulang).
+    // Sinkronisasi pause/resume yang benar sekalipun tidak menghilangkan
+    // risiko BAWAAN dari tindakan menghancurkan-lalu-membuat-ulang itu sendiri.
+    //
+    // Fix yang lebih mendasar: JANGAN PERNAH toggle wadahModeBuku.visibility
+    // GONE/VISIBLE lagi setelah pertama kali dibuka -- Surface-nya dibuat
+    // SEKALI SAJA per sesi app (persis seperti device modern menjalankannya)
+    // dan TIDAK PERNAH dihancurkan lagi kecuali Activity benar2 pause/destroy.
+    // Ganti/tutup mode buku sekarang murni soal Z-ORDER (bringToFront()) --
+    // recyclerGridMode & wadahModeBuku sama-sama child dari FrameLayout yang
+    // sama (lihat activity_main.xml), jadi cukup panggil bringToFront() pada
+    // yang mau ditampilkan; yang lain otomatis tertutup tanpa Surface-nya
+    // pernah disentuh sama sekali. `sedangModeBuku` menggantikan pengecekan
+    // `wadahModeBuku.visibility == View.VISIBLE` yang lama sbg penanda "apakah
+    // secara LOGIS sedang di mode buku", karena visibility-nya sendiri kini
+    // tidak lagi berubah-ubah.
+    private var sedangModeBuku = false
+
+    private fun tutupModeBukuKeGrid() {
+        sedangModeBuku = false
+        recyclerGridMode.bringToFront()
+    }
+
+    private fun bukaModeBukuKeAtas() {
+        sedangModeBuku = true
+        wadahModeBuku.visibility = View.VISIBLE
+        wadahModeBuku.bringToFront()
+    }
+
     private var curlViewSedangResume = false
 
     private fun pauseCurlViewAman() {
@@ -747,9 +801,8 @@ when (fase) {
     tampilkanIndikator(muatanTeks, false)
     
     panelStatusPencarian.visibility = View.VISIBLE 
-    // PERBAIKAN: lihat catatan lengkap di pauseCurlViewAman() di atas.
-    pauseCurlViewAman()
-    wadahModeBuku.visibility = View.GONE
+    // PERBAIKAN: lihat catatan lengkap di tutupModeBukuKeGrid() di atas.
+    tutupModeBukuKeGrid()
     footerBawahUtama.visibility = View.VISIBLE
     toolbarPencarian.visibility = View.VISIBLE
     panelStatusPencarian.visibility = View.VISIBLE
@@ -1412,13 +1465,12 @@ private fun perbaruiDetailKecepatan(persen: Int, byteDiterima: Long, totalByte: 
         recyclerTimeline.visibility = View.GONE
         kontainerJalurKanan.visibility = View.GONE 
         recyclerGridMode.visibility = View.GONE
-        wadahModeBuku.visibility = View.VISIBLE
-        // PERBAIKAN: pasangan dari pauseCurlViewAman() yang dipanggil di setiap
-        // titik penutupan mode buku (lihat catatan lengkap di atas dekat
-        // definisi pauseCurlViewAman()/resumeCurlViewAman()). Dijamin idempoten
-        // -- tidak akan resume dobel kalau Activity.onResume() sudah resume
-        // duluan (mis. tap pertama setelah cold start).
-        resumeCurlViewAman()
+        // PERBAIKAN: lihat catatan lengkap di tutupModeBukuKeGrid()/
+        // bukaModeBukuKeAtas() di atas -- tidak lagi menghancurkan &
+        // membuat ulang Surface curlViewBuku tiap buka mode buku, cukup
+        // pindah z-order (wadahModeBuku sekarang PERMANEN visible setelah
+        // pertama kali dibuka, tidak pernah GONE lagi).
+        bukaModeBukuKeAtas()
         footerBawahUtama.visibility = View.GONE
         panelIkonBaca.visibility = View.VISIBLE
         barAksiBaca.visibility = View.VISIBLE
@@ -1732,10 +1784,9 @@ private fun eksekusiLogikaPencarian(kataKunciMentah: String?) {
         }
 
         withContext(Dispatchers.Main) {
-            if (wadahModeBuku.visibility == View.VISIBLE) {
-                // PERBAIKAN: lihat catatan lengkap di pauseCurlViewAman() di atas.
-                pauseCurlViewAman()
-                wadahModeBuku.visibility = View.GONE
+            if (sedangModeBuku) {
+                // PERBAIKAN: lihat catatan lengkap di tutupModeBukuKeGrid() di atas.
+                tutupModeBukuKeGrid()
                 footerBawahUtama.visibility = View.VISIBLE
                 toolbarPencarian.visibility = View.VISIBLE
                 panelStatusPencarian.visibility = View.VISIBLE
