@@ -9,7 +9,6 @@ import android.os.Handler
 import android.os.Looper
 import android.text.Spannable
 import android.text.SpannableString
-import android.text.SpannableStringBuilder
 import android.text.StaticLayout
 import android.text.TextPaint
 import android.text.style.ForegroundColorSpan
@@ -28,13 +27,30 @@ import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.CountDownLatch
 import java.util.concurrent.Executors
 import java.util.concurrent.TimeUnit
-import kotlin.math.ceil
-import kotlin.math.max
 
 /**
  * Merender tiap "halaman" menjadi Bitmap tekstur untuk BudayakanBaca (CurlView
- * OpenGL). Sejak update ini, 1 ARSIP BISA MENEMPATI LEBIH DARI 1 HALAMAN kalau
- * kontennya panjang -- lihat bagian "PAGINASI" di bawah untuk kenapa & caranya.
+ * OpenGL).
+ *
+ * ------------------------------------------------------------------
+ * PENYEDERHANAAN BESAR (menggantikan sistem paginasi lama):
+ * Sebelumnya 1 arsip BISA menempati lebih dari 1 halaman kalau kontennya
+ * panjang -- itu perlu larik akumulatif GLOBAL (`kumulatif[]`) yang memetakan
+ * "halaman ke berapa" ke "arsip yang mana", dihitung dari PERKIRAAN jumlah
+ * halaman per arsip (StaticLayout baru dipakai persis begitu arsip itu benar-
+ * benar dibuka). Estimasi yang meleset di SATU arsip menggeser pemetaan
+ * SEMUA arsip sesudahnya -- itu akar dari seluruh rentetan bug lompat-
+ * meleset, ArrayIndexOutOfBounds, dan race kondisi lintas-thread yang
+ * berulang kali muncul.
+ *
+ * Sekarang: **1 ARSIP = 1 HALAMAN, SELALU.** Nomor arsip (posisi di
+ * `ambilData()`) = nomor halaman, langsung, tanpa hitungan apa pun.
+ * Tidak ada lagi larik akumulatif, tidak ada lagi kunci/lock, tidak ada lagi
+ * estimasi yang bisa meleset. Konten yang panjang untuk sementara ditampilkan
+ * dengan ukuran font yang menyesuaikan (mengecil supaya tetap muat 1
+ * halaman); dipotong dengan catatan ke Sumber Asli kalau tetap tidak muat
+ * walau sudah di ukuran font minimum. Scroll-di-dalam-halaman direncanakan
+ * sebagai tahap berikutnya, terpisah dari perubahan ini.
  *
  * ------------------------------------------------------------------
  * THREADING (tidak berubah dari perbaikan sebelumnya):
@@ -49,41 +65,6 @@ import kotlin.math.max
  * diserahkan ke CurlPage, karena CurlPage.setTexture()/reset() me-recycle()
  * bitmap lama begitu diganti -- kalau cache & CurlPage berbagi objek yang
  * sama, cache ikut rusak (lihat histori perbaikan crash "recycled bitmap").
- *
- * ------------------------------------------------------------------
- * PAGINASI -- kenapa & bagaimana:
- * Sebelumnya 1 arsip = 1 halaman selalu, dan konten ditaruh di dalam
- * ScrollView di dalam item_buku.xml. Itu masalahnya: begitu View itu
- * "difoto" jadi Bitmap statis, ScrollView cuma menggambar apa yang
- * kelihatan di layar -- teks yang ada di bawah area yang kelihatan itu
- * SIMPLY TIDAK IKUT TERGAMBAR (bukan disembunyikan, betul-betul hilang dari
- * bitmap), makin parah di landscape karena tinggi layar lebih pendek.
- *
- * Perbaikannya: teks panjang dipecah jadi beberapa halaman (ukuran font
- * tetap, seperti buku asli), lewat 2 mekanisme terpisah:
- *
- *  1) PERKIRAAN CEPAT (untuk `getPageCount()` & lompat-ke-halaman dari
- *     drawer, lihat MainActivity.indexHalamanUntukArsip): dihitung pakai
- *     rumus kasar (panjang teks / perkiraan lebar-tinggi baris), BUKAN
- *     StaticLayout, supaya tetap instan walau datanya puluhan ribu arsip.
- *     Sengaja dibuat SEDIKIT BERLEBIH (bukan pas-pasan) supaya arahnya
- *     aman -- kalaupun meleset, meleset ke arah "kelebihan slot halaman"
- *     (paling buruk ada halaman nyaris kosong), BUKAN "kekurangan slot"
- *     (yang berarti balik lagi ke bug teks terpotong).
- *
- *  2) PEMOTONGAN PERSIS (untuk render sesungguhnya, per halaman yang
- *     benar-benar dibuka): pakai StaticLayout mengukur baris demi baris
- *     dari TEKS ASLI pada lebar sebenarnya, dipotong per halaman begitu
- *     tingginya akan melebihi area yang tersedia. Ini yang menjamin TIDAK
- *     ADA baris yang terpotong di tengah pada halaman yang benar-benar
- *     dibuka pengguna.
- *
- * KETERBATASAN YANG DISENGAJA (supaya scope tetap terkendali): paginasi
- * hanya berlaku untuk konten Tanya-Jawab biasa (txtKontenUtama). Postingan
- * bertipe "Membagikan Status" (ada blok status yang dibagikan ulang)
- * TETAP 1 halaman seperti sebelumnya -- kasus ini jauh lebih jarang & lebih
- * rumit strukturnya (ada 2 blok teks + kotak bersarang), jadi belum
- * dipaginasi. Kalau ini ternyata sering kepotong juga, kabari saya lagi.
  */
 class BookPageProvider(
     private val context: Context,
@@ -105,300 +86,21 @@ class BookPageProvider(
     }
     private val sedangDiproses = ConcurrentHashMap.newKeySet<String>()
 
-    // ------------------------------------------------------------------
-    // PETA HALAMAN (estimasi cepat, lihat dokumentasi kelas di atas)
-    // ------------------------------------------------------------------
-    // PERBAIKAN CRASH NATIVE (SIGSEGV Bitmap, terjadi spesifik saat lompat
-    // langsung dari grid HALAMAN UTAMA yg berisi SELURUH ~18000 arsip, tapi
-    // TIDAK terjadi kalau lewat kategori drawer yg datanya jauh lebih kecil):
-    // `kumulatif`/`wKumulatif`/`hKumulatif`/`nKumulatif` dibaca-tulis dari GL
-    // thread (lewat updatePage()/getPageCount(), tiap frame render) SEKALIGUS
-    // dari Dispatchers.Default (lewat indexHalamanUntukArsipAman() yg
-    // ditambahkan utk memperbaiki bug lompat-meleset) TANPA SINKRONISASI SAMA
-    // SEKALI. Utk daftar KECIL (kategori), rebuild kumulatif[] nyaris instan
-    // shg jendela race-nya nyaris nol -- tapi utk SELURUH ~18000 arsip
-    // (grid utama, sesi baru = pasti butuh beberapa iterasi koreksi krn semua
-    // masih estimasi murni), rebuild ini makan waktu jauh lebih lama, jendela
-    // race melebar drastis, dan race pada array/field bersama ini merusak
-    // memori heap -- muncul sbg crash Bitmap di tempat yg kelihatannya tidak
-    // berhubungan (memory corruption tidak selalu crash persis di titik
-    // race-nya terjadi). Semua akses ke field-field ini sekarang WAJIB lewat
-    // `kumulatifLock`.
-    private val kumulatifLock = Any()
-    private var wKumulatif = -1
-    private var hKumulatif = -1
-    private var nKumulatif = -1
-    private var kumulatif: IntArray = IntArray(0) // kumulatif[i] = total slot halaman utk arsip[0 until i]
-    // Jumlah halaman PERSIS (bukan perkiraan) per arsip, begitu diketahui
-    // dari ambilRencanaTeks() -- lihat catatan panjang di bawah kenapa ini
-    // krusial utk memperbaiki bug "teks kehabisan slot padahal masih ada
-    // lanjutan".
-    private val jumlahPersisDiketahui = ConcurrentHashMap<String, Int>()
-    @Volatile private var kumulatifKotor = false
-
     /**
-     * PENTING -- histori bug yg diperbaiki di sini: kumulatif[] dulu HANYA
-     * dibangun dari perkiraanJumlahHalaman() (rumus cepat berbasis panjang
-     * teks) utk SEMUA 17934+ arsip sekaligus, supaya tidak perlu mengukur
-     * StaticLayout persis ke semuanya (mahal kalau dilakukan sekaligus).
-     * Masalahnya: rumus cepat itu, sebaik apa pun disetel, tetap bisa
-     * meleset utk gaya tulisan tertentu (banyak baris pendek + baris kosong
-     * antar-paragraf) -- kalau MELESET KE ARAH KURANG utk satu arsip, slot
-     * halaman globalnya kehabisan SEBELUM teks aslinya habis, dan sisa
-     * teksnya jadi TIDAK TERJANGKAU sama sekali lewat swipe (lompat ke
-     * arsip lain, bukan lanjutan arsip yg sama) -- walau halaman terakhir
-     * yg masih terjangkau sempat menampilkan "Selanjutnya >>" yg menyesatkan.
-     *
-     * Perbaikannya: begitu ambilRencanaTeks() menghitung jumlah halaman
-     * PERSIS suatu arsip (StaticLayout asli, bukan perkiraan) -- yg terjadi
-     * begitu HALAMAN PERTAMA arsip itu dirender (baik krn user membacanya
-     * langsung, MAUPUN krn prefetchTetangga merender halaman² di
-     * sekitarnya lebih dulu) -- angka PERSIS itu disimpan di
-     * jumlahPersisDiketahui, dan kumulatif[] ditandai kotor supaya dihitung
-     * ULANG memakai angka persis itu (bukan lagi perkiraan) utk arsip
-     * tersebut. Karena satu panggilan ambilRencanaTeks() menghitung SELURUH
-     * potongan arsip sekaligus (bukan per sub-halaman), angka persis ini
-     * biasanya sudah diketahui SEBELUM user benar-benar sampai ke batas
-     * slot perkiraan yg lama -- jadi petanya sempat mengoreksi diri
-     * sebelum user "kehabisan jalan".
-     *
-     * Ini TIDAK sepenuhnya menghilangkan kemungkinan meleset pada kunjungan
-     * PERTAMA ke suatu arsip yg belum pernah disentuh/di-prefetch sama
-     * sekali (mis. lompat jauh dari drawer ke arsip yg estimasinya kurang),
-     * tapi utk pola pemakaian normal (baca berurutan / lompat lalu baca
-     * dari situ) ini memperbaiki kasus yg dilaporkan berulang kali.
+     * Nomor arsip (posisi di ambilData(), 0-based) = nomor halaman - 1
+     * (index 0 dicadangkan utk sampul depan). PEMETAAN LANGSUNG, tidak ada
+     * hitungan/estimasi/lock apa pun -- lihat dokumentasi kelas di atas.
      */
-    private fun pastikanKumulatif(w: Int, h: Int, data: List<ArsipEntity>) {
-        synchronized(kumulatifLock) {
-            if (w == wKumulatif && h == hKumulatif && data.size == nKumulatif && !kumulatifKotor) return
-            val lebarKontenPx = lebarKonten(w)
-            val arr = IntArray(data.size + 1)
-            for (i in data.indices) {
-                val a = data[i]
-                val kunciPersis = "${a.idPosting}:${w}x$h"
-                val jumlah = jumlahPersisDiketahui[kunciPersis] ?: run {
-                    val tinggiBadanPx = tinggiBadan(h, adaMedia = a.daftarFoto.isNotBlank())
-                    perkiraanJumlahHalaman(a.kontenPenuh, lebarKontenPx, tinggiBadanPx)
-                }
-                arr[i + 1] = arr[i] + jumlah
-            }
-            kumulatif = arr
-            wKumulatif = w; hKumulatif = h; nKumulatif = data.size
-            kumulatifKotor = false
-        }
-    }
+    fun indexHalamanUntukArsip(posisiArsip: Int): Int = posisiArsip + 1
 
-    private fun lebarKonten(w: Int) = (w - ((48 + 16) * densitas)).toInt().coerceAtLeast(1)
-
-    private fun tinggiBadan(h: Int, adaMedia: Boolean): Int {
-        // Diturunkan dari 190dp -- blok "Sumber Asli/Bagikan" dekoratif (~44dp)
-        // sekarang dihilangkan total dari setiap halaman (lihat renderHalamanArsip),
-        // jadi sisa chrome cuma header+garis+padding (~146dp), dibulatkan ke
-        // atas dgn sedikit margin aman.
-        val cadanganChrome = (160 * densitas).toInt()
-        val cadanganMedia = if (adaMedia) CADANGAN_MEDIA_PX else 0
-        return (h - cadanganChrome - cadanganMedia).coerceAtLeast((80 * densitas).toInt())
-    }
-
-    companion object {
-        // ~tinggi blok foto (lihat wadahMultiFoto), sengaja konservatif.
-        // SATU tempat -- dipakai baik di tinggiBadan() (utk hitung cepat
-        // per-arsip) maupun ambilRencanaTeks() (utk redistribusi 2-tahap),
-        // supaya keduanya konsisten dan tidak drift satu sama lain.
-        private const val CADANGAN_MEDIA_PX = 560
-    }
-
-    private fun perkiraanJumlahHalaman(teks: String, lebarKontenPx: Int, tinggiBadanPx: Int): Int {
-        if (teks.isBlank()) return 1
-        val kb = parseKontenBerbagi(teks)
-        // Utk "shared status", jumlah karakter yg diperhitungkan = teks asli +
-        // teks yg dibagikan ulang (keduanya sekarang ikut dipaginasi, lihat
-        // ambilRencanaTeks) + sedikit ekstra utk header kotak "Status
-        // Dibagikan" (~2 baris) supaya perkiraan tetap condong ke arah aman.
-        val teksUntukDihitung = if (kb != null) "${kb.teksAsli}\n${kb.kontenShared}" else teks
-        val totalKarakter = teksUntukDihitung.length + if (kb != null) 80 else 0
-        val ukuranFontPx = 14f * densitas
-        // PERBAIKAN: dulu cuma menghitung dari total karakter / karakter-per-
-        // baris -- ini UNDER-ESTIMATE parah utk konten dgn banyak baris
-        // PENDEK & banyak baris KOSONG antar-paragraf (gaya penulisan umum
-        // di arsip ini: poin-poin pendek dipisah baris kosong). Baris kosong
-        // ikut makan 1 baris penuh tapi menyumbang 0 karakter ke hitungan
-        // panjang -- jadi perkiraan lama bisa jauh lebih kecil dari
-        // kebutuhan asli, menyebabkan slot halaman kehabisan sebelum teks
-        // sungguhan habis (teks "hilang" di tengah, padahal ada tanda
-        // "Selanjutnya >>" yg menjanjikan lanjutannya). Sekarang jumlah
-        // baris = MAKS(dari perkiraan lebar/panjang, dari jumlah baris
-        // eksplisit "\n" -- baris eksplisit menjamin batas bawah yg tidak
-        // mungkin di-under-estimate).
-        val jumlahBarisEksplisit = teksUntukDihitung.count { it == '\n' } + 1
-        val karakterPerBaris = max(1f, lebarKontenPx / (ukuranFontPx * 0.62f)) // 0.55->0.62: char dianggap lebih lebar, lebih konservatif
-        val tinggiBarisPx = KertasBergarisDrawable.TINGGI_BARIS_DP * densitas
-        val barisPerHalaman = max(1f, tinggiBadanPx / tinggiBarisPx)
-        val jumlahBarisDariPanjang = ceil(totalKarakter / karakterPerBaris)
-        val jumlahBaris = max(jumlahBarisEksplisit.toFloat(), jumlahBarisDariPanjang)
-        // PERBAIKAN: dulu ada "+1 halaman" flat ke SEMUA status apa pun
-        // panjangnya -- mayoritas status di arsip ini pendek (cuma butuh 1
-        // halaman), jadi hampir semuanya jadi 2 halaman & total membengkak
-        // nyaris 2x lipat ("double halaman"). Dihapus -- perhitungan baris
-        // eksplisit + karakter-per-baris yg lebih konservatif di atas
-        // sudah cukup sbg margin aman, tanpa perlu tambahan rata utk semua.
-        return ceil(jumlahBaris / barisPerHalaman).toInt().coerceAtLeast(1)
-    }
-
-    /** Dipakai MainActivity untuk lompat langsung ke arsip tertentu (mis. dari drawer). */
-    /**
-     * true kalau BookPageProvider sudah pernah tahu ukuran halaman
-     * sungguhan (dari updatePage() yang sudah pernah dipanggil GL thread).
-     * Dipakai MainActivity SEBELUM memanggil indexHalamanUntukArsip() --
-     * lihat catatan panjang di fungsi itu soal kenapa ini penting.
-     */
-    fun ukuranSudahDiketahui(): Boolean = wKumulatif > 0 && hKumulatif > 0
-
-    /**
-     * Dipakai MainActivity utk lompat langsung ke arsip tertentu (mis. dari
-     * drawer/grid). PENTING: hasilnya cuma benar kalau ukuran halaman
-     * SUNGGUHAN sudah diketahui (lihat ukuranSudahDiketahui()) -- kalau
-     * dipanggil SEBELUM itu (mis. sesaat setelah wadahModeBuku baru saja
-     * diset VISIBLE, sebelum CurlView sempat di-layout & merender apa pun),
-     * pastikanKumulatif() di bawah ini terpaksa jalan dgn ukuran 1x1 asal-
-     * asalan, menghasilkan perkiraan jumlah halaman per arsip yang jauh
-     * meleset (bisa berkali-kali lipat) -- itu sebabnya lompat ke arsip
-     * no.5 pernah malah mendarat di halaman ~387. MainActivity WAJIB
-     * menunggu ukuranSudahDiketahui()==true dulu sebelum memanggil ini.
-     */
-    fun indexHalamanUntukArsip(posisiArsip: Int): Int {
-        val data = ambilData()
-        return indexHalamanUntukArsip(posisiArsip, data)
-    }
-
-    private fun indexHalamanUntukArsip(posisiArsip: Int, data: List<ArsipEntity>): Int {
-        pastikanKumulatif(wKumulatif.coerceAtLeast(1), hKumulatif.coerceAtLeast(1), data)
-        // PERBAIKAN CRASH "app baru dibuka": dulu fungsi ini panggil ambilData()
-        // SENDIRI di sini, TERPISAH dari snapshot yg baru saja dipakai
-        // pastikanKumulatif() di atas (yg sebelum perbaikan ini juga
-        // memanggil ambilData() sendiri, terpisah lagi). Kalau daftar arsip
-        // berubah PERSIS di antara dua panggilan ambilData() yg terpisah itu
-        // (mis. masih dimuat/disortir di background saat app BARU dibuka --
-        // cocok dgn laporan "crash cuma pas app baru dipakai, hilang setelah
-        // jalan semalaman"), kumulatif[] yg terbentuk dari snapshot LAMA bisa
-        // lebih PENDEK dari yg diasumsikan snapshot BARU -> kumulatif[posisiArsip]
-        // di bawah bisa ArrayIndexOutOfBoundsException. Sekarang SATU `data`
-        // yg sama dipakai dari awal sampai akhir fungsi ini, dan index-nya
-        // dicek terhadap kumulatif.size juga (bukan cuma data.indices).
-        if (posisiArsip !in data.indices) return 0
-        return synchronized(kumulatifLock) {
-            if (posisiArsip >= kumulatif.size) 0 else kumulatif[posisiArsip] + 1 // +1 krn index 0 = sampul depan
-        }
-    }
-
-    /**
-     * PERBAIKAN BUG "LOMPAT JAUH MENDARAT DI ARSIP LAIN": kalau target
-     * lompatan (atau arsip-arsip sebelumnya) belum pernah dibuka/di-prefetch
-     * sama sekali, kumulatif[] SEPENUHNYA mengandalkan perkiraanJumlahHalaman()
-     * (rumus kasar) -- bisa meleset ke arah KURANG (mendarat di arsip
-     * SEBELUM target, mis. #1000 -> tampil #999) MAUPUN ke arah LEBIH
-     * (mendarat di arsip SESUDAH target, mis. #200 -> tampil #215),
-     * tergantung gaya tulisan arsip-arsip yang dilewati.
-     *
-     * PERBAIKAN SEBELUMNYA (pastikanEksakDiSekitar dengan jendela tetap)
-     * cuma menghitung PERSIS beberapa arsip TEPAT SEBELUM target -- itu
-     * cukup utk drift kecil (1 arsip), TAPI TIDAK CUKUP kalau semua arsip
-     * di sesi ini masih 100% perkiraan (drift bisa berapa saja, mis. +15
-     * arsip pada kasus #200->#215) -- sementara memperbesar jendela supaya
-     * "aman utk semua jarak" bikin STATICLAYOUT dijalankan utk ratusan/ribuan
-     * arsip SEBELUM setiap lompatan, terlalu lambat di device rendah.
-     *
-     * Fix yang lebih benar: LOMPAT DULU pakai perkiraan (instan), lalu
-     * VERIFIKASI apakah hasilnya benar-benar memetakan balik ke posisi yang
-     * diminta (indexArsipDari). Kalau TIDAK, hitung PERSIS hanya utk arsip-
-     * arsip di RENTANG SELISIHnya saja (antara posisi diminta & posisi yg
-     * ternyata mendarat -- biasanya cuma beberapa/puluhan arsip, TIDAK
-     * PERNAH seluruh prefix, brp pun jauhnya target), lalu hitung ulang &
-     * verifikasi lagi. Biaya SELALU sebanding dgn besar drift-nya, bukan
-     * dgn jarak lompatannya -- makanya bisa dipakai utk lompat ke arsip
-     * #200 maupun #17000 dgn biaya yg sama-sama kecil.
-     */
-    fun indexHalamanUntukArsipAman(posisiArsip: Int, maxIterasi: Int = 5): Int {
-        val data = ambilData() // SATU snapshot dipakai konsisten sepanjang seluruh operasi ini
-        if (posisiArsip !in data.indices) return 0
-        var hasil = indexHalamanUntukArsip(posisiArsip, data)
-        var iterasi = 0
-        while (iterasi < maxIterasi) {
-            val posisiMendarat = indexArsipDari(hasil) ?: posisiArsip
-            if (posisiMendarat == posisiArsip) break
-            val mulai = minOf(posisiMendarat, posisiArsip).coerceAtLeast(0)
-            val akhir = maxOf(posisiMendarat, posisiArsip).coerceAtMost(data.size - 1)
-            // PERBAIKAN RACE: w/h dibaca SEKALI, KONSISTEN, di bawah lock yang
-            // sama dgn yg melindungi kumulatif[] -- sebelumnya dibaca langsung
-            // tanpa lock di sini, bisa "robek" (baca w dari satu rebuild, h
-            // dari rebuild lain) kalau GL thread kebetulan sedang menulis
-            // field yg sama scr bersamaan (lihat catatan panjang di atas
-            // dekat deklarasi kumulatifLock).
-            val (wSnap, hSnap) = synchronized(kumulatifLock) { wKumulatif to hKumulatif }
-            for (i in mulai..akhir) {
-                val arsip = data.getOrNull(i) ?: continue
-                val kunci = "${arsip.idPosting}:${wSnap}x$hSnap"
-                if (!jumlahPersisDiketahui.containsKey(kunci)) {
-                    ambilRencanaTeks(arsip, wSnap, hSnap)
-                }
-            }
-            hasil = indexHalamanUntukArsip(posisiArsip, data) // kumulatif dibangun ulang krn kumulatifKotor=true
-            iterasi++
-        }
-        return hasil
-    }
-
-    /**
-     * Versi pemanasan opsional: hitung PERSIS beberapa arsip tepat sebelum
-     * target LEBIH DULU (dipanggil paralel/sebelum indexHalamanUntukArsipAman)
-     * supaya kasus paling umum (drift kecil, 1-2 arsip) sudah benar di
-     * percobaan PERTAMA tanpa perlu iterasi koreksi sama sekali. Tetap aman
-     * dipanggil brp pun jauhnya target krn jendelanya tetap kecil & tetap.
-     */
-    fun pastikanEksakDiSekitar(posisiArsip: Int, jendela: Int = 5) {
-        val (wSnap, hSnap) = synchronized(kumulatifLock) { wKumulatif to hKumulatif }
-        if (wSnap <= 0 || hSnap <= 0) return
-        val data = ambilData()
-        val mulai = (posisiArsip - jendela + 1).coerceAtLeast(0)
-        val akhir = posisiArsip.coerceAtMost(data.size - 1)
-        if (mulai > akhir) return
-        for (i in mulai..akhir) {
-            val arsip = data[i]
-            val kunci = "${arsip.idPosting}:${wSnap}x$hSnap"
-            if (jumlahPersisDiketahui.containsKey(kunci)) continue
-            ambilRencanaTeks(arsip, wSnap, hSnap)
-        }
-    }
-
-    /** Index arsip asli (abaikan sub-halaman) untuk index halaman ini, atau null kalau sampul. */
+    /** Kebalikan dari indexHalamanUntukArsip -- null kalau sampul depan/belakang. */
     fun indexArsipDari(indexHalaman: Int): Int? {
-        val posisiKonten = indexHalaman - 1
-        return synchronized(kumulatifLock) {
-            if (posisiKonten < 0 || kumulatif.isEmpty() || posisiKonten >= kumulatif.last()) null
-            else cariArsipIndex(posisiKonten)
-        }
+        val posisiArsip = indexHalaman - 1
+        val n = ambilData().size
+        return if (posisiArsip in 0 until n) posisiArsip else null
     }
 
-    /** WAJIB dipanggil dari dalam synchronized(kumulatifLock) -- tidak mengunci sendiri. */
-    private fun cariArsipIndex(posisiKonten: Int): Int {
-        var lo = 0
-        var hi = kumulatif.size - 2
-        while (lo < hi) {
-            val mid = (lo + hi + 1) / 2
-            if (kumulatif[mid] <= posisiKonten) lo = mid else hi = mid - 1
-        }
-        return lo
-    }
-
-    override fun getPageCount(): Int {
-        val w = if (wKumulatif > 0) wKumulatif else 1
-        val h = if (hKumulatif > 0) hKumulatif else 1
-        val data = ambilData()
-        pastikanKumulatif(w, h, data)
-        return synchronized(kumulatifLock) {
-            (if (kumulatif.isEmpty()) 0 else kumulatif.last()) + 2 // + sampul depan + belakang
-        }
-    }
+    override fun getPageCount(): Int = ambilData().size + 2 // + sampul depan + belakang
 
     fun shutdown() {
         shutdown = true
@@ -409,38 +111,19 @@ class BookPageProvider(
     /** Hasil resolusi index halaman -> cacheKey + tugas render latar belakangnya (tanpa efek samping). */
     private data class ResolusiHalaman(val cacheKey: String, val tugas: () -> Bitmap)
 
-    private fun resolusiHalaman(index: Int, w: Int, h: Int, data: List<ArsipEntity>): ResolusiHalaman? = synchronized(kumulatifLock) {
-        val totalHalamanKonten = if (kumulatif.isEmpty()) 0 else kumulatif.last()
-        return@synchronized when {
+    private fun resolusiHalaman(index: Int, w: Int, h: Int, data: List<ArsipEntity>): ResolusiHalaman? {
+        return when {
             index == 0 -> ResolusiHalaman("sampul_depan:${w}x$h") {
                 renderSampul(w, h, judul = "Pustaka FK", subjudul = "Arsip Fatwa & Kehidupan")
             }
-            index == totalHalamanKonten + 1 -> ResolusiHalaman("sampul_belakang:${w}x$h") {
+            index == data.size + 1 -> ResolusiHalaman("sampul_belakang:${w}x$h") {
                 renderSampul(w, h, judul = "Tamat", subjudul = "Pustaka FK")
             }
             else -> {
-                val posisiKonten = index - 1
-                if (posisiKonten < 0 || posisiKonten >= totalHalamanKonten) return@synchronized null
-                val arsipIndex = cariArsipIndex(posisiKonten)
-                // PERBAIKAN: dulu ambilData() dipanggil LAGI di sini & di baris
-                // renderHalamanArsip() bawah -- terpisah dari snapshot yg dipakai
-                // utk membangun `kumulatif`/`arsipIndex` di atas. Kalau daftar
-                // arsip berubah (mis. masih dimuat/disortir di background pas
-                // app baru dibuka) TEPAT di antara dua panggilan ambilData() itu,
-                // arsipIndex yg valid utk snapshot LAMA bisa OUT OF BOUNDS utk
-                // snapshot BARU -> ArrayIndexOutOfBoundsException / crash --
-                // persis pola "crash cuma pas app baru dibuka, hilang setelah
-                // jalan lama (daftar arsip sudah stabil)". Sekarang SATU
-                // snapshot `data` dipakai konsisten dari awal sampai akhir, DAN
-                // seluruh pembacaan kumulatif[] di fungsi ini terjadi dalam SATU
-                // blok synchronized yang sama (bukan dicicil per-baris) supaya
-                // tidak "robek" oleh rebuild dari thread lain di tengah jalan.
-                val arsip = data.getOrNull(arsipIndex) ?: return@synchronized null
-                if (arsipIndex + 1 >= kumulatif.size) return@synchronized null
-                val subIndex = posisiKonten - kumulatif[arsipIndex]
-                val perkiraanTotalSub = kumulatif[arsipIndex + 1] - kumulatif[arsipIndex]
-                ResolusiHalaman("${arsip.idPosting}:${w}x$h:sub$subIndex") {
-                    renderHalamanArsip(w, h, arsip, arsipIndex + 1, data.size, subIndex, perkiraanTotalSub)
+                val arsipIndex = index - 1
+                val arsip = data.getOrNull(arsipIndex) ?: return null
+                ResolusiHalaman("${arsip.idPosting}:${w}x$h") {
+                    renderHalamanArsip(w, h, arsip, arsipIndex + 1, data.size)
                 }
             }
         }
@@ -467,8 +150,6 @@ class BookPageProvider(
         val w = width.coerceAtLeast(1)
         val h = height.coerceAtLeast(1)
         val data = ambilData()
-        pastikanKumulatif(w, h, data)
-        val totalHalamanKonten = synchronized(kumulatifLock) { if (kumulatif.isEmpty()) 0 else kumulatif.last() }
 
         val resolusi = resolusiHalaman(index, w, h, data)
         if (resolusi == null) {
@@ -481,7 +162,7 @@ class BookPageProvider(
         if (fromCache != null) {
             page.setTexture(salinUntukTampil(fromCache, w, h), CurlPage.SIDE_FRONT)
             page.setColor(warnaSampulBack, CurlPage.SIDE_BACK)
-            prefetchTetangga(index, totalHalamanKonten, w, h, data)
+            prefetchTetangga(index, data.size, w, h, data)
             return
         }
 
@@ -500,15 +181,13 @@ class BookPageProvider(
      * memanggil updatePage() dengannya dari THREAD BACKGROUND -- itu berarti
      * CurlPage.setTexture() (yang me-recycle() bitmap lama) ikut tersentuh
      * DI LUAR GL thread, melanggar kontrak GLSurfaceView (CurlPage/CurlMesh
-     * cuma boleh disentuh dari GL thread). Ini kemungkinan besar penyebab
-     * crash native "freePixels" (segfault di GLThread) yang terjadi lagi
-     * setelah fitur prefetch ditambahkan. Sekarang prefetch CUMA mengisi
+     * cuma boleh disentuh dari GL thread). Sekarang prefetch CUMA mengisi
      * cache lewat resolusiHalaman()+mintaRenderLatarBelakang() -- TIDAK
      * PERNAH membuat atau menyentuh objek CurlPage sama sekali.
      */
-    private fun prefetchTetangga(index: Int, totalHalamanKonten: Int, w: Int, h: Int, data: List<ArsipEntity>) {
+    private fun prefetchTetangga(index: Int, totalArsip: Int, w: Int, h: Int, data: List<ArsipEntity>) {
         for (tetangga in intArrayOf(index - 1, index + 1, index + 2)) {
-            if (tetangga < 0 || tetangga > totalHalamanKonten + 1) continue
+            if (tetangga < 0 || tetangga > totalArsip + 1) continue
             val resolusi = resolusiHalaman(tetangga, w, h, data) ?: continue
             // Cek cache dulu SECARA SINKRON (murah) sebelum menjadwalkan apa
             // pun -- updatePage() ini dipanggil tiap frame utk halaman yg
@@ -557,24 +236,23 @@ class BookPageProvider(
         }
     }
 
-    // ------------------------------------------------------------------
-    // PEMOTONGAN TEKS PERSIS (StaticLayout) -- dipanggil dari thread
-    // background milik `executor`, aman melakukan kerja lumayan (bukan
-    // GL thread / bukan UI thread).
-    //
-    // Sejak perbaikan ini, konten "shared status" (ada blok status yg
-    // dibagikan ulang) IKUT dipaginasi juga -- sebelumnya cuma teks
-    // Tanya-Jawab biasa yg dipaginasi, "shared status" masih 1 halaman
-    // penuh (batasan yg didokumentasikan), dan itu yg menyebabkan bug
-    // "masih terpotong" utk jenis konten ini. Sekarang keduanya dianggap
-    // "unit-unit" yg dialirkan berurutan (baris teks asli, lalu header
-    // kotak "Status Dibagikan", lalu baris teks yg dibagikan), dan
-    // dikelompokkan per halaman berdasarkan tinggi kumulatifnya -- sama
-    // seperti teks biasa, cuma sumbernya gabungan 2 blok teks + 1 header.
-    // ------------------------------------------------------------------
+    private fun lebarKonten(w: Int) = (w - ((48 + 16) * densitas)).toInt().coerceAtLeast(1)
+
+    private fun tinggiBadan(h: Int, adaMedia: Boolean): Int {
+        val cadanganChrome = (160 * densitas).toInt()
+        val cadanganMedia = if (adaMedia) CADANGAN_MEDIA_PX else 0
+        return (h - cadanganChrome - cadanganMedia).coerceAtLeast((80 * densitas).toInt())
+    }
+
+    companion object {
+        private const val CADANGAN_MEDIA_PX = 560
+        private const val UKURAN_FONT_MAKS_SP = 14f
+        private const val UKURAN_FONT_MIN_SP = 9f
+    }
+
     data class KontenBerbagi(val teksAsli: String, val namaPemilik: String, val kontenShared: String)
 
-    /** Dipakai bersama oleh estimasi cepat & pemotongan persis -- SATU tempat parsing, hindari duplikasi/inkonsistensi. */
+    /** Dipakai bersama oleh render & pengecekan panjang -- SATU tempat parsing, hindari duplikasi/inkonsistensi. */
     fun parseKontenBerbagi(kontenBersih: String): KontenBerbagi? {
         if (!kontenBersih.contains("--- Membagikan Status:")) return null
         val bagian = kontenBersih.split("\n\n--- Membagikan Status: ")
@@ -586,183 +264,73 @@ class BookPageProvider(
         return KontenBerbagi(teksAsli, nama, shared)
     }
 
-    /** Satu halaman bisa berisi potongan teks asli, header kotak shared, dan/atau potongan teks shared -- kombinasi mana pun, tergantung di mana batas halaman jatuh. */
-    private data class UnitHalaman(val rentangAsli: IntRange?, val headerShared: Boolean, val rentangShared: IntRange?)
-    private data class RencanaTeks(val potongan: List<UnitHalaman>)
-    private val rencanaCache = ConcurrentHashMap<String, RencanaTeks>()
-
     @Suppress("DEPRECATION")
     private fun buatStaticLayout(teks: String, paint: TextPaint, lebarPx: Int) =
         StaticLayout(teks, paint, lebarPx, android.text.Layout.Alignment.ALIGN_NORMAL, 1f, 0f, false)
 
-    private fun ambilRencanaTeks(arsip: ArsipEntity, w: Int, h: Int): RencanaTeks {
-        val key = "${arsip.idPosting}:${w}x$h"
-        // PENTING: computeIfAbsent (bukan cek-lalu-simpan biasa) -- utk
-        // status yang SANGAT panjang, prefetch tetangga + navigasi langsung
-        // pengguna bisa sama-sama minta rencana arsip yang SAMA hampir
-        // bersamaan dari 2 thread executor berbeda. Cek-lalu-simpan biasa
-        // rawan race: dua-duanya sama-sama cache-miss lalu dua-duanya
-        // menghitung ulang StaticLayout PENUH secara paralel -- pemborosan
-        // yang bisa terasa sebagai "lama/tidak jelas responnya" pas
-        // menyentuh status panjang. computeIfAbsent bersifat atomik per
-        // key: thread kedua otomatis menunggu hasil thread pertama alih-
-        // alih ikut menghitung ulang dari nol.
-        return rencanaCache.computeIfAbsent(key) {
-        val teksMentah = arsip.kontenPenuh.ifBlank { " " }
-        val lebarKontenPx = lebarKonten(w)
-        val adaMedia = arsip.daftarFoto.isNotBlank()
-        // PENTING: pengelompokan tahap 1 SELALU pakai budget PENUH (anggap
-        // tidak ada media), BUKAN tinggiBadan(h, adaMedia) -- kalau media
-        // langsung dikurangkan di sini, SEMUA halaman arsip ini (termasuk
-        // yg jauh dari halaman terakhir) kehilangan jatah tinggi utk ruang
-        // foto yg sebenarnya cuma dipakai di 1 halaman -- itu penyebab bug
-        // "banyak ruang kosong di halaman yg bukan halaman terakhir". Media
-        // baru diperhitungkan BELAKANGAN, cuma utk kelompok paling akhir
-        // (lihat redistribusi di bawah).
-        val budgetPenuh = tinggiBadan(h, adaMedia = false)
-        // PENTING: tinggi baris TETAP (samakan dgn TextViewCompat.setLineHeight
-        // di render sungguhan), BUKAN tinggi alami font -- lihat catatan di
-        // perkiraanJumlahHalaman() utk histori bug yg ini perbaiki.
-        val tinggiBarisTetapPx = (KertasBergarisDrawable.TINGGI_BARIS_DP * densitas).toInt().coerceAtLeast(1)
-        // Cadangkan 1 baris tambahan dari budget PENUH utk penanda
-        // "Selanjutnya >>" -- baru benar-benar ditampilkan belakangan kalau
-        // halaman ini TERNYATA bukan halaman terakhir arsipnya (lihat
-        // renderHalamanArsip). Dicadangkan di SEMUA halaman spy selalu ada
-        // ruang, bukan cuma dihitung setelah tahu halaman mana yg terakhir.
-        val budgetUntukPembagian = (budgetPenuh - tinggiBarisTetapPx).coerceAtLeast(tinggiBarisTetapPx)
-        val paint = TextPaint(Paint.ANTI_ALIAS_FLAG).apply { textSize = 14f * densitas }
+    /**
+     * PENYEDERHANAAN: karena 1 arsip SELALU 1 halaman (tidak ada lagi
+     * paginasi lintas-halaman), teks yang panjang ditampilkan dengan ukuran
+     * font yang MENGECIL bertahap sampai muat di tinggi yang tersedia.
+     * Kalau bahkan di ukuran minimum masih tidak muat, teks dipotong +
+     * catatan ke Sumber Asli -- lebih sederhana & aman drpd sistem
+     * paginasi lama, walau blm ideal utk konten sangat panjang (rencana
+     * tahap berikutnya: scroll sungguhan di dalam halaman).
+     */
+    private fun hitungUkuranFontMuat(teksUntukUkur: String, lebarPx: Int, tinggiTersediaPx: Int): Float {
+        val paint = TextPaint(Paint.ANTI_ALIAS_FLAG)
+        var ukuran = UKURAN_FONT_MAKS_SP * densitas
+        val minimum = UKURAN_FONT_MIN_SP * densitas
+        while (ukuran > minimum) {
+            paint.textSize = ukuran
+            val layout = buatStaticLayout(teksUntukUkur, paint, lebarPx)
+            if (layout.height <= tinggiTersediaPx) return ukuran
+            ukuran -= 0.5f * densitas
+        }
+        return minimum
+    }
 
-        data class UnitMentah(val tinggi: Int, val asli: IntRange?, val header: Boolean, val shared: IntRange?)
-        val unitMentah = mutableListOf<UnitMentah>()
+    /** Potong `teks` supaya tingginya muat di `tinggiTersediaPx` pada `ukuranFontPx`, tambahkan catatan kalau terpotong. */
+    private fun potongAgarMuat(teks: String, paint: TextPaint, lebarPx: Int, tinggiTersediaPx: Int): String {
+        val layoutPenuh = buatStaticLayout(teks, paint, lebarPx)
+        if (layoutPenuh.height <= tinggiTersediaPx) return teks
+        val catatan = "\n\n\u2026 (dipotong, baca lengkap lewat tombol Sumber Asli)"
+        val layoutCatatan = buatStaticLayout(catatan, paint, lebarPx)
+        val budgetTeks = (tinggiTersediaPx - layoutCatatan.height).coerceAtLeast(0)
+        var batasBaris = 0
+        for (baris in 0 until layoutPenuh.lineCount) {
+            if (layoutPenuh.getLineBottom(baris) > budgetTeks) break
+            batasBaris = baris + 1
+        }
+        if (batasBaris <= 0) return catatan.trim()
+        val batasKarakter = layoutPenuh.getLineEnd(batasBaris - 1)
+        return teks.substring(0, batasKarakter.coerceIn(0, teks.length)) + catatan
+    }
 
-        val kb = parseKontenBerbagi(teksMentah)
-        if (kb == null) {
-            val layout = buatStaticLayout(teksMentah, paint, lebarKontenPx)
-            for (baris in 0 until layout.lineCount) {
-                val akhir = if (baris + 1 < layout.lineCount) layout.getLineStart(baris + 1) else teksMentah.length
-                unitMentah.add(UnitMentah(tinggiBarisTetapPx, layout.getLineStart(baris) until akhir, false, null))
-            }
+    private fun warnaiKontenTanyaJawab(teksLengkap: String): Spannable {
+        val spannable = SpannableString(teksLengkap)
+        val batas = teksLengkap.indexOf("=====")
+        if (batas != -1) {
+            spannable.setSpan(ForegroundColorSpan(Color.parseColor("#004D40")), 0, batas, Spannable.SPAN_EXCLUSIVE_EXCLUSIVE)
+            spannable.setSpan(ForegroundColorSpan(Color.parseColor("#212121")), batas, teksLengkap.length, Spannable.SPAN_EXCLUSIVE_EXCLUSIVE)
         } else {
-            if (kb.teksAsli.isNotBlank()) {
-                val layoutAsli = buatStaticLayout(kb.teksAsli, paint, lebarKontenPx)
-                for (baris in 0 until layoutAsli.lineCount) {
-                    val akhir = if (baris + 1 < layoutAsli.lineCount) layoutAsli.getLineStart(baris + 1) else kb.teksAsli.length
-                    unitMentah.add(UnitMentah(tinggiBarisTetapPx, layoutAsli.getLineStart(baris) until akhir, false, null))
-                }
-            }
-            if (kb.namaPemilik.isNotBlank() || kb.kontenShared.isNotBlank()) {
-                // ~header nama+label & padding pembuka kotak "Status Dibagikan" --
-                // perkiraan konservatif spy tidak under-estimate.
-                unitMentah.add(UnitMentah((72 * densitas).toInt(), null, true, null))
-            }
-            if (kb.kontenShared.isNotBlank()) {
-                val lebarSharedPx = (lebarKontenPx - (24 * densitas)).toInt().coerceAtLeast(1) // dikurangi padding kotak
-                val layoutShared = buatStaticLayout(kb.kontenShared, paint, lebarSharedPx)
-                for (baris in 0 until layoutShared.lineCount) {
-                    val akhir = if (baris + 1 < layoutShared.lineCount) layoutShared.getLineStart(baris + 1) else kb.kontenShared.length
-                    unitMentah.add(UnitMentah(tinggiBarisTetapPx, null, false, layoutShared.getLineStart(baris) until akhir))
-                }
-            }
+            spannable.setSpan(ForegroundColorSpan(Color.parseColor("#212121")), 0, teksLengkap.length, Spannable.SPAN_EXCLUSIVE_EXCLUSIVE)
         }
-        if (unitMentah.isEmpty()) unitMentah.add(UnitMentah(0, 0 until 0, false, null))
-
-        // TAHAP 1: kelompokkan pakai budget PENUH -- simpan sbg rentang INDEX
-        // ke unitMentah (bukan langsung gabung ke char-range) supaya kelompok
-        // TERAKHIR bisa dipecah lagi di tahap 2 kalau perlu.
-        val kelompokIndex = mutableListOf<IntRange>()
-        run {
-            var idx = 0
-            while (idx < unitMentah.size) {
-                var tinggiTerpakai = 0
-                var mulai = idx
-                var sudahAdaSatu = false
-                while (idx < unitMentah.size) {
-                    val u = unitMentah[idx]
-                    if (tinggiTerpakai + u.tinggi > budgetUntukPembagian && sudahAdaSatu) break
-                    tinggiTerpakai += u.tinggi
-                    sudahAdaSatu = true
-                    idx++
-                }
-                kelompokIndex.add(mulai until idx)
-            }
-        }
-
-        // TAHAP 2: kalau arsip ini ada media, media itu HANYA tampil di
-        // kelompok/halaman PALING AKHIR (lihat renderHalamanArsip). Cek
-        // apakah kelompok terakhir + cadangan media masih muat di budget
-        // penuh -- kalau tidak, sisihkan unit-unit paling belakang dari
-        // kelompok itu ke kelompok BARU (halaman baru), supaya kelompok
-        // terakhir yg lama jadi cukup kecil utk berbagi tempat dgn foto.
-        if (adaMedia && kelompokIndex.isNotEmpty()) {
-            val budgetDenganMedia = tinggiBadan(h, adaMedia = true)
-            val terakhir = kelompokIndex.last()
-            var tinggiKelompokTerakhir = terakhir.sumOf { unitMentah[it].tinggi }
-            if (tinggiKelompokTerakhir > budgetDenganMedia && terakhir.count() > 1) {
-                var batasBaru = terakhir.last
-                while (batasBaru > terakhir.first && tinggiKelompokTerakhir > budgetDenganMedia) {
-                    tinggiKelompokTerakhir -= unitMentah[batasBaru].tinggi
-                    batasBaru--
-                }
-                kelompokIndex[kelompokIndex.size - 1] = terakhir.first..batasBaru
-                kelompokIndex.add((batasBaru + 1)..terakhir.last)
-            }
-        }
-
-        val potongan = kelompokIndex.map { rentangIdx ->
-            var asliMulai: Int? = null; var asliAkhir: Int? = null
-            var header = false
-            var sharedMulai: Int? = null; var sharedAkhir: Int? = null
-            for (i in rentangIdx) {
-                val u = unitMentah[i]
-                u.asli?.let { if (asliMulai == null) asliMulai = it.first; asliAkhir = it.last + 1 }
-                if (u.header) header = true
-                u.shared?.let { if (sharedMulai == null) sharedMulai = it.first; sharedAkhir = it.last + 1 }
-            }
-            UnitHalaman(
-                rentangAsli = if (asliMulai != null) asliMulai!! until asliAkhir!! else null,
-                headerShared = header,
-                rentangShared = if (sharedMulai != null) sharedMulai!! until sharedAkhir!! else null
-            )
-        }
-
-        val hasil = RencanaTeks(potongan)
-        // Catat jumlah PERSIS supaya pastikanKumulatif() bisa memakai angka
-        // ini alih-alih perkiraan utk arsip ini ke depannya -- lihat
-        // dokumentasi panjang di pastikanKumulatif() soal kenapa ini
-        // memperbaiki bug "teks kehabisan slot padahal masih ada lanjutan".
-        val kunciPersis = "${arsip.idPosting}:${w}x$h"
-        val sebelumnya = jumlahPersisDiketahui.put(kunciPersis, hasil.potongan.size)
-        if (sebelumnya != hasil.potongan.size) {
-            kumulatifKotor = true
-        }
-        hasil
-        }
+        return spannable
     }
 
     // ------------------------------------------------------------------
     // HALAMAN ARSIP (dipanggil dari thread background milik `executor`)
     // ------------------------------------------------------------------
-    private fun renderHalamanArsip(
-        width: Int, height: Int, arsip: ArsipEntity, nomorArsip: Int, totalArsip: Int,
-        subIndex: Int, perkiraanTotalSub: Int
-    ): Bitmap {
-        val rencana = ambilRencanaTeks(arsip, width, height)
-        // Kalau perkiraan cepat "meleset kurang" (jarang, tapi bisa terjadi --
-        // lihat dokumentasi kelas), subIndex bisa melebihi jumlah potongan
-        // ASLI dari StaticLayout -- amankan dgn menampilkan potongan terakhir
-        // yang tersedia, supaya tidak crash & tetap tidak ada teks yg hilang.
-        val potonganIndex = subIndex.coerceAtMost(rencana.potongan.size - 1)
-        val unit = rencana.potongan[potonganIndex]
-        val halamanTerakhirDariArsipIni = potonganIndex == rencana.potongan.size - 1
-        val lanjutan = potonganIndex > 0
+    private fun renderHalamanArsip(width: Int, height: Int, arsip: ArsipEntity, nomorArsip: Int, totalArsip: Int): Bitmap {
+        val adaMedia = arsip.daftarFoto.isNotBlank()
+        val lebarKontenPx = lebarKonten(width)
+        val tinggiBadanPx = tinggiBadan(height, adaMedia)
 
         var fotoRepresentatif: Bitmap? = null
         var isVideo = false
         var jumlahMediaLain = 0
-        // Foto/video representatif HANYA ditempel di halaman terakhir arsip
-        // ini (lihat dokumentasi kelas: kenapa media selalu dicadangkan di
-        // halaman terakhir, bukan menyebar di tengah teks).
-        if (halamanTerakhirDariArsipIni && arsip.daftarFoto.isNotBlank()) {
+        if (adaMedia) {
             val daftar = arsip.daftarFoto.split(",").map { it.trim() }.filter { it.isNotEmpty() }
             if (daftar.isNotEmpty()) {
                 val pertama = daftar[0]
@@ -770,16 +338,9 @@ class BookPageProvider(
                 val urlBersih = pertama.removePrefix("video:").removePrefix("image:")
                 jumlahMediaLain = daftar.size - 1
                 fotoRepresentatif = try {
-                    // PENTING: Glide.with(context) -- context = Activity --
-                    // mengikat request ke lifecycle Activity, jadi begitu
-                    // Activity dihancurkan (app+recents ditutup), Glide
-                    // OTOMATIS mendaur ulang bitmap yang masih terkait,
-                    // padahal thread background ini (di luar lifecycle
-                    // Activity secara sengaja) masih memegang/memakainya
-                    // utk menggambar halaman. Itu race condition penyebab
-                    // crash "freePixels" di thread utama saat app ditutup.
-                    // applicationContext TIDAK terikat lifecycle Activity,
-                    // jadi aman dipakai oleh pipeline background ini.
+                    // PENTING: applicationContext (bukan context Activity) --
+                    // lihat histori perbaikan crash "freePixels" terkait Glide
+                    // di dokumentasi kelas.
                     Glide.with(context.applicationContext).asBitmap().load(urlBersih)
                         .submit(width, (height * 0.35f).toInt().coerceAtLeast(1))
                         .get(6, TimeUnit.SECONDS)
@@ -789,104 +350,60 @@ class BookPageProvider(
             }
         }
 
+        val kontenBersih = arsip.kontenPenuh
+        val kb = parseKontenBerbagi(kontenBersih)
+        // Ukur SEKALI utk seluruh konten halaman ini (asli + shared kalau
+        // ada) supaya kedua blok konsisten pakai ukuran font yang sama.
+        val teksUntukUkur = if (kb != null) "${kb.teksAsli}\n${kb.kontenShared}" else kontenBersih
+        val ukuranFontPx = hitungUkuranFontMuat(teksUntukUkur, lebarKontenPx, tinggiBadanPx)
+        val paintUkur = TextPaint(Paint.ANTI_ALIAS_FLAG).apply { textSize = ukuranFontPx }
+
         return renderViewKeBitmapDiMainThread(width, height) {
             val view = LayoutInflater.from(context).inflate(R.layout.item_buku, null, true)
             view.background = KertasBergarisDrawable(density = context.resources.displayMetrics.density)
 
             val txtKontenUtama = view.findViewById<TextView>(R.id.txtKontenUtama)
             val txtKontenShared = view.findViewById<TextView>(R.id.txtKontenShared)
+            txtKontenUtama.textSize = ukuranFontPx / densitas
+            txtKontenShared.textSize = ukuranFontPx / densitas
             val tinggiBarisPx = (KertasBergarisDrawable.TINGGI_BARIS_DP * context.resources.displayMetrics.density).toInt()
             TextViewCompat.setLineHeight(txtKontenUtama, tinggiBarisPx)
             TextViewCompat.setLineHeight(txtKontenShared, tinggiBarisPx)
 
-            val kontenBersih = arsip.kontenPenuh
             val wadahDinamisKonten = view.findViewById<android.widget.LinearLayout>(R.id.wadahDinamisKonten)
             val wadahHeaderShared = view.findViewById<android.widget.LinearLayout>(R.id.wadahHeaderShared)
             val txtNamaPemilikShared = view.findViewById<TextView>(R.id.txtNamaPemilikShared)
-            val kb = parseKontenBerbagi(kontenBersih)
-
-            // Awalan "(lanjutan)" ditempel di teks mana pun yg PALING DULU
-            // muncul di halaman ini (asli lebih dulu kalau ada, kalau tidak
-            // ya di teks shared) -- supaya penanda cuma tampil sekali per
-            // halaman, di posisi paling atas kontennya.
-            var lanjutanSudahDipakai = !lanjutan
-            // Penanda "Selanjutnya >>" ditempel di teks yg PALING BELAKANG
-            // tampil di halaman ini -- HANYA kalau halaman ini BUKAN halaman
-            // terakhir arsipnya (masih ada isi lagi di halaman berikutnya).
-            // Ruang utk baris ini sudah dicadangkan sejak paginasi (lihat
-            // budgetUntukPembagian di ambilRencanaTeks), jadi aman tidak
-            // menyebabkan overflow/potongan baru.
-            val penandaLanjut = if (!halamanTerakhirDariArsipIni) "\n\nSelanjutnya >>" else ""
 
             if (kb == null) {
-                // Kasus normal (Tanya-Jawab, dsb): potong sesuai `unit.rentangAsli`
-                // hasil StaticLayout, dgn pewarnaan yg tetap konsisten dgn teks
-                // penuh. Rentang pakai konvensi `start until end` (end EKSKLUSIF),
-                // jadi argumen akhir ke subSequence() harus `+1`.
-                val rentang = unit.rentangAsli ?: (0 until 0)
-                val awal = rentang.first.coerceIn(0, kontenBersih.length)
-                val akhir = (rentang.last + 1).coerceIn(awal, kontenBersih.length)
-                val potonganBerwarna = warnaiKontenTanyaJawab(kontenBersih)
-                    .let { SpannableStringBuilder(it) }
-                    .subSequence(awal, akhir)
-                val builder = SpannableStringBuilder()
-                if (!lanjutanSudahDipakai) {
-                    lanjutanSudahDipakai = true
-                    builder.append("\u21B3 (lanjutan halaman sebelumnya)\n\n")
-                }
-                builder.append(potonganBerwarna).append(penandaLanjut)
-                txtKontenUtama.text = builder
+                val potongan = potongAgarMuat(kontenBersih, paintUkur, lebarKontenPx, tinggiBadanPx)
+                txtKontenUtama.text = warnaiKontenTanyaJawab(potongan)
                 txtKontenUtama.visibility = View.VISIBLE
                 wadahDinamisKonten.setBackgroundResource(0)
                 wadahDinamisKonten.setPadding(0, 0, 0, 0)
                 wadahHeaderShared.visibility = View.GONE
                 txtKontenShared.visibility = View.GONE
             } else {
-                // Kasus "shared status": SEKARANG ikut dipaginasi (lihat
-                // ambilRencanaTeks) -- halaman ini bisa berisi salah satu,
-                // gabungan, atau tak satu pun dari: potongan teks asli,
-                // header kotak "Status Dibagikan", potongan teks shared,
-                // tergantung di mana batas halaman jatuh. Penanda
-                // "Selanjutnya >>" ditempel di teks shared kalau ada (karena
-                // itu yg paling belakang tampil), kalau tidak ada baru di teks asli.
-                val penandaUntukAsli = if (unit.rentangShared == null) penandaLanjut else ""
-                val penandaUntukShared = if (unit.rentangShared != null) penandaLanjut else ""
-                if (unit.rentangAsli != null) {
-                    val r = unit.rentangAsli
-                    val awal = r.first.coerceIn(0, kb.teksAsli.length)
-                    val akhir = (r.last + 1).coerceIn(awal, kb.teksAsli.length)
-                    val potongan = kb.teksAsli.substring(awal, akhir)
-                    txtKontenUtama.text = if (!lanjutanSudahDipakai) {
-                        lanjutanSudahDipakai = true
-                        "\u21B3 (lanjutan halaman sebelumnya)\n\n$potongan$penandaUntukAsli"
-                    } else "$potongan$penandaUntukAsli"
+                // "Shared status": bagi budget tinggi kasar 45/45 antara teks
+                // asli & teks shared (sederhana -- tidak perlu presisi krn
+                // masing masing sudah dipotong kalau perlu di potongAgarMuat()).
+                val tinggiUntukAsli = (tinggiBadanPx * 0.45f).toInt()
+                val tinggiUntukShared = (tinggiBadanPx * 0.45f).toInt()
+                if (kb.teksAsli.isNotBlank()) {
+                    val potongan = potongAgarMuat(kb.teksAsli, paintUkur, lebarKontenPx, tinggiUntukAsli)
+                    txtKontenUtama.text = warnaiKontenTanyaJawab(potongan)
                     txtKontenUtama.visibility = View.VISIBLE
                 } else {
                     txtKontenUtama.visibility = View.GONE
                 }
-
-                val kotakTampil = unit.headerShared || unit.rentangShared != null
-                if (kotakTampil) {
-                    val bantalanPx = (12 * context.resources.displayMetrics.density).toInt()
-                    wadahDinamisKonten.setBackgroundResource(R.drawable.bg_border_sharedpost)
-                    wadahDinamisKonten.setPadding(bantalanPx, bantalanPx, bantalanPx, bantalanPx)
-                } else {
-                    wadahDinamisKonten.setBackgroundResource(0)
-                    wadahDinamisKonten.setPadding(0, 0, 0, 0)
-                }
-
-                wadahHeaderShared.visibility = if (unit.headerShared) View.VISIBLE else View.GONE
-                if (unit.headerShared) txtNamaPemilikShared.text = kb.namaPemilik
-
-                if (unit.rentangShared != null) {
-                    val r = unit.rentangShared
-                    val awal = r.first.coerceIn(0, kb.kontenShared.length)
-                    val akhir = (r.last + 1).coerceIn(awal, kb.kontenShared.length)
-                    val potongan = kb.kontenShared.substring(awal, akhir)
-                    txtKontenShared.text = if (!lanjutanSudahDipakai) {
-                        lanjutanSudahDipakai = true
-                        "\u21B3 (lanjutan halaman sebelumnya)\n\n$potongan$penandaUntukShared"
-                    } else "$potongan$penandaUntukShared"
+                val bantalanPx = (12 * context.resources.displayMetrics.density).toInt()
+                wadahDinamisKonten.setBackgroundResource(R.drawable.bg_border_sharedpost)
+                wadahDinamisKonten.setPadding(bantalanPx, bantalanPx, bantalanPx, bantalanPx)
+                wadahHeaderShared.visibility = if (kb.namaPemilik.isNotBlank()) View.VISIBLE else View.GONE
+                if (kb.namaPemilik.isNotBlank()) txtNamaPemilikShared.text = kb.namaPemilik
+                if (kb.kontenShared.isNotBlank()) {
+                    val lebarSharedPx = (lebarKontenPx - (24 * context.resources.displayMetrics.density)).toInt().coerceAtLeast(1)
+                    val potongan = potongAgarMuat(kb.kontenShared, paintUkur, lebarSharedPx, tinggiUntukShared)
+                    txtKontenShared.text = potongan
                     txtKontenShared.visibility = View.VISIBLE
                 } else {
                     txtKontenShared.visibility = View.GONE
@@ -895,25 +412,9 @@ class BookPageProvider(
 
             view.findViewById<TextView>(R.id.txtTanggal).text = arsip.tanggalBaca
             view.findViewById<TextView>(R.id.txtKategori).text = arsip.kategori
-            // PERBAIKAN: dulu pakai nomor HALAMAN FISIK/total halaman fisik --
-            // begitu 1 status kepecah jadi beberapa halaman, total ini ikut
-            // membengkak (mis. 50 status jadi "53 halaman") padahal dari sudut
-            // pandang pengguna tetap "50 status". Sekarang label pakai nomor
-            // STATUS (arsip), bukan nomor halaman fisik -- beberapa halaman
-            // lanjutan dari status yg sama akan menampilkan nomor yg SAMA.
             view.findViewById<TextView>(R.id.txtNomorHalaman).text = "Halaman : $nomorArsip/$totalArsip"
             view.findViewById<ImageView>(R.id.imgProfilAbah)?.setImageResource(R.drawable.profil_abah)
-
-            // Profil (avatar+nama+tanggal+kategori) cuma tampil di halaman
-            // PERTAMA arsip ini -- halaman lanjutan sudah ada tanda
-            // "(lanjutan halaman sebelumnya)" sendiri di teksnya, jadi
-            // profil tidak perlu diulang (hemat ruang, sesuai permintaan).
-            // txtNomorHalaman TIDAK ikut disembunyikan -- tetap tampil semua halaman.
-            view.findViewById<View>(R.id.wadahProfilPenulis).visibility = if (lanjutan) View.GONE else View.VISIBLE
-
-            // Blok "Sumber Asli"/"Bagikan" dekoratif dihilangkan total dari
-            // SEMUA halaman -- non-interaktif (cuma gambar di tekstur GL),
-            // aksesnya yang sungguhan sudah ada lewat bar aksi baca di luar.
+            view.findViewById<View>(R.id.wadahProfilPenulis).visibility = View.VISIBLE
             view.findViewById<View>(R.id.wadahFooterDekoratif).visibility = View.GONE
 
             val wadahFoto = view.findViewById<android.widget.LinearLayout>(R.id.wadahMultiFoto)
@@ -962,18 +463,6 @@ class BookPageProvider(
 
             view
         }
-    }
-
-    private fun warnaiKontenTanyaJawab(teksLengkap: String): Spannable {
-        val spannable = SpannableString(teksLengkap)
-        val batas = teksLengkap.indexOf("=====")
-        if (batas != -1) {
-            spannable.setSpan(ForegroundColorSpan(Color.parseColor("#004D40")), 0, batas, Spannable.SPAN_EXCLUSIVE_EXCLUSIVE)
-            spannable.setSpan(ForegroundColorSpan(Color.parseColor("#212121")), batas, teksLengkap.length, Spannable.SPAN_EXCLUSIVE_EXCLUSIVE)
-        } else {
-            spannable.setSpan(ForegroundColorSpan(Color.parseColor("#212121")), 0, teksLengkap.length, Spannable.SPAN_EXCLUSIVE_EXCLUSIVE)
-        }
-        return spannable
     }
 
     // ------------------------------------------------------------------

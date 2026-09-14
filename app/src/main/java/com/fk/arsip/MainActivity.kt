@@ -1505,57 +1505,16 @@ private fun perbaruiDetailKecepatan(persen: Int, byteDiterima: Long, totalByte: 
         txtStatusPencarian.text = "$labelKategori • $totalVolume Status"
         
         delay(100) 
-        // PERBAIKAN: dulu langsung lompat di sini -- kalau ini kali PERTAMA
-        // masuk mode buku sejak app dibuka, CurlView belum sempat di-layout
-        // & belum tahu ukuran halaman sungguhan sama sekali, jadi hitungan
-        // peta halamannya asal-asalan (lihat catatan panjang di
-        // BookPageProvider.indexHalamanUntukArsip) -- itu sebabnya lompat ke
-        // arsip no.5 pernah malah mendarat di halaman ~387. Tunggu dulu
-        // sampai ukurannya sungguhan diketahui.
-        // PERBAIKAN LAGI: batas tunggu semula cuma ~1 detik (60x16ms) --
-        // ternyata TIDAK CUKUP tepat setelah inisialisasi data baru selesai
-        // (grid baru saja memuat ribuan item, main thread masih sibuk),
-        // sehingga bug lompat-ke-halaman-salah balik lagi persis di momen
-        // itu. Dinaikkan jadi ~6 detik -- ini cuma terjadi SEKALI per sesi
-        // app (masuk mode buku berikutnya langsung tahu ukurannya, tanpa
-        // perlu menunggu sama sekali), jadi aman dilonggarkan banyak.
-        //
-        // PERBAIKAN TAMBAHAN: supaya pengguna tidak mengira app diam/macet
-        // selama menunggu ini (walau biasanya cuma sepersekian detik, bisa
-        // terasa lama tepat setelah inisialisasi berat) -- tampilkan
-        // indikator loading kecil yg sudah ada, TAPI HANYA kalau tunggunya
-        // benar-benar diperlukan (ukuran belum diketahui sama sekali).
-        // Jalur cepat (semua kunjungan berikutnya dalam sesi yg sama) tidak
-        // menampilkan apa-apa krn ukurannya sudah langsung diketahui.
-        val perluMenunggu = !bookPageProvider.ukuranSudahDiketahui()
-        if (perluMenunggu) {
-            tampilkanIndikator("Menyiapkan halaman...", true)
-        }
-        var percobaan = 0
-        while (!bookPageProvider.ukuranSudahDiketahui() && percobaan < 375) {
-            delay(16)
-            percobaan++
-        }
-        if (perluMenunggu) {
-            tampilkanIndikator("", false)
-        }
-        // PERBAIKAN: pastikanEksakDiSekitar() (jendela kecil & tetap) dulu
-        // sbg pemanasan murah, lalu indexHalamanUntukArsipAman() memverifikasi
-        // & mengoreksi diri sendiri kalau MASIH meleset (lihat catatan
-        // lengkap di BookPageProvider.indexHalamanUntukArsipAman()) --
-        // menutup kasus meleset besar (mis. #200 mendarat di #215) yg tidak
-        // tertutup jendela tetap saja, TANPA perlu menghitung PERSIS seluruh
-        // arsip sebelum target (tetap cepat brp pun jauhnya lompatan).
-        withContext(Dispatchers.Default) {
-            bookPageProvider.pastikanEksakDiSekitar(posisi)
-        }
-        // CurlView baca `daftarArsipAktif` langsung (lihat BookPageProvider).
-        // Sejak paginasi ditambahkan, 1 arsip bisa menempati lebih dari 1
-        // halaman, jadi index halaman TIDAK LAGI selalu `posisi + 1` --
-        // dihitung lewat BookPageProvider yg tahu peta halaman sebenarnya.
-        val indexTarget = withContext(Dispatchers.Default) {
-            bookPageProvider.indexHalamanUntukArsipAman(posisi)
-        }
+        // PENYEDERHANAAN BESAR: karena sekarang 1 arsip = 1 halaman SELALU
+        // (lihat dokumentasi kelas BookPageProvider), index halaman = posisi
+        // arsip + 1, LANGSUNG -- tidak butuh tahu ukuran layar dulu, tidak
+        // ada estimasi yang bisa meleset, tidak perlu menunggu apa pun.
+        // Seluruh mekanisme lama di sini (menunggu ukuranSudahDiketahui(),
+        // pastikanEksakDiSekitar(), indexHalamanUntukArsipAman() dgn iterasi
+        // koreksi) sudah tidak diperlukan lagi -- itu semua ada karena jumlah
+        // halaman per arsip dulu harus DIHITUNG (dan bisa meleset), sekarang
+        // tidak ada yang perlu dihitung sama sekali.
+        val indexTarget = bookPageProvider.indexHalamanUntukArsip(posisi)
         curlViewBuku.setCurrentIndex(indexTarget)
         
         curlViewBuku.post {
