@@ -217,12 +217,14 @@ private var kecepatanEmaBytesPerSec: Double = 0.0
         // divisible-kan (lihat bukaModeBukuKeAtas()), operasi GL "pertama" itu
         // selalu kebetulan bertepatan dgn konten SPESIFIK yg user tap duluan.
         // Fix: buat wadahModeBuku visible (Surface tercipta, cover page
-        // ter-render) SEDINI MUNGKIN & SENYAP -- recyclerGridMode langsung
-        // di-bringToFront() lagi supaya user TETAP melihat grid seperti
-        // biasa, tidak ada apa pun yg berubah scr visual. Dengan begini,
-        // operasi GL pertama yg sesungguhnya terjadi memakai KONTEN NETRAL
-        // (halaman sampul, bukan arsip user), jauh sebelum tap pertama user.
+        // ter-render) SEDINI MUNGKIN & SENYAP -- dipindah ke luar layar
+        // (translationX, lihat tutupModeBukuKeGrid()) supaya benar-benar
+        // tidak terlihat apa pun, terlepas dari bagaimana device ini
+        // mengomposit layer SurfaceView. Dengan begini, operasi GL pertama
+        // yg sesungguhnya terjadi memakai KONTEN NETRAL (halaman sampul,
+        // bukan arsip user), jauh sebelum tap pertama user.
         wadahModeBuku.visibility = View.VISIBLE
+        wadahModeBuku.translationX = wadahModeBuku.resources.displayMetrics.widthPixels * 2f
         recyclerGridMode.bringToFront()
         curlViewBuku.setSizeChangedObserver(object : com.fk.arsip.curl.BudayakanBaca.SizeChangedObserver {
             override fun onSizeChanged(w: Int, h: Int) {
@@ -539,14 +541,33 @@ when (fase) {
     // tidak lagi berubah-ubah.
     private var sedangModeBuku = false
 
+    // PERBAIKAN LANJUTAN: bringToFront() (z-order View biasa) TERBUKTI TIDAK
+    // CUKUP ANDAL di device ini -- laporan pengguna menunjukkan sepetak
+    // "sisa" tampilan terakhir curlViewBuku (header halaman) tetap terlihat,
+    // DIAM di tempat (tidak ikut scroll), tepat setelah kembali ke grid.
+    // Ini konsisten dengan SurfaceView yang dikomposit sistem di layer
+    // TERPISAH dari urutan gambar View biasa (lihat catatan di
+    // curlViewBuku.setZOrderOnTop() sebelumnya) -- bringToFront() mengubah
+    // urutan View, tapi TIDAK menjamin device ini benar2 menghentikan/
+    // menyembunyikan komposit layer SurfaceView itu sendiri.
+    //
+    // Fix yang lebih PASTI, tidak bergantung bagaimana device tertentu
+    // mengomposit SurfaceView: PINDAHKAN wadahModeBuku BENAR-BENAR KE LUAR
+    // LAYAR (translationX) saat tidak dipakai. Surface-nya TETAP hidup
+    // (translationX cuma transformasi visual, ukuran/EGL context-nya tidak
+    // tersentuh -- tidak mengembalikan risiko crash yg sudah diperbaiki),
+    // tapi apa pun yang dikomposit di sana otomatis jatuh di luar area yang
+    // terlihat, apa pun mekanisme komposit SurfaceView di device ini.
     private fun tutupModeBukuKeGrid() {
         sedangModeBuku = false
         recyclerGridMode.bringToFront()
+        wadahModeBuku.translationX = wadahModeBuku.resources.displayMetrics.widthPixels * 2f
     }
 
     private fun bukaModeBukuKeAtas() {
         sedangModeBuku = true
         wadahModeBuku.visibility = View.VISIBLE
+        wadahModeBuku.translationX = 0f
         wadahModeBuku.bringToFront()
     }
 
