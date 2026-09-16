@@ -9,8 +9,6 @@ import android.os.Handler
 import android.os.Looper
 import android.text.Spannable
 import android.text.SpannableString
-import android.text.StaticLayout
-import android.text.TextPaint
 import android.text.style.ForegroundColorSpan
 import android.util.LruCache
 import android.view.LayoutInflater
@@ -86,6 +84,95 @@ class BookPageProvider(
     }
     private val sedangDiproses = ConcurrentHashMap.newKeySet<String>()
 
+    // Batas aman tinggi bitmap render (kelipatan tinggi 1 layar) -- jaga2
+    // konten yg ekstrem panjangnya (jarang) tidak mengalokasikan bitmap
+    // nyaris tak terbatas. ~12 layar sudah lebih dari cukup utk status
+    // terpanjang yg wajar; lebih dari itu, potong & arahkan ke Sumber Asli.
+    private val BATAS_KALI_TINGGI_LAYAR = 12
+
+    // ------------------------------------------------------------------
+    // TAHAP 2: SCROLL DI DALAM HALAMAN
+    // ------------------------------------------------------------------
+    // Sejak Tahap 1, cacheBitmap TIDAK LAGI menyimpan bitmap seukuran layar
+    // persis -- sekarang menyimpan bitmap SETINGGI KONTEN ASLINYA (bisa jauh
+    // lebih tinggi dari 1 layar utk arsip yang panjang, lihat
+    // renderViewKeBitmapTinggi()). Yang diserahkan ke CurlPage/GL SELALU
+    // berupa POTONGAN seukuran-layar dari bitmap tinggi itu, pada posisi
+    // scroll saat ini -- lihat potongUntukTampil().
+    //
+    // Hanya SATU halaman yang bisa digeser interaktif dalam satu waktu
+    // (yang sedang tampil) -- `indexSedangDibaca`/`offsetGeserPx` cukup 2
+    // variabel instance, tidak perlu Map per-halaman. Begitu pindah ke
+    // index lain (curl selesai / lompat dari grid), offset otomatis balik
+    // ke 0 (mulai dari atas lagi) -- lihat pengecekan `index == indexSedangDibaca`
+    // di updatePage() & geserKontenHalaman().
+    @Volatile private var indexSedangDibaca = -1
+    @Volatile private var offsetGeserPx = 0
+    private val cacheKeyTerakhir = ConcurrentHashMap<Int, String>()
+
+    private fun potongUntukTampil(bitmapTinggi: Bitmap, w: Int, h: Int, offsetY: Int): Bitmap {
+        val maxOffset = (bitmapTinggi.height - h).coerceAtLeast(0)
+        val offsetAman = offsetY.coerceIn(0, maxOffset)
+        val tinggiPotongan = h.coerceAtMost(bitmapTinggi.height - offsetAman).coerceAtLeast(1)
+        val lebarPotongan = w.coerceAtMost(bitmapTinggi.width).coerceAtLeast(1)
+        return try {
+            val potongan = Bitmap.createBitmap(bitmapTinggi, 0, offsetAman, lebarPotongan, tinggiPotongan)
+            // PENTING -- BUG KRITIS KALAU DIABAIKAN: Bitmap.createBitmap(source,
+            // x,y,w,h) mengembalikan OBJEK SUMBER ASLI APA ADANYA (bukan
+            // salinan baru) kalau area yg diminta PERSIS sama dgn ukuran
+            // sumbernya (x=0,y=0,w=source.width,h=source.height) -- dan itu
+            // SELALU terjadi utk halaman yg kontennya muat 1 layar (offsetAman
+            // selalu 0, tinggiPotongan selalu = tinggi penuh bitmap), yaitu
+            // MAYORITAS arsip. Kalau dibiarkan, objek yg sama dgn yg masih
+            // dipegang `cacheBitmap` diserahkan ke CurlPage.setTexture(), yang
+            // akan me-recycle()-nya begitu diganti -- merusak cache & memicu
+            // lagi kelas crash native "freePixels" yg berulang kali sudah
+            // diperbaiki sebelumnya. WAJIB disalin ulang kalau ternyata objek
+            // yg dikembalikan SAMA (bukan potongan baru).
+            if (potongan === bitmapTinggi) {
+                potongan.copy(potongan.config ?: Bitmap.Config.ARGB_8888, false) ?: renderKosong(w, h)
+            } else {
+                potongan
+            }
+        } catch (e: Exception) {
+            renderKosong(w, h)
+        } catch (e: OutOfMemoryError) {
+            renderKosong(w, h)
+        }
+    }
+
+    /**
+     * Geser konten halaman `index` sejauh `deltaYPx` (positif = konten
+     * bergerak ke atas, spt scroll biasa melihat lanjutan teks). Dipanggil
+     * dari BudayakanBaca saat gestur sentuhan terdeteksi sbg scroll vertikal
+     * (bukan balik halaman) -- lihat BudayakanBaca.onTouch().
+     * @return true kalau posisi scroll benar-benar berubah (halaman ini
+     * memang punya konten yg lebih panjang dari 1 layar & belum mentok).
+     */
+    fun geserKontenHalaman(index: Int, deltaYPx: Int, w: Int, h: Int): Boolean {
+        if (index != indexSedangDibaca) {
+            indexSedangDibaca = index
+            offsetGeserPx = 0
+        }
+        val cacheKey = cacheKeyTerakhir[index] ?: return false
+        val bmp = cacheBitmap.get(cacheKey) ?: return false
+        val maxOffset = (bmp.height - h).coerceAtLeast(0)
+        if (maxOffset <= 0) return false
+        val baru = (offsetGeserPx + deltaYPx).coerceIn(0, maxOffset)
+        if (baru == offsetGeserPx) return false
+        offsetGeserPx = baru
+        refreshHalaman(index)
+        return true
+    }
+
+    /** Apakah halaman `index` punya konten yg lebih panjang dari 1 layar (butuh/bisa discroll). */
+    fun bisaDigeser(index: Int, h: Int): Boolean {
+        val cacheKey = cacheKeyTerakhir[index] ?: return false
+        val bmp = cacheBitmap.get(cacheKey) ?: return false
+        return bmp.height > h
+    }
+
+
     /**
      * Nomor arsip (posisi di ambilData(), 0-based) = nomor halaman - 1
      * (index 0 dicadangkan utk sampul depan). PEMETAAN LANGSUNG, tidak ada
@@ -160,7 +247,9 @@ class BookPageProvider(
 
         val fromCache = cacheBitmap.get(resolusi.cacheKey)
         if (fromCache != null) {
-            page.setTexture(salinUntukTampil(fromCache, w, h), CurlPage.SIDE_FRONT)
+            cacheKeyTerakhir[index] = resolusi.cacheKey
+            val offsetUntukHalamanIni = if (index == indexSedangDibaca) offsetGeserPx else 0
+            page.setTexture(potongUntukTampil(fromCache, w, h, offsetUntukHalamanIni), CurlPage.SIDE_FRONT)
             page.setColor(warnaSampulBack, CurlPage.SIDE_BACK)
             prefetchTetangga(index, data.size, w, h, data)
             return
@@ -219,14 +308,6 @@ class BookPageProvider(
         return bmp
     }
 
-    private fun salinUntukTampil(bitmap: Bitmap, width: Int, height: Int): Bitmap {
-        return try {
-            bitmap.copy(bitmap.config ?: Bitmap.Config.ARGB_8888, false) ?: renderKosong(width, height)
-        } catch (e: OutOfMemoryError) {
-            renderKosong(width, height)
-        }
-    }
-
     private fun renderSampul(width: Int, height: Int, judul: String, subjudul: String): Bitmap {
         return renderViewKeBitmapDiMainThread(width, height) {
             val view = LayoutInflater.from(context).inflate(R.layout.item_sampul_depan, null, true)
@@ -234,20 +315,6 @@ class BookPageProvider(
             view.findViewById<TextView>(R.id.txtSubjudulSampul)?.text = subjudul
             view
         }
-    }
-
-    private fun lebarKonten(w: Int) = (w - ((48 + 16) * densitas)).toInt().coerceAtLeast(1)
-
-    private fun tinggiBadan(h: Int, adaMedia: Boolean): Int {
-        val cadanganChrome = (160 * densitas).toInt()
-        val cadanganMedia = if (adaMedia) CADANGAN_MEDIA_PX else 0
-        return (h - cadanganChrome - cadanganMedia).coerceAtLeast((80 * densitas).toInt())
-    }
-
-    companion object {
-        private const val CADANGAN_MEDIA_PX = 560
-        private const val UKURAN_FONT_MAKS_SP = 14f
-        private const val UKURAN_FONT_MIN_SP = 9f
     }
 
     data class KontenBerbagi(val teksAsli: String, val namaPemilik: String, val kontenShared: String)
@@ -262,49 +329,6 @@ class BookPageProvider(
         val nama = detail[0].trim()
         val shared = if (detail.size > 1) detail[1].trim() else ""
         return KontenBerbagi(teksAsli, nama, shared)
-    }
-
-    @Suppress("DEPRECATION")
-    private fun buatStaticLayout(teks: String, paint: TextPaint, lebarPx: Int) =
-        StaticLayout(teks, paint, lebarPx, android.text.Layout.Alignment.ALIGN_NORMAL, 1f, 0f, false)
-
-    /**
-     * PENYEDERHANAAN: karena 1 arsip SELALU 1 halaman (tidak ada lagi
-     * paginasi lintas-halaman), teks yang panjang ditampilkan dengan ukuran
-     * font yang MENGECIL bertahap sampai muat di tinggi yang tersedia.
-     * Kalau bahkan di ukuran minimum masih tidak muat, teks dipotong +
-     * catatan ke Sumber Asli -- lebih sederhana & aman drpd sistem
-     * paginasi lama, walau blm ideal utk konten sangat panjang (rencana
-     * tahap berikutnya: scroll sungguhan di dalam halaman).
-     */
-    private fun hitungUkuranFontMuat(teksUntukUkur: String, lebarPx: Int, tinggiTersediaPx: Int): Float {
-        val paint = TextPaint(Paint.ANTI_ALIAS_FLAG)
-        var ukuran = UKURAN_FONT_MAKS_SP * densitas
-        val minimum = UKURAN_FONT_MIN_SP * densitas
-        while (ukuran > minimum) {
-            paint.textSize = ukuran
-            val layout = buatStaticLayout(teksUntukUkur, paint, lebarPx)
-            if (layout.height <= tinggiTersediaPx) return ukuran
-            ukuran -= 0.5f * densitas
-        }
-        return minimum
-    }
-
-    /** Potong `teks` supaya tingginya muat di `tinggiTersediaPx` pada `ukuranFontPx`, tambahkan catatan kalau terpotong. */
-    private fun potongAgarMuat(teks: String, paint: TextPaint, lebarPx: Int, tinggiTersediaPx: Int): String {
-        val layoutPenuh = buatStaticLayout(teks, paint, lebarPx)
-        if (layoutPenuh.height <= tinggiTersediaPx) return teks
-        val catatan = "\n\n\u2026 (dipotong, baca lengkap lewat tombol Sumber Asli)"
-        val layoutCatatan = buatStaticLayout(catatan, paint, lebarPx)
-        val budgetTeks = (tinggiTersediaPx - layoutCatatan.height).coerceAtLeast(0)
-        var batasBaris = 0
-        for (baris in 0 until layoutPenuh.lineCount) {
-            if (layoutPenuh.getLineBottom(baris) > budgetTeks) break
-            batasBaris = baris + 1
-        }
-        if (batasBaris <= 0) return catatan.trim()
-        val batasKarakter = layoutPenuh.getLineEnd(batasBaris - 1)
-        return teks.substring(0, batasKarakter.coerceIn(0, teks.length)) + catatan
     }
 
     private fun warnaiKontenTanyaJawab(teksLengkap: String): Spannable {
@@ -324,8 +348,6 @@ class BookPageProvider(
     // ------------------------------------------------------------------
     private fun renderHalamanArsip(width: Int, height: Int, arsip: ArsipEntity, nomorArsip: Int, totalArsip: Int): Bitmap {
         val adaMedia = arsip.daftarFoto.isNotBlank()
-        val lebarKontenPx = lebarKonten(width)
-        val tinggiBadanPx = tinggiBadan(height, adaMedia)
 
         var fotoRepresentatif: Bitmap? = null
         var isVideo = false
@@ -352,20 +374,19 @@ class BookPageProvider(
 
         val kontenBersih = arsip.kontenPenuh
         val kb = parseKontenBerbagi(kontenBersih)
-        // Ukur SEKALI utk seluruh konten halaman ini (asli + shared kalau
-        // ada) supaya kedua blok konsisten pakai ukuran font yang sama.
-        val teksUntukUkur = if (kb != null) "${kb.teksAsli}\n${kb.kontenShared}" else kontenBersih
-        val ukuranFontPx = hitungUkuranFontMuat(teksUntukUkur, lebarKontenPx, tinggiBadanPx)
-        val paintUkur = TextPaint(Paint.ANTI_ALIAS_FLAG).apply { textSize = ukuranFontPx }
 
-        return renderViewKeBitmapDiMainThread(width, height) {
+        return renderViewKeBitmapTinggi(width, height) {
             val view = LayoutInflater.from(context).inflate(R.layout.item_buku, null, true)
             view.background = KertasBergarisDrawable(density = context.resources.displayMetrics.density)
 
             val txtKontenUtama = view.findViewById<TextView>(R.id.txtKontenUtama)
             val txtKontenShared = view.findViewById<TextView>(R.id.txtKontenShared)
-            txtKontenUtama.textSize = ukuranFontPx / densitas
-            txtKontenShared.textSize = ukuranFontPx / densitas
+            // PENYEDERHANAAN TAHAP 2: tidak perlu lagi mengecilkan/memotong
+            // teks -- ukuran font pakai default dari XML (14sp/13sp), dan
+            // seluruh teks ditampilkan APA ADANYA. Kalau lebih tinggi dari 1
+            // layar, view (dan bitmap-nya) memang dibuat lebih tinggi --
+            // lihat renderViewKeBitmapTinggi() -- lalu digeser scroll saat
+            // dibaca (lihat geserKontenHalaman()).
             val tinggiBarisPx = (KertasBergarisDrawable.TINGGI_BARIS_DP * context.resources.displayMetrics.density).toInt()
             TextViewCompat.setLineHeight(txtKontenUtama, tinggiBarisPx)
             TextViewCompat.setLineHeight(txtKontenShared, tinggiBarisPx)
@@ -375,22 +396,15 @@ class BookPageProvider(
             val txtNamaPemilikShared = view.findViewById<TextView>(R.id.txtNamaPemilikShared)
 
             if (kb == null) {
-                val potongan = potongAgarMuat(kontenBersih, paintUkur, lebarKontenPx, tinggiBadanPx)
-                txtKontenUtama.text = warnaiKontenTanyaJawab(potongan)
+                txtKontenUtama.text = warnaiKontenTanyaJawab(kontenBersih)
                 txtKontenUtama.visibility = View.VISIBLE
                 wadahDinamisKonten.setBackgroundResource(0)
                 wadahDinamisKonten.setPadding(0, 0, 0, 0)
                 wadahHeaderShared.visibility = View.GONE
                 txtKontenShared.visibility = View.GONE
             } else {
-                // "Shared status": bagi budget tinggi kasar 45/45 antara teks
-                // asli & teks shared (sederhana -- tidak perlu presisi krn
-                // masing masing sudah dipotong kalau perlu di potongAgarMuat()).
-                val tinggiUntukAsli = (tinggiBadanPx * 0.45f).toInt()
-                val tinggiUntukShared = (tinggiBadanPx * 0.45f).toInt()
                 if (kb.teksAsli.isNotBlank()) {
-                    val potongan = potongAgarMuat(kb.teksAsli, paintUkur, lebarKontenPx, tinggiUntukAsli)
-                    txtKontenUtama.text = warnaiKontenTanyaJawab(potongan)
+                    txtKontenUtama.text = warnaiKontenTanyaJawab(kb.teksAsli)
                     txtKontenUtama.visibility = View.VISIBLE
                 } else {
                     txtKontenUtama.visibility = View.GONE
@@ -401,9 +415,7 @@ class BookPageProvider(
                 wadahHeaderShared.visibility = if (kb.namaPemilik.isNotBlank()) View.VISIBLE else View.GONE
                 if (kb.namaPemilik.isNotBlank()) txtNamaPemilikShared.text = kb.namaPemilik
                 if (kb.kontenShared.isNotBlank()) {
-                    val lebarSharedPx = (lebarKontenPx - (24 * context.resources.displayMetrics.density)).toInt().coerceAtLeast(1)
-                    val potongan = potongAgarMuat(kb.kontenShared, paintUkur, lebarSharedPx, tinggiUntukShared)
-                    txtKontenShared.text = potongan
+                    txtKontenShared.text = kb.kontenShared
                     txtKontenShared.visibility = View.VISIBLE
                 } else {
                     txtKontenShared.visibility = View.GONE
@@ -466,6 +478,57 @@ class BookPageProvider(
     }
 
     // ------------------------------------------------------------------
+    // ------------------------------------------------------------------
+    /**
+     * TAHAP 2: sama seperti renderViewKeBitmapDiMainThread(), TAPI tinggi
+     * bitmap-nya mengikuti tinggi ALAMI konten (wrap_content), bukan mepet
+     * `tinggiMinimum` (tinggi 1 layar). Kalau kontennya pendek, hasilnya
+     * sama seperti sebelumnya (persis `tinggiMinimum`, layout dgn
+     * android:layout_weight="1" pada ScrollView di item_buku.xml akan
+     * mengisi sisa ruang secara wajar). Kalau kontennya panjang, bitmap
+     * yang dihasilkan LEBIH TINGGI dari 1 layar -- potongan yang benar2
+     * ditampilkan ke pengguna (seukuran 1 layar, pada posisi scroll saat
+     * itu) diambil belakangan oleh potongUntukTampil().
+     */
+    private fun renderViewKeBitmapTinggi(width: Int, tinggiMinimum: Int, buatView: () -> View): Bitmap {
+        val latch = CountDownLatch(1)
+        var hasil: Bitmap? = null
+        mainHandler.post {
+            try {
+                val view = buatView()
+                val w = width.coerceAtLeast(1)
+                val hMin = tinggiMinimum.coerceAtLeast(1)
+                // Ukur dulu tinggi alaminya (UNSPECIFIED) sebelum benar2
+                // layout+gambar -- ini yang memungkinkan tahu berapa tinggi
+                // total yang dibutuhkan tanpa memotong konten apa pun.
+                view.measure(
+                    View.MeasureSpec.makeMeasureSpec(w, View.MeasureSpec.EXACTLY),
+                    View.MeasureSpec.makeMeasureSpec(0, View.MeasureSpec.UNSPECIFIED)
+                )
+                val tinggiAlami = view.measuredHeight.coerceAtLeast(hMin).coerceAtMost(hMin * BATAS_KALI_TINGGI_LAYAR)
+                view.measure(
+                    View.MeasureSpec.makeMeasureSpec(w, View.MeasureSpec.EXACTLY),
+                    View.MeasureSpec.makeMeasureSpec(tinggiAlami, View.MeasureSpec.EXACTLY)
+                )
+                view.layout(0, 0, w, tinggiAlami)
+                val bmp = Bitmap.createBitmap(w, tinggiAlami, Bitmap.Config.ARGB_8888)
+                view.draw(Canvas(bmp))
+                hasil = bmp
+            } catch (e: Exception) {
+                hasil = null
+            } catch (e: OutOfMemoryError) {
+                // Konten ekstrem panjangnya (jarang) bisa gagal alokasi bitmap
+                // -- daripada crash, tampilkan apa adanya di tinggi 1 layar
+                // saja (masih bisa dibaca via tombol Sumber Asli).
+                hasil = null
+            } finally {
+                latch.countDown()
+            }
+        }
+        val selesai = latch.await(4, TimeUnit.SECONDS)
+        return if (selesai && hasil != null) hasil!! else renderKosong(width, tinggiMinimum)
+    }
+
     private fun renderViewKeBitmapDiMainThread(width: Int, height: Int, buatView: () -> View): Bitmap {
         val latch = CountDownLatch(1)
         var hasil: Bitmap? = null

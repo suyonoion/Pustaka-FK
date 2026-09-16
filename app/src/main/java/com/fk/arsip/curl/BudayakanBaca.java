@@ -84,6 +84,32 @@ public class BudayakanBaca extends GLSurfaceView implements View.OnTouchListener
 		void onHalamanBerganti(int indexBaru);
 	}
 
+	// TAHAP 2: SCROLL DI DALAM HALAMAN.
+	// Dipanggil saat gestur sentuhan terdeteksi sbg scroll vertikal isi
+	// halaman (bukan balik halaman/curl) -- lihat onTouch() & catatan
+	// panjang di sana soal disambiguasi arah gestur. Implementasi WAJIB
+	// posting sendiri ke thread yang benar kalau perlu menyentuh UI/View
+	// lain, sama seperti PenggantiHalamanListener.
+	private ContentScrollListener mContentScrollListener;
+
+	public void setContentScrollListener(ContentScrollListener listener) {
+		mContentScrollListener = listener;
+	}
+
+	public interface ContentScrollListener {
+		void onScrollKonten(int index, float deltaY);
+	}
+
+	// Konstanta & state utk disambiguasi gestur "balik halaman" vs "scroll
+	// isi" -- lihat catatan panjang di onTouch().
+	private static final int MODE_SENTUH_BELUM_TENTU = 0;
+	private static final int MODE_SENTUH_CURL = 1;
+	private static final int MODE_SENTUH_SCROLL = 2;
+	private int mModeSentuhan = MODE_SENTUH_BELUM_TENTU;
+	private final PointF mSentuhMentahAwal = new PointF();
+	private float mScrollYTerakhir = 0f;
+	private int mTouchSlop = 24; // px, diisi ulang dari ViewConfiguration saat View siap (lihat init())
+
 	// Start position for dragging.
 	private PointF mDragStartPos = new PointF();
 
@@ -161,6 +187,7 @@ public class BudayakanBaca extends GLSurfaceView implements View.OnTouchListener
 		setRenderer(mRenderer);
 		setRenderMode(GLSurfaceView.RENDERMODE_WHEN_DIRTY);
 		setOnTouchListener(this);
+		mTouchSlop = android.view.ViewConfiguration.get(ctx).getScaledTouchSlop();
 
 		// Even though left and right pages are static we have to allocate room
 		// for curl on them too as we are switching meshes. Another way would be
@@ -264,6 +291,59 @@ public class BudayakanBaca extends GLSurfaceView implements View.OnTouchListener
 		mPageCurl.resetTexture();
 	}
 
+	/**
+	 * Menentukan sisi (kiri/kanan) & memulai curl berdasarkan posisi sentuh
+	 * MENTAH saat ACTION_DOWN (mSentuhMentahAwal) -- diekstrak dari logika
+	 * yang dulu ada langsung di ACTION_DOWN, sekarang dipanggil belakangan
+	 * (dari ACTION_MOVE, begitu gestur dipastikan horizontal -- lihat
+	 * catatan panjang soal disambiguasi di onTouch()).
+	 * @return true kalau curl benar-benar dimulai (ada halaman ke arah itu).
+	 */
+	private boolean mulaiCurlDariGestur(RectF rightRect, RectF leftRect) {
+		mDragStartPos.set(mSentuhMentahAwal);
+
+		// First we make sure it's not over or below page. Pages are
+		// supposed to be same height so it really doesn't matter do we use
+		// left or right one.
+		if (mDragStartPos.y > rightRect.top) {
+			mDragStartPos.y = rightRect.top;
+		} else if (mDragStartPos.y < rightRect.bottom) {
+			mDragStartPos.y = rightRect.bottom;
+		}
+
+		// Then we have to make decisions for the user whether curl is going
+		// to happen from left or right, and on which page.
+		if (mViewMode == SHOW_TWO_PAGES) {
+			if (mDragStartPos.x < rightRect.left && mCurrentIndex > 0) {
+				mDragStartPos.x = leftRect.left;
+				startCurl(CURL_LEFT);
+			} else if (mDragStartPos.x >= rightRect.left
+					&& mCurrentIndex < mPageProvider.getPageCount()) {
+				mDragStartPos.x = rightRect.right;
+				if (!mAllowLastPageCurl
+						&& mCurrentIndex >= mPageProvider.getPageCount() - 1) {
+					return false;
+				}
+				startCurl(CURL_RIGHT);
+			}
+		} else if (mViewMode == SHOW_ONE_PAGE) {
+			float halfX = (rightRect.right + rightRect.left) / 2;
+			if (mDragStartPos.x < halfX && mCurrentIndex > 0) {
+				mDragStartPos.x = rightRect.left;
+				startCurl(CURL_LEFT);
+			} else if (mDragStartPos.x >= halfX
+					&& mCurrentIndex < mPageProvider.getPageCount()) {
+				mDragStartPos.x = rightRect.right;
+				if (!mAllowLastPageCurl
+						&& mCurrentIndex >= mPageProvider.getPageCount() - 1) {
+					return false;
+				}
+				startCurl(CURL_RIGHT);
+			}
+		}
+		return mCurlState != CURL_NONE;
+	}
+
 	@Override
 	public boolean onTouch(View view, MotionEvent me) {
 		// No dragging during animation at the moment.
@@ -285,73 +365,69 @@ public class BudayakanBaca extends GLSurfaceView implements View.OnTouchListener
 			mPointerPos.mPressure = 0.8f;
 		}
 
+		// TAHAP 2: DISAMBIGUASI GESTUR "BALIK HALAMAN" vs "SCROLL ISI".
+		// Sebelumnya, ACTION_DOWN LANGSUNG memutuskan & memulai curl --
+		// artinya SETIAP sentuhan (termasuk yg maksudnya scroll ke bawah utk
+		// baca lanjutan) langsung dianggap gestur balik halaman. Sekarang
+		// keputusan itu DITUNDA sampai user benar-benar menggeser jari
+		// melewati ambang batas (mTouchSlop) -- baru pada saat itu dilihat
+		// arah dominannya: geser lebih ke SAMPING (|dx|>=|dy|) => balik
+		// halaman (curl) seperti sebelumnya; geser lebih ke ATAS/BAWAH
+		// (|dy|>|dx|) => scroll isi halaman (dipanggil lewat
+		// mContentScrollListener, TIDAK PERNAH menyentuh logika curl sama
+		// sekali). Sekali salah satu mode terpilih utk satu gestur (dari
+		// ACTION_DOWN sampai ACTION_UP/CANCEL berikutnya), mode itu dipakai
+		// konsisten sampai gestur selesai -- tidak berpindah mode di
+		// tengah jalan.
 		switch (me.getAction()) {
 		case MotionEvent.ACTION_DOWN: {
-
-			// Once we receive pointer down event its position is mapped to
-			// right or left edge of page and that'll be the position from where
-			// user is holding the paper to make curl happen.
-			mDragStartPos.set(mPointerPos.mPos);
-
-			// First we make sure it's not over or below page. Pages are
-			// supposed to be same height so it really doesn't matter do we use
-			// left or right one.
-			if (mDragStartPos.y > rightRect.top) {
-				mDragStartPos.y = rightRect.top;
-			} else if (mDragStartPos.y < rightRect.bottom) {
-				mDragStartPos.y = rightRect.bottom;
-			}
-
-			// Then we have to make decisions for the user whether curl is going
-			// to happen from left or right, and on which page.
-			if (mViewMode == SHOW_TWO_PAGES) {
-				// If we have an open book and pointer is on the left from right
-				// page we'll mark drag position to left edge of left page.
-				// Additionally checking mCurrentIndex is higher than zero tells
-				// us there is a visible page at all.
-				if (mDragStartPos.x < rightRect.left && mCurrentIndex > 0) {
-					mDragStartPos.x = leftRect.left;
-					startCurl(CURL_LEFT);
-				}
-				// Otherwise check pointer is on right page's side.
-				else if (mDragStartPos.x >= rightRect.left
-						&& mCurrentIndex < mPageProvider.getPageCount()) {
-					mDragStartPos.x = rightRect.right;
-					if (!mAllowLastPageCurl
-							&& mCurrentIndex >= mPageProvider.getPageCount() - 1) {
-						return false;
-					}
-					startCurl(CURL_RIGHT);
-				}
-			} else if (mViewMode == SHOW_ONE_PAGE) {
-				float halfX = (rightRect.right + rightRect.left) / 2;
-				if (mDragStartPos.x < halfX && mCurrentIndex > 0) {
-					mDragStartPos.x = rightRect.left;
-					startCurl(CURL_LEFT);
-				} else if (mDragStartPos.x >= halfX
-						&& mCurrentIndex < mPageProvider.getPageCount()) {
-					mDragStartPos.x = rightRect.right;
-					if (!mAllowLastPageCurl
-							&& mCurrentIndex >= mPageProvider.getPageCount() - 1) {
-						return false;
-					}
-					startCurl(CURL_RIGHT);
-				}
-			}
-			// If we have are in curl state, let this case clause flow through
-			// to next one. We have pointer position and drag position defined
-			// and this will create first render request given these points.
-			if (mCurlState == CURL_NONE) {
-				return false;
-			}
+			mSentuhMentahAwal.set(mPointerPos.mPos);
+			mModeSentuhan = MODE_SENTUH_BELUM_TENTU;
+			mScrollYTerakhir = mPointerPos.mPos.y;
+			return true;
 		}
 		case MotionEvent.ACTION_MOVE: {
-			updateCurlPos(mPointerPos);
+			if (mModeSentuhan == MODE_SENTUH_BELUM_TENTU) {
+				float dx = mPointerPos.mPos.x - mSentuhMentahAwal.x;
+				float dy = mPointerPos.mPos.y - mSentuhMentahAwal.y;
+				if (Math.abs(dx) < mTouchSlop && Math.abs(dy) < mTouchSlop) {
+					// Belum cukup bergerak utk tahu maksud gesturnya --
+					// tunggu event MOVE berikutnya, jangan lakukan apa-apa
+					// dulu (mencegah "getaran" kecil dianggap gestur).
+					return true;
+				}
+				if (Math.abs(dy) > Math.abs(dx)) {
+					mModeSentuhan = MODE_SENTUH_SCROLL;
+					mScrollYTerakhir = mPointerPos.mPos.y;
+				} else {
+					mModeSentuhan = MODE_SENTUH_CURL;
+					if (!mulaiCurlDariGestur(rightRect, leftRect)) {
+						// Tidak ada halaman ke arah itu (mis. sudah di
+						// halaman pertama/terakhir) -- jangan patahkan
+						// gestur yg sedang berjalan, biarkan saja idle
+						// sampai ACTION_UP.
+						return true;
+					}
+				}
+			}
+			if (mModeSentuhan == MODE_SENTUH_CURL) {
+				updateCurlPos(mPointerPos);
+			} else if (mModeSentuhan == MODE_SENTUH_SCROLL) {
+				// Geser ke ATAS (jari naik, mPos.y mengecil) = melihat
+				// konten SELANJUTNYA = deltaY POSITIF (konvensi yg sama
+				// dgn geserKontenHalaman() di BookPageProvider).
+				float deltaY = mScrollYTerakhir - mPointerPos.mPos.y;
+				mScrollYTerakhir = mPointerPos.mPos.y;
+				if (mContentScrollListener != null && deltaY != 0f) {
+					mContentScrollListener.onScrollKonten(mCurrentIndex, deltaY);
+				}
+			}
 			break;
 		}
 		case MotionEvent.ACTION_CANCEL:
 		case MotionEvent.ACTION_UP: {
-			if (mCurlState == CURL_LEFT || mCurlState == CURL_RIGHT) {
+			if (mModeSentuhan == MODE_SENTUH_CURL
+					&& (mCurlState == CURL_LEFT || mCurlState == CURL_RIGHT)) {
 				// Animation source is the point from where animation starts.
 				// Also it's handled in a way we actually simulate touch events
 				// meaning the output is exactly the same as if user drags the
@@ -385,6 +461,7 @@ public class BudayakanBaca extends GLSurfaceView implements View.OnTouchListener
 				mAnimate = true;
 				requestRender();
 			}
+			mModeSentuhan = MODE_SENTUH_BELUM_TENTU;
 			break;
 		}
 		}

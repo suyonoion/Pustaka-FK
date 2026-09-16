@@ -242,6 +242,27 @@ private var kecepatanEmaBytesPerSec: Double = 0.0
         curlViewBuku.setPenggantiHalamanListener { indexBaru ->
             runOnUiThread { perbaruiBarAksiBaca(indexBaru) }
         }
+        // TAHAP 2: LISTENER SCROLL ISI HALAMAN -- dipicu dari onTouch() di
+        // BudayakanBaca SAAT GESTUR TERDETEKSI VERTIKAL (bukan balik
+        // halaman/curl, lihat dokumentasi panjang di BudayakanBaca.onTouch()).
+        // Berbeda dari PenggantiHalamanListener di atas, callback ini SUDAH
+        // di UI/main thread (dipanggil langsung dari View.OnTouchListener,
+        // bukan dari GL thread), jadi TIDAK perlu runOnUiThread -- dan
+        // geserKontenHalaman() sendiri sudah aman dipanggil dari UI thread
+        // krn ujungnya cuma memicu refreshPageTexture() yang sudah
+        // di-queueEvent() ke GL thread.
+        curlViewBuku.setContentScrollListener(object : com.fk.arsip.curl.BudayakanBaca.ContentScrollListener {
+            override fun onScrollKonten(index: Int, deltaY: Float) {
+                // PERBAIKAN: lebar/tinggi di sini HARUS sama dgn yg diterima
+                // updatePage() (mPageBitmapWidth/Height dari CurlRenderer) utk
+                // hitungan offset scroll konsisten dgn bitmap yg sungguhan
+                // di-cache. Di mode SHOW_ONE_PAGE (dipakai app ini),
+                // mPageRectRight = SELURUH viewport (dikurangi margin), BUKAN
+                // setengahnya (beda dgn SHOW_TWO_PAGES) -- jadi pakai lebar
+                // penuh curlViewBuku, bukan dibagi 2.
+                bookPageProvider.geserKontenHalaman(index, deltaY.toInt(), curlViewBuku.width, curlViewBuku.height)
+            }
+        })
         pasangBarAksiBaca()
         pasangPanelIkonBaca()
 
