@@ -108,6 +108,13 @@ public class BudayakanBaca extends GLSurfaceView implements View.OnTouchListener
 	private int mModeSentuhan = MODE_SENTUH_BELUM_TENTU;
 	private final PointF mSentuhMentahAwal = new PointF();
 	private float mScrollYTerakhir = 0f;
+	// PERBAIKAN: lihat catatan panjang di onTouch() soal beda satuan piksel
+	// vs unit ter-translate. Pasangan piksel-mentah ini KHUSUS utk keputusan
+	// mode gestur & hitungan deltaY scroll -- mSentuhMentahAwal/mScrollYTerakhir
+	// di atas TETAP dipakai apa adanya (koordinat ter-translate) utk logika
+	// curl yang sudah ada sebelumnya, tidak diubah.
+	private final PointF mSentuhPikselAwal = new PointF();
+	private float mScrollYTerakhirPiksel = 0f;
 	private int mTouchSlop = 24; // px, diisi ulang dari ViewConfiguration saat View siap (lihat init())
 
 	// Start position for dragging.
@@ -357,7 +364,27 @@ public class BudayakanBaca extends GLSurfaceView implements View.OnTouchListener
 		RectF leftRect = mRenderer.getPageRect(CurlRenderer.PAGE_LEFT);
 
 		// Store pointer position.
-		mPointerPos.mPos.set(me.getX(), me.getY());
+		// PERBAIKAN BUG "TOTAL BEKU (tidak bisa geser halaman maupun
+		// scroll)": mRenderer.translate() di bawah ini mengubah mPointerPos.mPos
+		// dari koordinat PIKSEL LAYAR MENTAH ke sistem koordinat internal
+		// CurlRenderer (skala unit GL utk render 3D, BUKAN piksel -- lihat
+		// CurlRenderer.translate()). Disambiguasi gestur (dx/dy vs mTouchSlop)
+		// SEBELUMNYA memakai mPointerPos.mPos yang SUDAH DITRANSLATE itu,
+		// dibandingkan dgn mTouchSlop yang satuannya PIKSEL MENTAH dari
+		// ViewConfiguration -- beda satuan total. Karena skala unit GL jauh
+		// lebih kecil dari piksel, |dx|/|dy| hasil translate hampir tidak
+		// pernah melewati mTouchSlop, jadi mModeSentuhan TIDAK PERNAH keluar
+		// dari MODE_SENTUH_BELUM_TENTU -- baik curl maupun scroll tidak
+		// pernah benar2 mulai, persis gejala "disentuh/digeser apa pun tidak
+		// ada reaksi sama sekali". Fix: lacak posisi PIKSEL MENTAH terpisah
+		// (mSentuhPikselAwal/mScrollYTerakhirPiksel) KHUSUS utk keputusan
+		// mode & hitungan deltaY scroll (geserKontenHalaman() jg mengharapkan
+		// piksel sungguhan utk offset-nya) -- mSentuhMentahAwal (koordinat
+		// ter-translate) tetap dipakai apa adanya utk mulaiCurlDariGestur()
+		// yang memang butuh koordinat sistem CurlRenderer utk posisi curl.
+		float xPikselMentah = me.getX();
+		float yPikselMentah = me.getY();
+		mPointerPos.mPos.set(xPikselMentah, yPikselMentah);
 		mRenderer.translate(mPointerPos.mPos);
 		if (mEnableTouchPressure) {
 			mPointerPos.mPressure = me.getPressure();
@@ -382,14 +409,20 @@ public class BudayakanBaca extends GLSurfaceView implements View.OnTouchListener
 		switch (me.getAction()) {
 		case MotionEvent.ACTION_DOWN: {
 			mSentuhMentahAwal.set(mPointerPos.mPos);
+			mSentuhPikselAwal.set(xPikselMentah, yPikselMentah);
 			mModeSentuhan = MODE_SENTUH_BELUM_TENTU;
 			mScrollYTerakhir = mPointerPos.mPos.y;
+			mScrollYTerakhirPiksel = yPikselMentah;
 			return true;
 		}
 		case MotionEvent.ACTION_MOVE: {
 			if (mModeSentuhan == MODE_SENTUH_BELUM_TENTU) {
-				float dx = mPointerPos.mPos.x - mSentuhMentahAwal.x;
-				float dy = mPointerPos.mPos.y - mSentuhMentahAwal.y;
+				// PERBAIKAN: dx/dy keputusan mode WAJIB piksel mentah (sama
+				// satuan dgn mTouchSlop) -- lihat catatan panjang di atas
+				// dekat mRenderer.translate(). Pakai mSentuhPikselAwal, BUKAN
+				// mSentuhMentahAwal (itu koordinat ter-translate, beda skala).
+				float dx = xPikselMentah - mSentuhPikselAwal.x;
+				float dy = yPikselMentah - mSentuhPikselAwal.y;
 				if (Math.abs(dx) < mTouchSlop && Math.abs(dy) < mTouchSlop) {
 					// Belum cukup bergerak utk tahu maksud gesturnya --
 					// tunggu event MOVE berikutnya, jangan lakukan apa-apa
@@ -398,7 +431,7 @@ public class BudayakanBaca extends GLSurfaceView implements View.OnTouchListener
 				}
 				if (Math.abs(dy) > Math.abs(dx)) {
 					mModeSentuhan = MODE_SENTUH_SCROLL;
-					mScrollYTerakhir = mPointerPos.mPos.y;
+					mScrollYTerakhirPiksel = yPikselMentah;
 				} else {
 					mModeSentuhan = MODE_SENTUH_CURL;
 					if (!mulaiCurlDariGestur(rightRect, leftRect)) {
@@ -413,11 +446,16 @@ public class BudayakanBaca extends GLSurfaceView implements View.OnTouchListener
 			if (mModeSentuhan == MODE_SENTUH_CURL) {
 				updateCurlPos(mPointerPos);
 			} else if (mModeSentuhan == MODE_SENTUH_SCROLL) {
-				// Geser ke ATAS (jari naik, mPos.y mengecil) = melihat
-				// konten SELANJUTNYA = deltaY POSITIF (konvensi yg sama
-				// dgn geserKontenHalaman() di BookPageProvider).
-				float deltaY = mScrollYTerakhir - mPointerPos.mPos.y;
-				mScrollYTerakhir = mPointerPos.mPos.y;
+				// Geser ke ATAS (jari naik, Y mengecil) = melihat konten
+				// SELANJUTNYA = deltaY POSITIF (konvensi yg sama dgn
+				// geserKontenHalaman() di BookPageProvider). PERBAIKAN: pakai
+				// piksel mentah (yPikselMentah), BUKAN mPointerPos.mPos.y yg
+				// sudah ter-translate -- geserKontenHalaman() membandingkan
+				// deltaY ini lgs dgn tinggi bitmap PIKSEL SUNGGUHAN, jadi
+				// harus dalam satuan piksel juga (lihat catatan panjang di
+				// atas dekat mRenderer.translate()).
+				float deltaY = mScrollYTerakhirPiksel - yPikselMentah;
+				mScrollYTerakhirPiksel = yPikselMentah;
 				if (mContentScrollListener != null && deltaY != 0f) {
 					mContentScrollListener.onScrollKonten(mCurrentIndex, deltaY);
 				}
