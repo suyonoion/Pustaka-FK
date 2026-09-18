@@ -149,6 +149,17 @@ class BookPageProvider(
      * @return true kalau posisi scroll benar-benar berubah (halaman ini
      * memang punya konten yg lebih panjang dari 1 layar & belum mentok).
      */
+    @Volatile private var refreshTerakhirMs = 0L
+    // ~30fps utk update TEKSTUR scroll -- cukup mulus utk mata, tapi jauh
+    // lebih murah drpd memotong bitmap + upload tekstur GL PENUH tiap
+    // event ACTION_MOVE (bisa >60x/detik di sebagian device -- itulah
+    // penyebab "kaku/lag" yg dilaporkan). Posisi LOGIS (offsetGeserPx)
+    // tetap ter-update SETIAP panggilan, cuma tekstur yg ditampilkan yg
+    // dibatasi lajunya -- lihat selesaiGeserKontenHalaman() utk memastikan
+    // posisi terakhir tetap tampil persis begitu jari diangkat (ACTION_UP),
+    // walau update itu jatuh di tengah jendela throttle.
+    private val JEDA_MINIMUM_REFRESH_MS = 32L
+
     fun geserKontenHalaman(index: Int, deltaYPx: Int, w: Int, h: Int): Boolean {
         if (index != indexSedangDibaca) {
             indexSedangDibaca = index
@@ -161,8 +172,26 @@ class BookPageProvider(
         val baru = (offsetGeserPx + deltaYPx).coerceIn(0, maxOffset)
         if (baru == offsetGeserPx) return false
         offsetGeserPx = baru
+        val sekarang = android.os.SystemClock.uptimeMillis()
+        if (sekarang - refreshTerakhirMs < JEDA_MINIMUM_REFRESH_MS) {
+            return true // posisi logis sudah benar; tekstur GL menyusul di tick berikutnya
+        }
+        refreshTerakhirMs = sekarang
         refreshHalaman(index)
         return true
+    }
+
+    /**
+     * Dipanggil saat gestur scroll SELESAI (ACTION_UP/CANCEL) -- paksa satu
+     * refresh tekstur TANPA throttle, supaya posisi yang tampil di layar
+     * selalu persis sama dgn offsetGeserPx terakhir, walau update paling
+     * akhir tadi kebetulan jatuh di tengah jendela throttle (lihat
+     * geserKontenHalaman()).
+     */
+    fun selesaiGeserKontenHalaman(index: Int) {
+        if (index != indexSedangDibaca) return
+        refreshTerakhirMs = android.os.SystemClock.uptimeMillis()
+        refreshHalaman(index)
     }
 
     /** Apakah halaman `index` punya konten yg lebih panjang dari 1 layar (butuh/bisa discroll). */

@@ -98,6 +98,10 @@ public class BudayakanBaca extends GLSurfaceView implements View.OnTouchListener
 
 	public interface ContentScrollListener {
 		void onScrollKonten(int index, float deltaY);
+		/** Dipanggil saat gestur scroll berakhir (ACTION_UP/CANCEL) -- kesempatan
+		 * memaksa refresh tekstur terakhir tanpa throttle (lihat
+		 * BookPageProvider.selesaiGeserKontenHalaman()). */
+		void onScrollSelesai(int index);
 	}
 
 	// Konstanta & state utk disambiguasi gestur "balik halaman" vs "scroll
@@ -498,6 +502,12 @@ public class BudayakanBaca extends GLSurfaceView implements View.OnTouchListener
 				}
 				mAnimate = true;
 				requestRender();
+			} else if (mModeSentuhan == MODE_SENTUH_SCROLL && mContentScrollListener != null) {
+				// Gestur scroll berakhir -- paksa refresh tekstur terakhir
+				// tanpa throttle, supaya posisi yg tampil persis sama dgn
+				// tempat jari berhenti (lihat catatan di
+				// BookPageProvider.selesaiGeserKontenHalaman()).
+				mContentScrollListener.onScrollSelesai(mCurrentIndex);
 			}
 			mModeSentuhan = MODE_SENTUH_BELUM_TENTU;
 			break;

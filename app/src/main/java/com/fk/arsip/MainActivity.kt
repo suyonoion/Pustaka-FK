@@ -262,6 +262,9 @@ private var kecepatanEmaBytesPerSec: Double = 0.0
                 // penuh curlViewBuku, bukan dibagi 2.
                 bookPageProvider.geserKontenHalaman(index, deltaY.toInt(), curlViewBuku.width, curlViewBuku.height)
             }
+            override fun onScrollSelesai(index: Int) {
+                bookPageProvider.selesaiGeserKontenHalaman(index)
+            }
         })
         pasangBarAksiBaca()
         pasangPanelIkonBaca()
