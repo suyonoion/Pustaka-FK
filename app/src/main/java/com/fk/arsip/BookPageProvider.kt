@@ -108,7 +108,6 @@ class BookPageProvider(
     // di updatePage() & geserKontenHalaman().
     @Volatile private var indexSedangDibaca = -1
     @Volatile private var offsetGeserPx = 0
-    private val cacheKeyTerakhir = ConcurrentHashMap<Int, String>()
 
     private fun potongUntukTampil(bitmapTinggi: Bitmap, w: Int, h: Int, offsetY: Int): Bitmap {
         val maxOffset = (bitmapTinggi.height - h).coerceAtLeast(0)
@@ -160,13 +159,33 @@ class BookPageProvider(
     // walau update itu jatuh di tengah jendela throttle.
     private val JEDA_MINIMUM_REFRESH_MS = 32L
 
+    // PERBAIKAN BUG "SCROLL BARU AKTIF SETELAH BUKA RECENT & BALIK LAGI":
+    // sebelumnya geserKontenHalaman()/bisaDigeser() bergantung pada
+    // `cacheKeyTerakhir[index]` -- sebuah Map yang HANYA diisi sbg EFEK
+    // SAMPING oleh updatePage() (dan hanya di jalur cache-HIT-nya). Ada
+    // celah waktu/urutan nyata di sana: kalau updatePage() BELUM SEMPAT
+    // dipanggil ULANG utk index ini setelah render async-nya selesai (mis.
+    // krn refreshPageTexture()'s pengecekan index==mLastRightIdx/dst belum
+    // "kena" tepat pas render selesai), cacheKeyTerakhir[index] tetap
+    // kosong SELAMANYA sampai ADA pemicu lain (spt onPause/onResume dari
+    // buka recent, yang memaksa updatePages() jalan ulang & akhirnya
+    // mengisi Map itu) -- padahal bitmap-nya SENDIRI sebenarnya SUDAH ADA
+    // di cacheBitmap sejak lama, tinggal tidak "diketahui" via Map perantara
+    // yang rapuh itu.
+    //
+    // Fix: geserKontenHalaman()/bisaDigeser() SEKARANG menghitung ulang
+    // kunci cache-nya SENDIRI lewat resolusiHalaman() (murah -- cuma bikin
+    // String key, TIDAK menjalankan render) & baca cacheBitmap LANGSUNG.
+    // Tidak ada lagi Map perantara yang bisa "telat" terisi -- begitu bitmap
+    // ADA di cache (dari jalur mana pun ia sampai ke sana), scroll langsung
+    // bisa jalan, tanpa perlu event tambahan apa pun sbg pemicu.
     fun geserKontenHalaman(index: Int, deltaYPx: Int, w: Int, h: Int): Boolean {
         if (index != indexSedangDibaca) {
             indexSedangDibaca = index
             offsetGeserPx = 0
         }
-        val cacheKey = cacheKeyTerakhir[index] ?: return false
-        val bmp = cacheBitmap.get(cacheKey) ?: return false
+        val resolusi = resolusiHalaman(index, w, h, ambilData()) ?: return false
+        val bmp = cacheBitmap.get(resolusi.cacheKey) ?: return false
         val maxOffset = (bmp.height - h).coerceAtLeast(0)
         if (maxOffset <= 0) return false
         val baru = (offsetGeserPx + deltaYPx).coerceIn(0, maxOffset)
@@ -195,9 +214,9 @@ class BookPageProvider(
     }
 
     /** Apakah halaman `index` punya konten yg lebih panjang dari 1 layar (butuh/bisa discroll). */
-    fun bisaDigeser(index: Int, h: Int): Boolean {
-        val cacheKey = cacheKeyTerakhir[index] ?: return false
-        val bmp = cacheBitmap.get(cacheKey) ?: return false
+    fun bisaDigeser(index: Int, w: Int, h: Int): Boolean {
+        val resolusi = resolusiHalaman(index, w, h, ambilData()) ?: return false
+        val bmp = cacheBitmap.get(resolusi.cacheKey) ?: return false
         return bmp.height > h
     }
 
@@ -276,7 +295,6 @@ class BookPageProvider(
 
         val fromCache = cacheBitmap.get(resolusi.cacheKey)
         if (fromCache != null) {
-            cacheKeyTerakhir[index] = resolusi.cacheKey
             val offsetUntukHalamanIni = if (index == indexSedangDibaca) offsetGeserPx else 0
             page.setTexture(potongUntukTampil(fromCache, w, h, offsetUntukHalamanIni), CurlPage.SIDE_FRONT)
             page.setColor(warnaSampulBack, CurlPage.SIDE_BACK)
@@ -392,9 +410,13 @@ class BookPageProvider(
                     // PENTING: applicationContext (bukan context Activity) --
                     // lihat histori perbaikan crash "freePixels" terkait Glide
                     // di dokumentasi kelas.
+                    // PERBAIKAN: diturunkan dari 6 detik ke 3 detik -- seluruh
+                    // render halaman ini (termasuk teks & kesiapan utk scroll)
+                    // menunggu foto ini SELESAI atau GAGAL dulu; 6 detik
+                    // terlalu lama utk membuat halaman "belum siap discroll".
                     Glide.with(context.applicationContext).asBitmap().load(urlBersih)
                         .submit(width, (height * 0.35f).toInt().coerceAtLeast(1))
-                        .get(6, TimeUnit.SECONDS)
+                        .get(3, TimeUnit.SECONDS)
                 } catch (e: Exception) {
                     null
                 }
