@@ -283,6 +283,26 @@ public class BudayakanBaca extends GLSurfaceView implements View.OnTouchListener
 		requestRender();
 	}
 
+	// PERBAIKAN BUG "SCROLL TIDAK PERNAH JALAN": mPageBitmapWidth/Height di
+	// atas SEBELUMNYA private tanpa getter -- kode luar (MainActivity) tidak
+	// punya cara tahu ukuran bitmap SEBENARNYA yang dipakai updatePage()/
+	// cache key (ukuran ini SUDAH dikurangi margin & pembagian dua halaman
+	// di SHOW_TWO_PAGES, lihat CurlRenderer.updatePageRects() -- BUKAN sama
+	// dengan ukuran View curlViewBuku.getWidth()/getHeight()). Tanpa getter
+	// ini, kode luar terpaksa menebak pakai ukuran View, yang SELALU beda
+	// (margin 3% di tiap sisi) -- akibatnya cacheKey yang dihitung ulang di
+	// BookPageProvider.geserKontenHalaman()/bisaDigeser() TIDAK PERNAH cocok
+	// dengan cacheKey yang dipakai saat bitmap itu sungguhan dirender &
+	// disimpan, jadi cacheBitmap.get() selalu null & scroll selalu gagal
+	// diam-diam (return false), berapa lama pun ditunggu.
+	public int getPageBitmapWidth() {
+		return mPageBitmapWidth;
+	}
+
+	public int getPageBitmapHeight() {
+		return mPageBitmapHeight;
+	}
+
 	@Override
 	public void onSizeChanged(int w, int h, int ow, int oh) {
 		super.onSizeChanged(w, h, ow, oh);

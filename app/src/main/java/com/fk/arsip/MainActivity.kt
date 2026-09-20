@@ -253,14 +253,23 @@ private var kecepatanEmaBytesPerSec: Double = 0.0
         // di-queueEvent() ke GL thread.
         curlViewBuku.setContentScrollListener(object : com.fk.arsip.curl.BudayakanBaca.ContentScrollListener {
             override fun onScrollKonten(index: Int, deltaY: Float) {
-                // PERBAIKAN: lebar/tinggi di sini HARUS sama dgn yg diterima
-                // updatePage() (mPageBitmapWidth/Height dari CurlRenderer) utk
-                // hitungan offset scroll konsisten dgn bitmap yg sungguhan
-                // di-cache. Di mode SHOW_ONE_PAGE (dipakai app ini),
-                // mPageRectRight = SELURUH viewport (dikurangi margin), BUKAN
-                // setengahnya (beda dgn SHOW_TWO_PAGES) -- jadi pakai lebar
-                // penuh curlViewBuku, bukan dibagi 2.
-                bookPageProvider.geserKontenHalaman(index, deltaY.toInt(), curlViewBuku.width, curlViewBuku.height)
+                // PERBAIKAN BUG "SCROLL TIDAK PERNAH JALAN": curlViewBuku.width/
+                // height (ukuran View) SELALU beda dgn ukuran bitmap halaman
+                // sungguhan -- CurlRenderer mengurangi margin 3% di tiap sisi
+                // (lihat setMargins di atas) sebelum memanggil onPageSizeChanged(),
+                // dan di SHOW_TWO_PAGES ukurannya dibagi dua lagi. Memakai
+                // curlViewBuku.width/height membuat cacheKey yg dihitung ulang di
+                // geserKontenHalaman() TIDAK PERNAH cocok dgn cacheKey asli saat
+                // bitmap itu dirender -- cacheBitmap.get() jadi selalu null & fungsi
+                // itu selalu return false di baris paling awal (scroll diam2 tidak
+                // pernah jalan, walau ditunggu berapa lama pun). Fix: pakai ukuran
+                // bitmap SEBENARNYA (getPageBitmapWidth/Height, getter baru di
+                // BudayakanBaca) -- ini PERSIS angka yg dipakai updatePage().
+                val pageW = curlViewBuku.pageBitmapWidth
+                val pageH = curlViewBuku.pageBitmapHeight
+                if (pageW > 0 && pageH > 0) {
+                    bookPageProvider.geserKontenHalaman(index, deltaY.toInt(), pageW, pageH)
+                }
             }
             override fun onScrollSelesai(index: Int) {
                 bookPageProvider.selesaiGeserKontenHalaman(index)
