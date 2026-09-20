@@ -200,15 +200,15 @@
                 <!-- JALUR KIRI: GRID SAJA. LEBAR FULL -->
                 <!-- PERBAIKAN: wadahModeBuku (berisi curlViewBuku, GLSurfaceView)
                      sekarang PERMANEN visible setelah pertama kali dibuka (lihat
-                     MainActivity.bukaModeBukuKeAtas()/tutupModeBukuKeGrid()) 
+                     MainActivity.bukaModeBukuKeAtas()/tutupModeBukuKeGrid()) —
                      Surface-nya tidak lagi dihancur-ulang demi mencegah crash
                      native. TAPI SurfaceView TIDAK mengikuti urutan gambar View
                      biasa (bringToFront() di level View tidak menjamin urutan
-                     compositing SurfaceView) ia dikomposit sendiri oleh sistem,
+                     compositing SurfaceView) — ia dikomposit sendiri oleh sistem,
                      defaultnya DI BELAKANG seluruh window. Kalau ada celah yang
                      tidak digambar apa pun secara solid di jalur ini (mis.
                      recyclerGridMode punya marginEnd 45dp, tidak menutupi penuh),
-                     konten curlViewBuku bisa "tembus" terlihat di celah itu 
+                     konten curlViewBuku bisa "tembus" terlihat di celah itu —
                      inilah sumber tampilan tumpang tindih yang dilaporkan. Beri
                      FrameLayout ini background OPAQUE supaya celah mana pun tetap
                      tertutup warna solid, terlepas dari urutan gambar/():
