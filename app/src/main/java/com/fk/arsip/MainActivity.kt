@@ -42,6 +42,8 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import android.database.Cursor
 import java.io.File
 import android.os.Handler
@@ -114,7 +116,7 @@ private var kecepatanEmaBytesPerSec: Double = 0.0
     private lateinit var toolbarPencarian: LinearLayout
     private lateinit var indikatorScrollBawah: TextView
     private lateinit var indikatorScrollBawahGrid: TextView
-    // Arsip yang SEDANG tampil di CurlView.diperbarui lewat
+    // Arsip yang SEDANG tampil di CurlView -- diperbarui lewat
     // BudayakanBaca.PenggantiHalamanListener setiap halaman berganti (baik
     // lewat gesture curl maupun lompat dari grid). Bar aksi (Sumber Asli/
     // Bagikan/Lampiran) selalu baca dari sini, bukan dari index terpisah,
@@ -188,7 +190,7 @@ private var kecepatanEmaBytesPerSec: Double = 0.0
         }
         recyclerGridMode.layoutManager = layoutManagerGrid
         recyclerGridMode.adapter = gridAdapter
-        // Indikator "masih ada status di bawah".update live tiap scroll,
+        // Indikator "masih ada status di bawah" -- update live tiap scroll,
         // dipakai baik utk grid status normal maupun hasil pencarian (sama2
         // dirender lewat recyclerGridMode yg sama).
         recyclerGridMode.addOnScrollListener(object : RecyclerView.OnScrollListener() {
@@ -200,7 +202,7 @@ private var kecepatanEmaBytesPerSec: Double = 0.0
         // MODE BACA: CurlView OpenGL asli (BudayakanBaca) menggantikan
         // ViewPager2+PageTransformer sepenuhnya. Sumber data langsung
         // `daftarArsipAktif` (List yang sama dipakai grid, sudah di memori)
-        //.Paging3 TIDAK dipakai lagi di sini karena PageProvider CurlView
+        // -- Paging3 TIDAK dipakai lagi di sini karena PageProvider CurlView
         // butuh getPageCount() yang pasti/sinkron, tidak cocok dengan model
         // pemuatan bertahap Paging3. bukuAdapter/ConcatAdapter/SampulAdapter/
         // BookFlipPageTransformer bekas ViewPager2 sudah tidak dipakai lagi
@@ -208,7 +210,7 @@ private var kecepatanEmaBytesPerSec: Double = 0.0
         // refreshHalaman: dipanggil BookPageProvider dari thread background
         // begitu render sebuah halaman (yang tadinya belum ada di cache)
         // selesai, supaya CurlView tahu harus ambil tekstur final & gambar
-        // ulang.lihat BudayakanBaca.refreshPageTexture().
+        // ulang -- lihat BudayakanBaca.refreshPageTexture().
         bookPageProvider = BookPageProvider(this, { daftarArsipAktif }) { index ->
             curlViewBuku.refreshPageTexture(index)
         }
@@ -216,17 +218,17 @@ private var kecepatanEmaBytesPerSec: Double = 0.0
         curlViewBuku.setBackgroundColor(android.graphics.Color.parseColor("#00251A"))
         // PERBAIKAN TUMPANG TINDIH VISUAL: SurfaceView (curlViewBuku) dikomposit
         // di layer terpisah oleh sistem, TIDAK mengikuti urutan gambar View biasa
-        //.bringToFront() antar recyclerGridMode/wadahModeBuku tidak menjamin
+        // -- bringToFront() antar recyclerGridMode/wadahModeBuku tidak menjamin
         // urutan tampil SurfaceView-nya sendiri. setZOrderOnTop(false) eksplisit
         // (bukan cuma mengandalkan default) memastikan ia selalu dikomposit DI
-        // BELAKANG seluruh window.FrameLayout pembungkusnya di
+        // BELAKANG seluruh window -- FrameLayout pembungkusnya di
         // activity_main.xml juga sudah diberi background solid sbg lapis
         // pengaman kedua utk celah yang tidak tertutup recyclerGridMode.
         curlViewBuku.setZOrderOnTop(false)
         // PERBAIKAN EKSPERIMENTAL "crash cuma pas buka mode baca PERTAMA KALI
         // dari grid utama setelah app di-force-close & dibuka lagi, tapi aman
         // kalau lewat kategori drawer dulu": pola ini (selalu gagal di
-        // percobaan PERTAMA.apa pun kontennya.lalu sukses seterusnya
+        // percobaan PERTAMA -- apa pun kontennya -- lalu sukses seterusnya
         // setelah SATU kali sukses lewat jalur manapun) adalah ciri khas
         // operasi GL/EGL PERTAMA di context yang baru dibuat lebih rawan
         // drpd operasi berikutnya, bukan soal konten spesifik. Karena Surface
@@ -234,7 +236,7 @@ private var kecepatanEmaBytesPerSec: Double = 0.0
         // divisible-kan (lihat bukaModeBukuKeAtas()), operasi GL "pertama" itu
         // selalu kebetulan bertepatan dgn konten SPESIFIK yg user tap duluan.
         // Fix: buat wadahModeBuku visible (Surface tercipta, cover page
-        // ter-render) SEDINI MUNGKIN & SENYAP.dipindah ke luar layar
+        // ter-render) SEDINI MUNGKIN & SENYAP -- dipindah ke luar layar
         // (translationX, lihat tutupModeBukuKeGrid()) supaya benar-benar
         // tidak terlihat apa pun, terlepas dari bagaimana device ini
         // mengomposit layer SurfaceView. Dengan begini, operasi GL pertama
@@ -254,17 +256,17 @@ private var kecepatanEmaBytesPerSec: Double = 0.0
             }
         })
         // LISTENER GANTI HALAMAN: dipicu dari GL THREAD (lihat catatan di
-        // BudayakanBaca.PenggantiHalamanListener).WAJIB posting ke UI
+        // BudayakanBaca.PenggantiHalamanListener) -- WAJIB posting ke UI
         // thread sebelum menyentuh View apa pun, makanya pakai runOnUiThread.
         curlViewBuku.setPenggantiHalamanListener { indexBaru ->
             runOnUiThread { perbaruiBarAksiBaca(indexBaru) }
         }
-        // TAHAP 2: LISTENER SCROLL ISI HALAMAN.dipicu dari onTouch() di
+        // TAHAP 2: LISTENER SCROLL ISI HALAMAN -- dipicu dari onTouch() di
         // BudayakanBaca SAAT GESTUR TERDETEKSI VERTIKAL (bukan balik
         // halaman/curl, lihat dokumentasi panjang di BudayakanBaca.onTouch()).
         // Berbeda dari PenggantiHalamanListener di atas, callback ini SUDAH
         // di UI/main thread (dipanggil langsung dari View.OnTouchListener,
-        // bukan dari GL thread), jadi TIDAK perlu runOnUiThread.dan
+        // bukan dari GL thread), jadi TIDAK perlu runOnUiThread -- dan
         // geserKontenHalaman() sendiri sudah aman dipanggil dari UI thread
         // krn ujungnya cuma memicu refreshPageTexture() yang sudah
         // di-queueEvent() ke GL thread.
@@ -272,16 +274,16 @@ private var kecepatanEmaBytesPerSec: Double = 0.0
             override fun onScrollKonten(index: Int, deltaY: Float) {
                 // PERBAIKAN BUG "SCROLL TIDAK PERNAH JALAN": curlViewBuku.width/
                 // height (ukuran View) SELALU beda dgn ukuran bitmap halaman
-                // sungguhan.CurlRenderer mengurangi margin 3% di tiap sisi
+                // sungguhan -- CurlRenderer mengurangi margin 3% di tiap sisi
                 // (lihat setMargins di atas) sebelum memanggil onPageSizeChanged(),
                 // dan di SHOW_TWO_PAGES ukurannya dibagi dua lagi. Memakai
                 // curlViewBuku.width/height membuat cacheKey yg dihitung ulang di
                 // geserKontenHalaman() TIDAK PERNAH cocok dgn cacheKey asli saat
-                // bitmap itu dirender.cacheBitmap.get() jadi selalu null & fungsi
+                // bitmap itu dirender -- cacheBitmap.get() jadi selalu null & fungsi
                 // itu selalu return false di baris paling awal (scroll diam2 tidak
                 // pernah jalan, walau ditunggu berapa lama pun). Fix: pakai ukuran
                 // bitmap SEBENARNYA (getPageBitmapWidth/Height, getter baru di
-                // BudayakanBaca).ini PERSIS angka yg dipakai updatePage().
+                // BudayakanBaca) -- ini PERSIS angka yg dipakai updatePage().
                 val pageW = curlViewBuku.pageBitmapWidth
                 val pageH = curlViewBuku.pageBitmapHeight
                 if (pageW > 0 && pageH > 0) {
@@ -309,7 +311,7 @@ private var kecepatanEmaBytesPerSec: Double = 0.0
                 // GLSurfaceView (SurfaceView) mengikat siklus hidup
                 // Surface-nya ke visibility, tiap toggle ini diam-diam
                 // menghancurkan & membuat ULANG GLThread (naskah crash Anda
-                // menunjukkan "GLThread 1378".artinya sudah recreate
+                // menunjukkan "GLThread 1378" -- artinya sudah recreate
                 // ribuan kali) TANPA lewat jalur pause/resume resmi
                 // GLSurfaceView yang sudah teruji menangani teardown thread
                 // dengan aman. Memanggil onPause() di sini memastikan
@@ -331,7 +333,7 @@ private var kecepatanEmaBytesPerSec: Double = 0.0
                 daftarArsipAktif.first().kategori} else {"Semua Status"}
                 txtStatusPencarian.text = "$labelKategori • $totalVolume Status"
                 // PAGING 3: tidak perlu lagi mengosongkan bukuAdapter secara manual
-                // untuk dataset besar.PagingDataAdapter sudah ringan dengan
+                // untuk dataset besar -- PagingDataAdapter sudah ringan dengan
                 // sendirinya karena hanya memuat halaman yang sedang terlihat.
                 }
 
@@ -448,7 +450,7 @@ private fun eksekusiSaringanKombinasi(kategori: String, urutTerlama: Boolean, su
     lifecycleScope.launch(Dispatchers.IO) {
         val lenganRobot = ArsipDatabase.operasikanMesin(this@MainActivity).arsipDao()
 
-        // Pemilah Arah Kueri.jalur "Semua Sumber" (sumber == "") TIDAK
+        // Pemilah Arah Kueri -- jalur "Semua Sumber" (sumber == "") TIDAK
         // disentuh sama sekali, tetap persis seperti sebelum fitur sumber
         // ditambahkan. Jalur baru (sumber spesifik) lewat query kombinasi.
         val kargoSaringan = if (sumber.isEmpty()) {
@@ -580,7 +582,7 @@ when (fase) {
     // dari 8 tempat berbeda (Activity.onPause/onResume + 6 titik buka/tutup mode
     // buku dari Patch sebelumnya) TANPA saling tahu satu sama lain. Akibatnya bisa
     // terjadi onResume() dipanggil DUA KALI BERURUTAN tanpa onPause() di antaranya
-    //.persis terjadi pas TAP PERTAMA membuka mode buku setelah cold start:
+    // -- persis terjadi pas TAP PERTAMA membuka mode buku setelah cold start:
     // Activity.onResume() sudah resume duluan (1), lalu bukaModeBuku() resume LAGI (2).
     // GLSurfaceView.onResume() yang dipanggil dobel tanpa pause yang benar bisa
     // membuat GLThread lama & baru tumpang-tindih menangani EGL context yang sama --
@@ -597,14 +599,14 @@ when (fase) {
     // toggle wadahModeBuku.visibility GONE/VISIBLE membuat GLSurfaceView
     // (curlViewBuku di dalamnya) MENGHANCURKAN & MEMBUAT ULANG Surface+GLThread-
     // nya SETIAP KALI mode buku dibuka/ditutup (SurfaceView mengikat siklus
-    // hidup Surface ke visibility).operasi ini sendiri yang rawan di
+    // hidup Surface ke visibility) -- operasi ini sendiri yang rawan di
     // implementasi GLSurfaceView/EGL Android 5.1 OPPO (device lama, drivernya
     // dikenal kurang matang utk teardown/recreate EGL context berulang-ulang).
     // Sinkronisasi pause/resume yang benar sekalipun tidak menghilangkan
     // risiko BAWAAN dari tindakan menghancurkan-lalu-membuat-ulang itu sendiri.
     //
     // Fix yang lebih mendasar: JANGAN PERNAH toggle wadahModeBuku.visibility
-    // GONE/VISIBLE lagi setelah pertama kali dibuka.Surface-nya dibuat
+    // GONE/VISIBLE lagi setelah pertama kali dibuka -- Surface-nya dibuat
     // SEKALI SAJA per sesi app (persis seperti device modern menjalankannya)
     // dan TIDAK PERNAH dihancurkan lagi kecuali Activity benar2 pause/destroy.
     // Ganti/tutup mode buku sekarang murni soal Z-ORDER (bringToFront()) --
@@ -618,12 +620,12 @@ when (fase) {
     private var sedangModeBuku = false
 
     // PERBAIKAN LANJUTAN: bringToFront() (z-order View biasa) TERBUKTI TIDAK
-    // CUKUP ANDAL di device ini.laporan pengguna menunjukkan sepetak
+    // CUKUP ANDAL di device ini -- laporan pengguna menunjukkan sepetak
     // "sisa" tampilan terakhir curlViewBuku (header halaman) tetap terlihat,
     // DIAM di tempat (tidak ikut scroll), tepat setelah kembali ke grid.
     // Ini konsisten dengan SurfaceView yang dikomposit sistem di layer
     // TERPISAH dari urutan gambar View biasa (lihat catatan di
-    // curlViewBuku.setZOrderOnTop() sebelumnya).bringToFront() mengubah
+    // curlViewBuku.setZOrderOnTop() sebelumnya) -- bringToFront() mengubah
     // urutan View, tapi TIDAK menjamin device ini benar2 menghentikan/
     // menyembunyikan komposit layer SurfaceView itu sendiri.
     //
@@ -631,7 +633,7 @@ when (fase) {
     // mengomposit SurfaceView: PINDAHKAN wadahModeBuku BENAR-BENAR KE LUAR
     // LAYAR (translationX) saat tidak dipakai. Surface-nya TETAP hidup
     // (translationX cuma transformasi visual, ukuran/EGL context-nya tidak
-    // tersentuh.tidak mengembalikan risiko crash yg sudah diperbaiki),
+    // tersentuh -- tidak mengembalikan risiko crash yg sudah diperbaiki),
     // tapi apa pun yang dikomposit di sana otomatis jatuh di luar area yang
     // terlihat, apa pun mekanisme komposit SurfaceView di device ini.
     private fun tutupModeBukuKeGrid() {
@@ -667,7 +669,7 @@ when (fase) {
 
     override fun onPause() {
         super.onPause()
-        // WAJIB utk GLSurfaceView (curlViewBuku).tanpa ini, thread render
+        // WAJIB utk GLSurfaceView (curlViewBuku) -- tanpa ini, thread render
         // GL TIDAK PERNAH berhenti walau Activity sudah di-pause/ditutup,
         // terus hidup di background sambil masih memegang referensi ke
         // Bitmap/View instance lama. Ini akar penyebab crash native
@@ -996,7 +998,7 @@ when (fase) {
             }
 
             // PERBAIKAN BUG #1: cek ruang kosong SEBELUM kedua cabang di bawah
-            // ini.keduanya menulis ke disk (rename file / unduh baru +
+            // ini -- keduanya menulis ke disk (rename file / unduh baru +
             // injeksi ke SQLite). Kalau tidak cukup, hentikan total di sini
             // dengan dialog, jangan lanjut lalu gagal ambigu di tengah jalan.
             if (!cekKapasitasTangkiMemadai(this@MainActivity)) {
@@ -1043,7 +1045,7 @@ when (fase) {
         }
         if (!sukses) {
             // PERBAIKAN: sebelumnya jalur gagal ini hanya menyembunyikan
-            // overlay & menampilkan Toast.grid/timeline TIDAK PERNAH
+            // overlay & menampilkan Toast -- grid/timeline TIDAK PERNAH
             // diberi data (pompaDataKeLayar/muatDataAwalKeSasis tidak
             // dipanggil), sehingga teks skeleton default "Memuat status..."
             // tertahan selamanya di layar meski proses sudah berhenti.
@@ -1347,6 +1349,8 @@ private fun perbaruiDetailKecepatan(persen: Int, byteDiterima: Long, totalByte: 
     progressBar.progress = persen
 }
     // SIRKUIT BARU: Antena Pemantau Sinyal Kerja WorkManager Latar Belakang
+    private val muteksInjeksi = Mutex()
+
     private fun jalankanMesinInjeksiOtonom(jalurFileJson: String) {
     val manajerKerja = WorkManager.getInstance(applicationContext)
 
@@ -1359,34 +1363,47 @@ private fun perbaruiDetailKecepatan(persen: Int, byteDiterima: Long, totalByte: 
     // REPLACE ini menabrak worker lama yang MASIH BENAR-BENAR BERJALAN --
     // untuk sesaat ada 2 worker menulis ke tabel yang sama (lihat catatan
     // isStopped() di MesinInjeksiWorker). Sekarang: cek dulu status kerja
-    // yang ada; kalau memang masih aktif, JANGAN enqueue baru.cukup
+    // yang ada; kalau memang masih aktif, JANGAN enqueue baru -- cukup
     // sambung observer ke worker yang sudah berjalan itu.
+    //
+    // PERBAIKAN LANJUTAN: cek-lalu-enqueue di atas TADINYA TIDAK ATOMIK --
+    // 2 panggilan fungsi ini yang hampir bersamaan (mis. cabang file-lokal
+    // di eksekusiPabrikData() & cabang selesai-unduh di pasangSensorPendaratan
+    // sempat overlap) bisa SAMA-SAMA membaca masihAktif=false SEBELUM salah
+    // satunya sempat enqueue -- lalu keduanya enqueue REPLACE, yang kedua
+    // membatalkan kerja yang baru saja dimulai yang pertama & mengulang
+    // dari 0 (kurasTangkiKotor() lagi) -- persis gejala "injeksi looping".
+    // muteksInjeksi.withLock membuat blok cek+enqueue ini benar2 atomik:
+    // panggilan kedua akan menunggu, lalu melihat kerja pertama SUDAH
+    // RUNNING, dan tidak jadi enqueue apa pun.
     lifecycleScope.launch(Dispatchers.IO) {
-        val kerjaAktifSaatIni = manajerKerja.getWorkInfosForUniqueWork(NAMA_KERJA_INJEKSI).get()
-        val masihAktif = kerjaAktifSaatIni?.any {
-            it.state == WorkInfo.State.RUNNING || it.state == WorkInfo.State.ENQUEUED
-        } ?: false
+        muteksInjeksi.withLock {
+            val kerjaAktifSaatIni = manajerKerja.getWorkInfosForUniqueWork(NAMA_KERJA_INJEKSI).get()
+            val masihAktif = kerjaAktifSaatIni?.any {
+                it.state == WorkInfo.State.RUNNING || it.state == WorkInfo.State.ENQUEUED
+            } ?: false
 
-        if (!masihAktif) {
-            // PERBAIKAN: dulu pakai KEEP (kebalikan dari niat komentar di atas) --
-            // kalau ada sisa kerja LAMA yg belum tuntas dgn nama unik yg sama
-            // (mis. dari percobaan sebelumnya yg menunjuk ke file yg SUDAH DIHAPUS),
-            // KEEP membuang permintaan baru yg valid ini & malah menjalankan yg lama
-            //.itu salah satu sumber bug "tiba-tiba mulai unduh lagi" (kerja lama
-            // gagal BOBOT_KURANG krn filenya sudah tidak ada, lalu memicu unduh
-            // ulang). REPLACE memastikan permintaan yg BENAR-BENAR baru & valid ini
-            // (menunjuk ke file yg baru saja dipastikan ada) yang selalu dipakai --
-            // TAPI kini hanya dieksekusi kalau memang tidak ada kerja yg sedang
-            // AKTIF, jadi tidak lagi menabrak worker yg masih berjalan.
-            val kargo = workDataOf("URI_JSON_KARGO" to jalurFileJson)
-            val instruksiKerja = OneTimeWorkRequestBuilder<MesinInjeksiWorker>()
-                .setInputData(kargo)
-                .build()
-            manajerKerja.enqueueUniqueWork(
-                NAMA_KERJA_INJEKSI,
-                androidx.work.ExistingWorkPolicy.REPLACE,
-                instruksiKerja
-            )
+            if (!masihAktif) {
+                // PERBAIKAN: dulu pakai KEEP (kebalikan dari niat komentar di atas) --
+                // kalau ada sisa kerja LAMA yg belum tuntas dgn nama unik yg sama
+                // (mis. dari percobaan sebelumnya yg menunjuk ke file yg SUDAH DIHAPUS),
+                // KEEP membuang permintaan baru yg valid ini & malah menjalankan yg lama
+                // -- itu salah satu sumber bug "tiba-tiba mulai unduh lagi" (kerja lama
+                // gagal BOBOT_KURANG krn filenya sudah tidak ada, lalu memicu unduh
+                // ulang). REPLACE memastikan permintaan yg BENAR-BENAR baru & valid ini
+                // (menunjuk ke file yg baru saja dipastikan ada) yang selalu dipakai --
+                // TAPI kini hanya dieksekusi kalau memang tidak ada kerja yg sedang
+                // AKTIF, jadi tidak lagi menabrak worker yg masih berjalan.
+                val kargo = workDataOf("URI_JSON_KARGO" to jalurFileJson)
+                val instruksiKerja = OneTimeWorkRequestBuilder<MesinInjeksiWorker>()
+                    .setInputData(kargo)
+                    .build()
+                manajerKerja.enqueueUniqueWork(
+                    NAMA_KERJA_INJEKSI,
+                    androidx.work.ExistingWorkPolicy.REPLACE,
+                    instruksiKerja
+                )
+            }
         }
 
         withContext(Dispatchers.Main) { pasangObserverInjeksi(manajerKerja) }
@@ -1395,11 +1412,11 @@ private fun perbaruiDetailKecepatan(persen: Int, byteDiterima: Long, totalByte: 
 
     // PERBAIKAN: dipisah jadi fungsi sendiri supaya bisa dipanggil baik
     // setelah enqueue worker BARU, maupun saat ternyata worker LAMA masih
-    // aktif (lihat jalankanMesinInjeksiOtonom() di atas).di kedua kasus
+    // aktif (lihat jalankanMesinInjeksiOtonom() di atas) -- di kedua kasus
     // MainActivity tetap perlu memantau progres kerja yang benar-benar
     // berjalan.
     //
-    // Dulu observe by instruksiKerja.id.kalau ternyata
+    // Dulu observe by instruksiKerja.id -- kalau ternyata
     // enqueueUniqueWork tidak memakai request BARU ini (skenario KEEP di
     // atas), observer ini memantau ID yang YATIM (tidak pernah benar-benar
     // berjalan), jadi progres/hasil kerja yg SESUNGGUHNYA berjalan tidak
@@ -1457,7 +1474,7 @@ private fun perbaruiDetailKecepatan(persen: Int, byteDiterima: Long, totalByte: 
                             eksekusiPabrikData()
                         } else if (kodeGagal == "DIBATALKAN") {
                             // Worker LAMA berhenti krn digantikan worker BARU yang valid
-                            // (lihat isStopped() di MesinInjeksiWorker).ini normal,
+                            // (lihat isStopped() di MesinInjeksiWorker) -- ini normal,
                             // bukan error ke user. Observer akan tetap menerima update
                             // dari worker BARU yang menggantikannya.
                         } else {
@@ -1475,8 +1492,8 @@ private fun perbaruiDetailKecepatan(persen: Int, byteDiterima: Long, totalByte: 
     // PERBAIKAN PERFORMA: pompaDataKeLayar() dulu dipanggil selalu dari dalam
     // withContext(Dispatchers.Main) oleh pemanggilnya (pencarian, filter,
     // kategori), sehingga loop pembangunan kargoSiapRakit/titikNavigasi di
-    // bawah ini.yang berjalan atas SELURUH daftar hasil (bisa ribuan baris,
-    // tiap baris ada beberapa substring+string concat).ikut tereksekusi
+    // bawah ini -- yang berjalan atas SELURUH daftar hasil (bisa ribuan baris,
+    // tiap baris ada beberapa substring+string concat) -- ikut tereksekusi
     // SECARA SINKRON di Main Thread. Itulah sebabnya UI terlihat "diam total"
     // (bukan cuma lambat) selama proses pencarian/filter/kategori: main thread
     // benar-benar terkunci sampai loop selesai, baru redraw. Sekarang loop ini
@@ -1538,14 +1555,14 @@ private fun perbaruiDetailKecepatan(persen: Int, byteDiterima: Long, totalByte: 
                     // manual di sini menyelesaikan akar masalahnya.
                     (recyclerGridMode.layoutManager as? GridLayoutManager)?.spanSizeLookup?.invalidateSpanIndexCache()
                     // Data grid baru saja diganti (termasuk hasil pencarian/filter
-                    // kategori).recheck indikator "masih ada di bawah" setelah
+                    // kategori) -- recheck indikator "masih ada di bawah" setelah
                     // layout-nya sempat menyesuaikan (post, bukan langsung).
                     recyclerGridMode.post { perbaruiIndikatorScrollGrid() }
                 }
                 // MODE BACA: dulu di sini dipanggil mulaiPagingBuku() untuk
                 // mengisi bukuAdapter (Paging3). Sekarang mode baca pakai
                 // CurlView (BudayakanBaca) yang baca `daftarArsipAktif`
-                // LANGSUNG lewat BookPageProvider.tidak perlu tahap
+                // LANGSUNG lewat BookPageProvider -- tidak perlu tahap
                 // "mengisi adapter" terpisah lagi, curlViewBuku otomatis
                 // memakai data terbaru begitu daftarArsipAktif berubah
                 // (lihat BookPageProvider.ambilData).
@@ -1579,7 +1596,7 @@ private fun perbaruiDetailKecepatan(persen: Int, byteDiterima: Long, totalByte: 
         recyclerGridMode.visibility = View.GONE
         indikatorScrollBawahGrid.visibility = View.GONE
         // PERBAIKAN: lihat catatan lengkap di tutupModeBukuKeGrid()/
-        // bukaModeBukuKeAtas() di atas.tidak lagi menghancurkan &
+        // bukaModeBukuKeAtas() di atas -- tidak lagi menghancurkan &
         // membuat ulang Surface curlViewBuku tiap buka mode buku, cukup
         // pindah z-order (wadahModeBuku sekarang PERMANEN visible setelah
         // pertama kali dibuka, tidak pernah GONE lagi).
@@ -1589,7 +1606,7 @@ private fun perbaruiDetailKecepatan(persen: Int, byteDiterima: Long, totalByte: 
         barAksiBaca.visibility = View.VISIBLE
         // PERBAIKAN: toolbar (hamburger/cari/filter) & panelStatusPencarian
         // (pil hijau "Semua Status - X Status") disembunyikan saat mode baca
-        //.sebelumnya tetap tampil, menutupi & tidak relevan (isinya label
+        // -- sebelumnya tetap tampil, menutupi & tidak relevan (isinya label
         // grid, bukan status halaman yg sedang dibaca). Akses drawer/cari/
         // filter sekarang lewat panelIkonBaca.
         toolbarPencarian.visibility = View.GONE
@@ -1611,11 +1628,11 @@ private fun perbaruiDetailKecepatan(persen: Int, byteDiterima: Long, totalByte: 
         delay(100) 
         // PENYEDERHANAAN BESAR: karena sekarang 1 arsip = 1 halaman SELALU
         // (lihat dokumentasi kelas BookPageProvider), index halaman = posisi
-        // arsip + 1, LANGSUNG.tidak butuh tahu ukuran layar dulu, tidak
+        // arsip + 1, LANGSUNG -- tidak butuh tahu ukuran layar dulu, tidak
         // ada estimasi yang bisa meleset, tidak perlu menunggu apa pun.
         // Seluruh mekanisme lama di sini (menunggu ukuranSudahDiketahui(),
         // pastikanEksakDiSekitar(), indexHalamanUntukArsipAman() dgn iterasi
-        // koreksi) sudah tidak diperlukan lagi.itu semua ada karena jumlah
+        // koreksi) sudah tidak diperlukan lagi -- itu semua ada karena jumlah
         // halaman per arsip dulu harus DIHITUNG (dan bisa meleset), sekarang
         // tidak ada yang perlu dihitung sama sekali.
         val indexTarget = bookPageProvider.indexHalamanUntukArsip(posisi)
@@ -1628,7 +1645,7 @@ private fun perbaruiDetailKecepatan(persen: Int, byteDiterima: Long, totalByte: 
 }
 
     // ==========================================================================
-    // BAR AKSI BACA.pengganti tombol "Sumber Asli"/"Bagikan" yang dulu ada
+    // BAR AKSI BACA -- pengganti tombol "Sumber Asli"/"Bagikan" yang dulu ada
     // DI DALAM item_buku.xml (BukuAdapter). Karena CurlView OpenGL merender
     // halaman sebagai Bitmap statis (tidak ada View interaktif di dalamnya
     // sama sekali), tombol-tombol itu direlokasi ke bar persisten di luar
@@ -1670,11 +1687,11 @@ private fun perbaruiDetailKecepatan(persen: Int, byteDiterima: Long, totalByte: 
     }
 
     // ==========================================================================
-    // PANEL IKON MODE BACA.lihat komentar di activity_main.xml
+    // PANEL IKON MODE BACA -- lihat komentar di activity_main.xml
     // (panelIkonBaca). Drawer/cari/filter di sini cuma jalan pintas ke fungsi
     // yang SUDAH ADA (biar gampang dijangkau ibu jari saat baca), bukan
     // fungsi baru. Tombol sisanya (ekspor PDF, tandai, halaman tersimpan,
-    // ukuran teks, mode gelap) BELUM diimplementasi.sengaja cuma kasih
+    // ukuran teks, mode gelap) BELUM diimplementasi -- sengaja cuma kasih
     // Toast "segera hadir" dulu supaya tidak terasa mati/tidak merespons,
     // sambil menunggu fitur aslinya dibangun.
     // ==========================================================================
@@ -1684,7 +1701,7 @@ private fun perbaruiDetailKecepatan(persen: Int, byteDiterima: Long, totalByte: 
         }
 
         findViewById<View>(R.id.btnBacaCari).setOnClickListener {
-            // PERBAIKAN: dulu keluar dulu ke grid sebelum bisa cari.itu
+            // PERBAIKAN: dulu keluar dulu ke grid sebelum bisa cari -- itu
             // yg bikin mode buku hilang & posisi halaman lupa. Sekarang
             // TETAP di mode buku, cukup tampilkan/sembunyikan kolom
             // pencarian di tempatnya semula (toggle), tanpa menyentuh
@@ -1717,7 +1734,7 @@ private fun perbaruiDetailKecepatan(persen: Int, byteDiterima: Long, totalByte: 
      * Dipanggil dari MainActivity.curlViewBuku.setPenggantiHalamanListener
      * (SUDAH di-runOnUiThread oleh pemanggilnya). indexHalaman di sini
      * memakai penomoran BookPageProvider: 0 = sampul depan, 1..N = arsip,
-     * N+1 = sampul belakang.jadi arsip sungguhan ada di indexHalaman-1.
+     * N+1 = sampul belakang -- jadi arsip sungguhan ada di indexHalaman-1.
      */
     private fun perbaruiBarAksiBaca(indexHalaman: Int) {
         val arsip = bookPageProvider.indexArsipDari(indexHalaman)?.let { idx -> daftarArsipAktif.getOrNull(idx) }
@@ -1737,14 +1754,14 @@ private fun perbaruiDetailKecepatan(persen: Int, byteDiterima: Long, totalByte: 
 
     /**
      * Tampilkan/sembunyikan indikatorScrollBawah (panah "masih ada lanjutan
-     * di bawah") berdasarkan BookPageProvider.adaLanjutanDiBawah().lihat
+     * di bawah") berdasarkan BookPageProvider.adaLanjutanDiBawah() -- lihat
      * dokumentasi fungsi itu & indikatorScrollBawah di activity_main.xml.
      * Dipanggil di 3 titik: tiap halaman berganti (curl/lompat dari grid),
      * dan tiap gestur scroll berjalan/berakhir.
      *
      * postDelayed 250ms tambahan: begitu PINDAH ke halaman baru, bitmap-nya
      * mungkin belum sempat ada di cache (masih dirender async, lihat
-     * BookPageProvider.mintaRenderLatarBelakang()).pengecekan pertama di
+     * BookPageProvider.mintaRenderLatarBelakang()) -- pengecekan pertama di
      * sini bisa saja balik false padahal sebenarnya halamannya panjang.
      * Recheck sekali lagi sebentar kemudian supaya indikator tetap muncul
      * begitu render-nya selesai, tanpa perlu nunggu user mulai scroll dulu.
@@ -1912,7 +1929,7 @@ private fun eksekusiLogikaPencarian(kataKunciMentah: String?) {
                 panelIkonBaca.visibility = View.GONE
                 recyclerGridMode.visibility = View.VISIBLE
                 // PERBAIKAN BUG: timeline kanan (kontainerJalurKanan) lupa
-                // dikembalikan ke VISIBLE di jalur ini.satu-satunya jalur
+                // dikembalikan ke VISIBLE di jalur ini -- satu-satunya jalur
                 // keluar mode-buku yang tidak melakukannya (bandingkan jalur
                 // keluar lain: back-pressed, ganti kategori/filter, dll,
                 // yang semuanya sudah menyertakan baris ini). Akibatnya:
@@ -2006,7 +2023,7 @@ private fun eksekusiLogikaPencarian(kataKunciMentah: String?) {
     }
     // MODE BACA (CurlView): fungsi mulaiPagingBuku() beserta seluruh mesin
     // Paging3-untuk-mode-baca (Pager/PagingSource/bukuAdapter) sudah TIDAK
-    // dipakai lagi.BookPageProvider baca `daftarArsipAktif` langsung.
+    // dipakai lagi -- BookPageProvider baca `daftarArsipAktif` langsung.
     // Dihapus di sini (bukan cuma didiamkan) supaya tidak membingungkan kode
     // mana yang sebenarnya aktif dipakai.
     private fun muatDataAwalKeSasis(daftarArsipGlobal: List<ArsipEntity>) {

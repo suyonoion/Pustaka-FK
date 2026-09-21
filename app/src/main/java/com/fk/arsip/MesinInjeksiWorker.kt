@@ -29,7 +29,14 @@ class MesinInjeksiWorker(context: Context, params: WorkerParameters) : Coroutine
             return@withContext Result.failure(workDataOf("KODE_GAGAL" to "BOBOT_KURANG"))
         }
 
-val targetPasti = 17934
+// PERBAIKAN: sebelumnya hardcode 17934 (total baris file FK-saja yang
+// lama). Setelah digabung dgn YW total jadi 27583 (lihat ringkasan
+// gabung_arsip.py). PENTING: kalau nanti nambah sumber lagi / re-generate
+// file gabungan dgn isi beda, angka ini HARUS disesuaikan lagi manual --
+// cuma dipakai utk tampilan persentase progres, tidak memengaruhi jumlah
+// baris yang benar2 diproses (loop tetap jalan sampai array JSON habis,
+// brp pun isinya).
+val targetPasti = 27583
 val estimasiTotalItem = if (totalBobotFile > 100_000_000) targetPasti else maxOf(1, (totalBobotFile / 5120).toInt())
 
 setProgress(workDataOf(
@@ -80,23 +87,22 @@ try {
         System.gc()
     }
 
-    val elemenGson = com.google.gson.JsonParser.parseReader(reader)
-    val obj = org.json.JSONObject(elemenGson.toString())
+    val obj = com.google.gson.JsonParser.parseReader(reader).asJsonObject
 
-    val idPosting = obj.optString("postId", "ID_$indeks")
-    val userObj = obj.optJSONObject("user")
-    val namaPenulis = userObj?.optString("name", "Fatwa Kehidupan") ?: "Fatwa Kehidupan"
-    val urlProfilPic = userObj?.optString("profilePic", "") ?: ""
-    val waktuRilis = obj.optLong("timestamp", 0L)
-    val waktuMentah = obj.optString("time", "-")
+    val idPosting = obj.str("postId", "ID_$indeks")
+    val userObj = obj.objek("user")
+    val namaPenulis = userObj?.str("name", "Fatwa Kehidupan") ?: "Fatwa Kehidupan"
+    val urlProfilPic = userObj?.str("profilePic", "") ?: ""
+    val waktuRilis = obj.lng("timestamp", 0L)
+    val waktuMentah = obj.str("time", "-")
     val tanggalBaca = if (waktuMentah.length >= 10) waktuMentah.substring(0, 10) else waktuMentah
-    val tautanAsli = obj.optString("url", "")
+    val tautanAsli = obj.str("url", "")
 
-    var kontenPenuh = obj.optString("text", "")
-    val sharedObj = obj.optJSONObject("sharedPost")
+    var kontenPenuh = obj.str("text", "")
+    val sharedObj = obj.objek("sharedPost")
     if (sharedObj != null) {
-        val namaAsli = sharedObj.optJSONObject("user")?.optString("name", "Entitas") ?: "Entitas"
-        val teksAsli = sharedObj.optString("text", "")
+        val namaAsli = sharedObj.objek("user")?.str("name", "Entitas") ?: "Entitas"
+        val teksAsli = sharedObj.str("text", "")
         if (teksAsli.isNotEmpty()) kontenPenuh += "\n\n--- Membagikan Status: $namaAsli ---\n$teksAsli"
     }
 
@@ -105,18 +111,18 @@ try {
     // Field "sumber" (FK/YW) ditambahkan oleh gabung_arsip.py saat
     // menggabung 2 file master jadi satu -- fallback "" kalau file lama
     // (belum digabung ulang) dipakai, supaya tidak crash.
-    val sumberArsip = obj.optString("sumber", "")
+    val sumberArsip = obj.str("sumber", "")
 
     val daftarFoto = mutableListOf<String>()
-    val mediaArray = obj.optJSONArray("media") ?: sharedObj?.optJSONArray("media")
+    val mediaArray = obj.larik("media") ?: sharedObj?.larik("media")
     if (mediaArray != null) {
-        for (m in 0 until mediaArray.length()) {
-            val mediaObj = mediaArray.getJSONObject(m)
-            if (mediaObj.optString("__typename", "") == "Video") {
-                val uriThumb = mediaObj.optJSONObject("thumbnailImage")?.optString("uri", "") ?: mediaObj.optString("thumbnail", "")
+        for (m in 0 until mediaArray.size()) {
+            val mediaObj = mediaArray[m].asJsonObject
+            if (mediaObj.str("__typename", "") == "Video") {
+                val uriThumb = mediaObj.objek("thumbnailImage")?.str("uri", "") ?: mediaObj.str("thumbnail", "")
                 if (uriThumb.isNotEmpty()) daftarFoto.add("video:$uriThumb")
             } else {
-                val uriGbr = mediaObj.optJSONObject("image")?.optString("uri", "") ?: ""
+                val uriGbr = mediaObj.objek("image")?.str("uri", "") ?: ""
                 if (uriGbr.isNotEmpty()) daftarFoto.add("image:$uriGbr")
             }
         }
@@ -169,6 +175,34 @@ if (fileTarget.exists()) { fileTarget.delete() }
 
     }
     
+    // ============================================================
+    // Helper ekstensi Gson JsonObject, meniru semantik org.json.optString/
+    // optJSONObject/optJSONArray/optLong -- dipakai di doWork() di atas
+    // supaya field JSON cukup di-parse SEKALI oleh Gson (bukan 2x: sekali
+    // oleh Gson lalu di-toString()-kan & di-reparse ulang oleh org.json
+    // seperti sebelumnya). Nama sengaja dibedakan dari opt* org.json
+    // (str/objek/larik/lng) supaya tidak ambigu dgn method org.json.JSONObject
+    // yang masih dipakai di tempat lain (mis. MainActivity).
+    private fun com.google.gson.JsonObject.str(kunci: String, default: String = ""): String {
+        val e = this.get(kunci)
+        return if (e != null && !e.isJsonNull) e.asString else default
+    }
+
+    private fun com.google.gson.JsonObject.objek(kunci: String): com.google.gson.JsonObject? {
+        val e = this.get(kunci)
+        return if (e != null && e.isJsonObject) e.asJsonObject else null
+    }
+
+    private fun com.google.gson.JsonObject.larik(kunci: String): com.google.gson.JsonArray? {
+        val e = this.get(kunci)
+        return if (e != null && e.isJsonArray) e.asJsonArray else null
+    }
+
+    private fun com.google.gson.JsonObject.lng(kunci: String, default: Long = 0L): Long {
+        val e = this.get(kunci)
+        return if (e != null && !e.isJsonNull) e.asLong else default
+    }
+
     // INJEKSI AMUNISI: Logika pemindai kategori jamak yang dipindahkan dari MainActivity
     private fun mesinDeteksiKategori(teksKonten: String): String {
         val teksMesin = teksKonten.lowercase()
