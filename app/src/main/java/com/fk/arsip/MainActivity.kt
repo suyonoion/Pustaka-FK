@@ -108,6 +108,7 @@ private var kecepatanEmaBytesPerSec: Double = 0.0
     private lateinit var footerBawahUtama: LinearLayout
     private lateinit var panelIkonBaca: LinearLayout
     private lateinit var toolbarPencarian: LinearLayout
+    private lateinit var indikatorScrollBawah: TextView
     // Arsip yang SEDANG tampil di CurlView -- diperbarui lewat
     // BudayakanBaca.PenggantiHalamanListener setiap halaman berganti (baik
     // lewat gesture curl maupun lompat dari grid). Bar aksi (Sumber Asli/
@@ -152,6 +153,7 @@ private var kecepatanEmaBytesPerSec: Double = 0.0
         footerBawahUtama = findViewById(R.id.footerBawahUtama)
         panelIkonBaca = findViewById(R.id.panelIkonBaca)
         toolbarPencarian = findViewById(R.id.toolbarPencarian)
+        indikatorScrollBawah = findViewById(R.id.indikatorScrollBawah)
         edtPencarian = findViewById<SearchView>(R.id.edtPencarian)
         btnFilterSort = findViewById<ImageButton>(R.id.btnFilterSort)
         btnFilterSort.setOnClickListener {
@@ -269,10 +271,12 @@ private var kecepatanEmaBytesPerSec: Double = 0.0
                 val pageH = curlViewBuku.pageBitmapHeight
                 if (pageW > 0 && pageH > 0) {
                     bookPageProvider.geserKontenHalaman(index, deltaY.toInt(), pageW, pageH)
+                    perbaruiIndikatorScroll(index)
                 }
             }
             override fun onScrollSelesai(index: Int) {
                 bookPageProvider.selesaiGeserKontenHalaman(index)
+                perbaruiIndikatorScroll(index)
             }
         })
         pasangBarAksiBaca()
@@ -595,6 +599,7 @@ when (fase) {
         sedangModeBuku = false
         recyclerGridMode.bringToFront()
         wadahModeBuku.translationX = wadahModeBuku.resources.displayMetrics.widthPixels * 2f
+        indikatorScrollBawah.visibility = View.GONE
     }
 
     private fun bukaModeBukuKeAtas() {
@@ -1681,6 +1686,37 @@ private fun perbaruiDetailKecepatan(persen: Int, byteDiterima: Long, totalByte: 
         // redupkan barnya sedikit alih-alih menyembunyikannya total, supaya
         // tetap terasa konsisten sebagai satu bar yang sama.
         barAksiBaca.alpha = if (arsip == null) 0.4f else 1f
+
+        perbaruiIndikatorScroll(indexHalaman)
+    }
+
+    /**
+     * Tampilkan/sembunyikan indikatorScrollBawah (panah "masih ada lanjutan
+     * di bawah") berdasarkan BookPageProvider.adaLanjutanDiBawah() -- lihat
+     * dokumentasi fungsi itu & indikatorScrollBawah di activity_main.xml.
+     * Dipanggil di 3 titik: tiap halaman berganti (curl/lompat dari grid),
+     * dan tiap gestur scroll berjalan/berakhir.
+     *
+     * postDelayed 250ms tambahan: begitu PINDAH ke halaman baru, bitmap-nya
+     * mungkin belum sempat ada di cache (masih dirender async, lihat
+     * BookPageProvider.mintaRenderLatarBelakang()) -- pengecekan pertama di
+     * sini bisa saja balik false padahal sebenarnya halamannya panjang.
+     * Recheck sekali lagi sebentar kemudian supaya indikator tetap muncul
+     * begitu render-nya selesai, tanpa perlu nunggu user mulai scroll dulu.
+     */
+    private fun perbaruiIndikatorScroll(indexHalaman: Int) {
+        val pageW = curlViewBuku.pageBitmapWidth
+        val pageH = curlViewBuku.pageBitmapHeight
+        if (pageW <= 0 || pageH <= 0) {
+            indikatorScrollBawah.visibility = View.GONE
+            return
+        }
+        val cekDanSet = {
+            indikatorScrollBawah.visibility =
+                if (bookPageProvider.adaLanjutanDiBawah(indexHalaman, pageW, pageH)) View.VISIBLE else View.GONE
+        }
+        cekDanSet()
+        indikatorScrollBawah.postDelayed({ cekDanSet() }, 250)
     }
 
     /**

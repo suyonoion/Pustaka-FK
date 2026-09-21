@@ -272,6 +272,18 @@ public class BudayakanBaca extends GLSurfaceView implements View.OnTouchListener
 			mPointerPos.mPos.x += (mAnimationTarget.x - mAnimationSource.x) * t;
 			mPointerPos.mPos.y += (mAnimationTarget.y - mAnimationSource.y) * t;
 			updateCurlPos(mPointerPos);
+			// PERBAIKAN BUG "MACET SAMPAI BUKA RECENT & BALIK": RENDERMODE_WHEN_DIRTY
+			// artinya GL HANYA render kalau ada requestRender() eksplisit -- cabang
+			// ini (animasi curl masih berjalan) SEBELUMNYA tidak pernah memanggilnya,
+			// jadi animasi cuma sempat gambar SATU frame lalu berhenti total,
+			// sementara mAnimate tetap true SELAMANYA. onTouch() paling atas
+			// langsung return false selama mAnimate true -- akibatnya curl MAUPUN
+			// scroll berhenti merespons sentuhan sampai ada trigger render dari luar
+			// (mis. onResume dari buka recent, yang kebetulan membuat jam animasi
+			// sudah lewat durasinya sehingga dianggap "selesai" & mAnimate direset).
+			// Fix: minta frame berikutnya di setiap tick supaya animasi benar2
+			// berjalan sampai selesai sendiri secara real-time.
+			requestRender();
 		}
 	}
 

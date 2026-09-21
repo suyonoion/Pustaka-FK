@@ -220,6 +220,22 @@ class BookPageProvider(
         return bmp.height > h
     }
 
+    /**
+     * Dipakai utk indikator panah "masih ada lanjutan di bawah" (lihat
+     * indikatorScrollBawah di activity_main.xml). Beda dari bisaDigeser():
+     * ini juga memperhitungkan offsetGeserPx SAAT INI -- begitu user sudah
+     * scroll sampai mentok bawah, harus balik false (indikator hilang),
+     * bukan tetap true selama halaman itu panjang.
+     */
+    fun adaLanjutanDiBawah(index: Int, w: Int, h: Int): Boolean {
+        val resolusi = resolusiHalaman(index, w, h, ambilData()) ?: return false
+        val bmp = cacheBitmap.get(resolusi.cacheKey) ?: return false
+        val maxOffset = (bmp.height - h).coerceAtLeast(0)
+        if (maxOffset <= 0) return false
+        val offsetSaatIni = if (index == indexSedangDibaca) offsetGeserPx else 0
+        return offsetSaatIni < maxOffset
+    }
+
 
     /**
      * Nomor arsip (posisi di ambilData(), 0-based) = nomor halaman - 1

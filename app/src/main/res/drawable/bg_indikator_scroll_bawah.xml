@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Latar pill utk indikatorScrollBawah — hijau tua sama dgn elemen
+     lain (timeline_pil_stroke) tapi diberi alpha spy tetap terlihat
+     sbg overlay mengambang di atas konten, bukan bar solid penuh. -->
+<shape xmlns:android="http://schemas.android.com/apk/res/android"
+    android:shape="rectangle">
+    <solid android:color="#CC004D40" />
+    <corners android:radius="999dp" />
+</shape>
