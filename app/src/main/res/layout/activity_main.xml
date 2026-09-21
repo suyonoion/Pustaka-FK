@@ -286,7 +286,7 @@
                 android:layout_marginTop="10dp" />
         </LinearLayout>
 
-        <!-- INDIKATOR "MASIH ADA STATUS DI BAWAH" utk recyclerGridMode --
+        <!-- INDIKATOR "MASIH ADA STATUS DI BAWAH" utk recyclerGridMode.
              dipakai juga saat mode pencarian karena hasil pencarian tetap
              dirender lewat recycler yg sama (lihat eksekusiLogikaPencarian()
              -> pompaDataKeLayar()). Murni dekoratif, clickable/focusable=false
