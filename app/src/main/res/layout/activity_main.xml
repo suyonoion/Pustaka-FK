@@ -239,7 +239,7 @@
                  yg sedang dibaca punya konten lebih panjang dari 1 layar DAN
                  belum discroll sampai mentok bawah (lihat
                  BookPageProvider.adaLanjutanDiBawah() & perbaruiIndikatorScroll()
-                 di MainActivity). Murni dekoratif -- clickable/focusable=false
+                 di MainActivity). Murni dekoratif  clickable/focusable=false
                  supaya TIDAK PERNAH ikut menangkap sentuhan (CurlView di
                  bawahnya yg harus merespons semua gestur curl/scroll). -->
             <TextView

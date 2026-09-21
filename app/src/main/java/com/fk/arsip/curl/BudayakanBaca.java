@@ -70,8 +70,8 @@ public class BudayakanBaca extends GLSurfaceView implements View.OnTouchListener
 	// memberi tahu kode luar kapan mCurrentIndex berubah. Ditambahkan
 	// supaya MainActivity bisa memperbarui bar aksi (Sumber Asli/Bagikan/
 	// Lampiran) setiap kali halaman yang tampil di depan berganti.
-	// PENTING: dua titik pemanggilan di onDrawFrame() (lihat --mCurrentIndex
-	// dan ++mCurrentIndex di bawah) berjalan di GL THREAD, bukan UI thread --
+	// PENTING: dua titik pemanggilan di onDrawFrame() (lihat  mCurrentIndex
+	// dan ++mCurrentIndex di bawah) berjalan di GL THREAD, bukan UI thread  
 	// implementasi listener WAJIB posting sendiri ke UI thread sebelum
 	// menyentuh View apa pun.
 	private PenggantiHalamanListener mPenggantiHalamanListener;
@@ -86,7 +86,7 @@ public class BudayakanBaca extends GLSurfaceView implements View.OnTouchListener
 
 	// TAHAP 2: SCROLL DI DALAM HALAMAN.
 	// Dipanggil saat gestur sentuhan terdeteksi sbg scroll vertikal isi
-	// halaman (bukan balik halaman/curl) -- lihat onTouch() & catatan
+	// halaman (bukan balik halaman/curl)   lihat onTouch() & catatan
 	// panjang di sana soal disambiguasi arah gestur. Implementasi WAJIB
 	// posting sendiri ke thread yang benar kalau perlu menyentuh UI/View
 	// lain, sama seperti PenggantiHalamanListener.
@@ -98,14 +98,14 @@ public class BudayakanBaca extends GLSurfaceView implements View.OnTouchListener
 
 	public interface ContentScrollListener {
 		void onScrollKonten(int index, float deltaY);
-		/** Dipanggil saat gestur scroll berakhir (ACTION_UP/CANCEL) -- kesempatan
+		/** Dipanggil saat gestur scroll berakhir (ACTION_UP/CANCEL)   kesempatan
 		 * memaksa refresh tekstur terakhir tanpa throttle (lihat
 		 * BookPageProvider.selesaiGeserKontenHalaman()). */
 		void onScrollSelesai(int index);
 	}
 
 	// Konstanta & state utk disambiguasi gestur "balik halaman" vs "scroll
-	// isi" -- lihat catatan panjang di onTouch().
+	// isi"   lihat catatan panjang di onTouch().
 	private static final int MODE_SENTUH_BELUM_TENTU = 0;
 	private static final int MODE_SENTUH_CURL = 1;
 	private static final int MODE_SENTUH_SCROLL = 2;
@@ -114,7 +114,7 @@ public class BudayakanBaca extends GLSurfaceView implements View.OnTouchListener
 	private float mScrollYTerakhir = 0f;
 	// PERBAIKAN: lihat catatan panjang di onTouch() soal beda satuan piksel
 	// vs unit ter-translate. Pasangan piksel-mentah ini KHUSUS utk keputusan
-	// mode gestur & hitungan deltaY scroll -- mSentuhMentahAwal/mScrollYTerakhir
+	// mode gestur & hitungan deltaY scroll   mSentuhMentahAwal/mScrollYTerakhir
 	// di atas TETAP dipakai apa adanya (koordinat ter-translate) utk logika
 	// curl yang sudah ada sebelumnya, tidak diubah.
 	private final PointF mSentuhPikselAwal = new PointF();
@@ -137,7 +137,7 @@ public class BudayakanBaca extends GLSurfaceView implements View.OnTouchListener
 	private PageProvider mPageProvider;
 	private CurlMesh mPageRight;
 
-	// INDEX HALAMAN YANG SEDANG TAMPIL -- disimpan supaya refreshPageTexture()
+	// INDEX HALAMAN YANG SEDANG TAMPIL   disimpan supaya refreshPageTexture()
 	// tahu mesh mana yang perlu di-refresh saat PageProvider selesai merender
 	// versi halaman yang lebih lengkap (mis. foto sudah kelar di-fetch) secara
 	// ASYNC di belakang layar (lihat BookPageProvider.onPageReady).
@@ -273,11 +273,11 @@ public class BudayakanBaca extends GLSurfaceView implements View.OnTouchListener
 			mPointerPos.mPos.y += (mAnimationTarget.y - mAnimationSource.y) * t;
 			updateCurlPos(mPointerPos);
 			// PERBAIKAN BUG "MACET SAMPAI BUKA RECENT & BALIK": RENDERMODE_WHEN_DIRTY
-			// artinya GL HANYA render kalau ada requestRender() eksplisit -- cabang
+			// artinya GL HANYA render kalau ada requestRender() eksplisit   cabang
 			// ini (animasi curl masih berjalan) SEBELUMNYA tidak pernah memanggilnya,
 			// jadi animasi cuma sempat gambar SATU frame lalu berhenti total,
 			// sementara mAnimate tetap true SELAMANYA. onTouch() paling atas
-			// langsung return false selama mAnimate true -- akibatnya curl MAUPUN
+			// langsung return false selama mAnimate true   akibatnya curl MAUPUN
 			// scroll berhenti merespons sentuhan sampai ada trigger render dari luar
 			// (mis. onResume dari buka recent, yang kebetulan membuat jam animasi
 			// sudah lewat durasinya sehingga dianggap "selesai" & mAnimate direset).
@@ -296,13 +296,13 @@ public class BudayakanBaca extends GLSurfaceView implements View.OnTouchListener
 	}
 
 	// PERBAIKAN BUG "SCROLL TIDAK PERNAH JALAN": mPageBitmapWidth/Height di
-	// atas SEBELUMNYA private tanpa getter -- kode luar (MainActivity) tidak
+	// atas SEBELUMNYA private tanpa getter   kode luar (MainActivity) tidak
 	// punya cara tahu ukuran bitmap SEBENARNYA yang dipakai updatePage()/
 	// cache key (ukuran ini SUDAH dikurangi margin & pembagian dua halaman
-	// di SHOW_TWO_PAGES, lihat CurlRenderer.updatePageRects() -- BUKAN sama
+	// di SHOW_TWO_PAGES, lihat CurlRenderer.updatePageRects()   BUKAN sama
 	// dengan ukuran View curlViewBuku.getWidth()/getHeight()). Tanpa getter
 	// ini, kode luar terpaksa menebak pakai ukuran View, yang SELALU beda
-	// (margin 3% di tiap sisi) -- akibatnya cacheKey yang dihitung ulang di
+	// (margin 3% di tiap sisi)   akibatnya cacheKey yang dihitung ulang di
 	// BookPageProvider.geserKontenHalaman()/bisaDigeser() TIDAK PERNAH cocok
 	// dengan cacheKey yang dipakai saat bitmap itu sungguhan dirender &
 	// disimpan, jadi cacheBitmap.get() selalu null & scroll selalu gagal
@@ -336,9 +336,9 @@ public class BudayakanBaca extends GLSurfaceView implements View.OnTouchListener
 
 	/**
 	 * Menentukan sisi (kiri/kanan) & memulai curl berdasarkan posisi sentuh
-	 * MENTAH saat ACTION_DOWN (mSentuhMentahAwal) -- diekstrak dari logika
+	 * MENTAH saat ACTION_DOWN (mSentuhMentahAwal)   diekstrak dari logika
 	 * yang dulu ada langsung di ACTION_DOWN, sekarang dipanggil belakangan
-	 * (dari ACTION_MOVE, begitu gestur dipastikan horizontal -- lihat
+	 * (dari ACTION_MOVE, begitu gestur dipastikan horizontal   lihat
 	 * catatan panjang soal disambiguasi di onTouch()).
 	 * @return true kalau curl benar-benar dimulai (ada halaman ke arah itu).
 	 */
@@ -403,19 +403,19 @@ public class BudayakanBaca extends GLSurfaceView implements View.OnTouchListener
 		// PERBAIKAN BUG "TOTAL BEKU (tidak bisa geser halaman maupun
 		// scroll)": mRenderer.translate() di bawah ini mengubah mPointerPos.mPos
 		// dari koordinat PIKSEL LAYAR MENTAH ke sistem koordinat internal
-		// CurlRenderer (skala unit GL utk render 3D, BUKAN piksel -- lihat
+		// CurlRenderer (skala unit GL utk render 3D, BUKAN piksel   lihat
 		// CurlRenderer.translate()). Disambiguasi gestur (dx/dy vs mTouchSlop)
 		// SEBELUMNYA memakai mPointerPos.mPos yang SUDAH DITRANSLATE itu,
 		// dibandingkan dgn mTouchSlop yang satuannya PIKSEL MENTAH dari
-		// ViewConfiguration -- beda satuan total. Karena skala unit GL jauh
+		// ViewConfiguration   beda satuan total. Karena skala unit GL jauh
 		// lebih kecil dari piksel, |dx|/|dy| hasil translate hampir tidak
 		// pernah melewati mTouchSlop, jadi mModeSentuhan TIDAK PERNAH keluar
-		// dari MODE_SENTUH_BELUM_TENTU -- baik curl maupun scroll tidak
+		// dari MODE_SENTUH_BELUM_TENTU   baik curl maupun scroll tidak
 		// pernah benar2 mulai, persis gejala "disentuh/digeser apa pun tidak
 		// ada reaksi sama sekali". Fix: lacak posisi PIKSEL MENTAH terpisah
 		// (mSentuhPikselAwal/mScrollYTerakhirPiksel) KHUSUS utk keputusan
 		// mode & hitungan deltaY scroll (geserKontenHalaman() jg mengharapkan
-		// piksel sungguhan utk offset-nya) -- mSentuhMentahAwal (koordinat
+		// piksel sungguhan utk offset-nya)   mSentuhMentahAwal (koordinat
 		// ter-translate) tetap dipakai apa adanya utk mulaiCurlDariGestur()
 		// yang memang butuh koordinat sistem CurlRenderer utk posisi curl.
 		float xPikselMentah = me.getX();
@@ -429,18 +429,18 @@ public class BudayakanBaca extends GLSurfaceView implements View.OnTouchListener
 		}
 
 		// TAHAP 2: DISAMBIGUASI GESTUR "BALIK HALAMAN" vs "SCROLL ISI".
-		// Sebelumnya, ACTION_DOWN LANGSUNG memutuskan & memulai curl --
+		// Sebelumnya, ACTION_DOWN LANGSUNG memutuskan & memulai curl  
 		// artinya SETIAP sentuhan (termasuk yg maksudnya scroll ke bawah utk
 		// baca lanjutan) langsung dianggap gestur balik halaman. Sekarang
 		// keputusan itu DITUNDA sampai user benar-benar menggeser jari
-		// melewati ambang batas (mTouchSlop) -- baru pada saat itu dilihat
+		// melewati ambang batas (mTouchSlop)   baru pada saat itu dilihat
 		// arah dominannya: geser lebih ke SAMPING (|dx|>=|dy|) => balik
 		// halaman (curl) seperti sebelumnya; geser lebih ke ATAS/BAWAH
 		// (|dy|>|dx|) => scroll isi halaman (dipanggil lewat
 		// mContentScrollListener, TIDAK PERNAH menyentuh logika curl sama
 		// sekali). Sekali salah satu mode terpilih utk satu gestur (dari
 		// ACTION_DOWN sampai ACTION_UP/CANCEL berikutnya), mode itu dipakai
-		// konsisten sampai gestur selesai -- tidak berpindah mode di
+		// konsisten sampai gestur selesai   tidak berpindah mode di
 		// tengah jalan.
 		switch (me.getAction()) {
 		case MotionEvent.ACTION_DOWN: {
@@ -454,13 +454,13 @@ public class BudayakanBaca extends GLSurfaceView implements View.OnTouchListener
 		case MotionEvent.ACTION_MOVE: {
 			if (mModeSentuhan == MODE_SENTUH_BELUM_TENTU) {
 				// PERBAIKAN: dx/dy keputusan mode WAJIB piksel mentah (sama
-				// satuan dgn mTouchSlop) -- lihat catatan panjang di atas
+				// satuan dgn mTouchSlop)   lihat catatan panjang di atas
 				// dekat mRenderer.translate(). Pakai mSentuhPikselAwal, BUKAN
 				// mSentuhMentahAwal (itu koordinat ter-translate, beda skala).
 				float dx = xPikselMentah - mSentuhPikselAwal.x;
 				float dy = yPikselMentah - mSentuhPikselAwal.y;
 				if (Math.abs(dx) < mTouchSlop && Math.abs(dy) < mTouchSlop) {
-					// Belum cukup bergerak utk tahu maksud gesturnya --
+					// Belum cukup bergerak utk tahu maksud gesturnya  
 					// tunggu event MOVE berikutnya, jangan lakukan apa-apa
 					// dulu (mencegah "getaran" kecil dianggap gestur).
 					return true;
@@ -472,7 +472,7 @@ public class BudayakanBaca extends GLSurfaceView implements View.OnTouchListener
 					mModeSentuhan = MODE_SENTUH_CURL;
 					if (!mulaiCurlDariGestur(rightRect, leftRect)) {
 						// Tidak ada halaman ke arah itu (mis. sudah di
-						// halaman pertama/terakhir) -- jangan patahkan
+						// halaman pertama/terakhir)   jangan patahkan
 						// gestur yg sedang berjalan, biarkan saja idle
 						// sampai ACTION_UP.
 						return true;
@@ -486,7 +486,7 @@ public class BudayakanBaca extends GLSurfaceView implements View.OnTouchListener
 				// SELANJUTNYA = deltaY POSITIF (konvensi yg sama dgn
 				// geserKontenHalaman() di BookPageProvider). PERBAIKAN: pakai
 				// piksel mentah (yPikselMentah), BUKAN mPointerPos.mPos.y yg
-				// sudah ter-translate -- geserKontenHalaman() membandingkan
+				// sudah ter-translate   geserKontenHalaman() membandingkan
 				// deltaY ini lgs dgn tinggi bitmap PIKSEL SUNGGUHAN, jadi
 				// harus dalam satuan piksel juga (lihat catatan panjang di
 				// atas dekat mRenderer.translate()).
@@ -535,7 +535,7 @@ public class BudayakanBaca extends GLSurfaceView implements View.OnTouchListener
 				mAnimate = true;
 				requestRender();
 			} else if (mModeSentuhan == MODE_SENTUH_SCROLL && mContentScrollListener != null) {
-				// Gestur scroll berakhir -- paksa refresh tekstur terakhir
+				// Gestur scroll berakhir   paksa refresh tekstur terakhir
 				// tanpa throttle, supaya posisi yg tampil persis sama dgn
 				// tempat jari berhenti (lihat catatan di
 				// BookPageProvider.selesaiGeserKontenHalaman()).
@@ -644,7 +644,7 @@ public class BudayakanBaca extends GLSurfaceView implements View.OnTouchListener
 	 * Sebelumnya fungsi ini dipanggil dari UI thread (lihat
 	 * MainActivity.bukaModeBuku()) dan langsung memanggil updatePages(),
 	 * yang lewat CurlPage.reset()/setTexture() me-recycle() Bitmap SECARA
-	 * LANGSUNG di UI thread -- tanpa lock apa pun. Di saat yang sama,
+	 * LANGSUNG di UI thread   tanpa lock apa pun. Di saat yang sama,
 	 * CurlMesh.onDrawFrame() (berjalan di GL THREAD, hanya synchronized
 	 * pada CurlMesh, BUKAN pada CurlPage) membaca & me-recycle() Bitmap
 	 * yang SAMA. Dua thread menyentuh objek Bitmap yang sama tanpa
@@ -697,7 +697,7 @@ public class BudayakanBaca extends GLSurfaceView implements View.OnTouchListener
 	/**
 	 * Update/set page provider.
 	 *
-	 * PERBAIKAN CRASH NATIVE: sama seperti setCurrentIndex() di atas --
+	 * PERBAIKAN CRASH NATIVE: sama seperti setCurrentIndex() di atas  
 	 * dulu dipanggil sinkron dari onCreate() (UI thread) tepat saat GL
 	 * surface baru saja dibuat, sehingga bisa race dengan
 	 * onSurfaceCreated()/onPageSizeChanged() (GL thread) yang menyentuh
@@ -1014,11 +1014,11 @@ public class BudayakanBaca extends GLSurfaceView implements View.OnTouchListener
 	}
 
 	/**
-	 * Dipanggil dari PageProvider (thread BEBAS -- boleh dari background
+	 * Dipanggil dari PageProvider (thread BEBAS   boleh dari background
 	 * thread manapun) ketika versi halaman yang lebih lengkap untuk `index`
 	 * (mis. foto sudah selesai di-fetch async) sudah siap di cache-nya, DAN
 	 * halaman itu kebetulan masih sedang tampil (kiri/kanan/curl). Kalau
-	 * begitu, tekstur mesh terkait diperbarui dan frame digambar ulang --
+	 * begitu, tekstur mesh terkait diperbarui dan frame digambar ulang  
 	 * tanpa mengulang seluruh updatePages() (supaya tidak mengganggu state
 	 * curl/animasi yang sedang berjalan).
 	 *

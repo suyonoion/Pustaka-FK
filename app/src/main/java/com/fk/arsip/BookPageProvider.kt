@@ -33,11 +33,11 @@ import java.util.concurrent.TimeUnit
  * ------------------------------------------------------------------
  * PENYEDERHANAAN BESAR (menggantikan sistem paginasi lama):
  * Sebelumnya 1 arsip BISA menempati lebih dari 1 halaman kalau kontennya
- * panjang -- itu perlu larik akumulatif GLOBAL (`kumulatif[]`) yang memetakan
+ * panjang  itu perlu larik akumulatif GLOBAL (`kumulatif[]`) yang memetakan
  * "halaman ke berapa" ke "arsip yang mana", dihitung dari PERKIRAAN jumlah
  * halaman per arsip (StaticLayout baru dipakai persis begitu arsip itu benar-
  * benar dibuka). Estimasi yang meleset di SATU arsip menggeser pemetaan
- * SEMUA arsip sesudahnya -- itu akar dari seluruh rentetan bug lompat-
+ * SEMUA arsip sesudahnya  itu akar dari seluruh rentetan bug lompat-
  * meleset, ArrayIndexOutOfBounds, dan race kondisi lintas-thread yang
  * berulang kali muncul.
  *
@@ -61,7 +61,7 @@ import java.util.concurrent.TimeUnit
  *
  * Bitmap dari cache SELALU disalin (bukan diberikan objek aslinya) sebelum
  * diserahkan ke CurlPage, karena CurlPage.setTexture()/reset() me-recycle()
- * bitmap lama begitu diganti -- kalau cache & CurlPage berbagi objek yang
+ * bitmap lama begitu diganti  kalau cache & CurlPage berbagi objek yang
  * sama, cache ikut rusak (lihat histori perbaikan crash "recycled bitmap").
  */
 class BookPageProvider(
@@ -84,7 +84,7 @@ class BookPageProvider(
     }
     private val sedangDiproses = ConcurrentHashMap.newKeySet<String>()
 
-    // Batas aman tinggi bitmap render (kelipatan tinggi 1 layar) -- jaga2
+    // Batas aman tinggi bitmap render (kelipatan tinggi 1 layar)  jaga2
     // konten yg ekstrem panjangnya (jarang) tidak mengalokasikan bitmap
     // nyaris tak terbatas. ~12 layar sudah lebih dari cukup utk status
     // terpanjang yg wajar; lebih dari itu, potong & arahkan ke Sumber Asli.
@@ -94,17 +94,17 @@ class BookPageProvider(
     // TAHAP 2: SCROLL DI DALAM HALAMAN
     // ------------------------------------------------------------------
     // Sejak Tahap 1, cacheBitmap TIDAK LAGI menyimpan bitmap seukuran layar
-    // persis -- sekarang menyimpan bitmap SETINGGI KONTEN ASLINYA (bisa jauh
+    // persis  sekarang menyimpan bitmap SETINGGI KONTEN ASLINYA (bisa jauh
     // lebih tinggi dari 1 layar utk arsip yang panjang, lihat
     // renderViewKeBitmapTinggi()). Yang diserahkan ke CurlPage/GL SELALU
     // berupa POTONGAN seukuran-layar dari bitmap tinggi itu, pada posisi
-    // scroll saat ini -- lihat potongUntukTampil().
+    // scroll saat ini  lihat potongUntukTampil().
     //
     // Hanya SATU halaman yang bisa digeser interaktif dalam satu waktu
-    // (yang sedang tampil) -- `indexSedangDibaca`/`offsetGeserPx` cukup 2
+    // (yang sedang tampil)  `indexSedangDibaca`/`offsetGeserPx` cukup 2
     // variabel instance, tidak perlu Map per-halaman. Begitu pindah ke
     // index lain (curl selesai / lompat dari grid), offset otomatis balik
-    // ke 0 (mulai dari atas lagi) -- lihat pengecekan `index == indexSedangDibaca`
+    // ke 0 (mulai dari atas lagi)  lihat pengecekan `index == indexSedangDibaca`
     // di updatePage() & geserKontenHalaman().
     @Volatile private var indexSedangDibaca = -1
     @Volatile private var offsetGeserPx = 0
@@ -116,15 +116,15 @@ class BookPageProvider(
         val lebarPotongan = w.coerceAtMost(bitmapTinggi.width).coerceAtLeast(1)
         return try {
             val potongan = Bitmap.createBitmap(bitmapTinggi, 0, offsetAman, lebarPotongan, tinggiPotongan)
-            // PENTING -- BUG KRITIS KALAU DIABAIKAN: Bitmap.createBitmap(source,
+            // PENTING  BUG KRITIS KALAU DIABAIKAN: Bitmap.createBitmap(source,
             // x,y,w,h) mengembalikan OBJEK SUMBER ASLI APA ADANYA (bukan
             // salinan baru) kalau area yg diminta PERSIS sama dgn ukuran
-            // sumbernya (x=0,y=0,w=source.width,h=source.height) -- dan itu
+            // sumbernya (x=0,y=0,w=source.width,h=source.height)  dan itu
             // SELALU terjadi utk halaman yg kontennya muat 1 layar (offsetAman
             // selalu 0, tinggiPotongan selalu = tinggi penuh bitmap), yaitu
             // MAYORITAS arsip. Kalau dibiarkan, objek yg sama dgn yg masih
             // dipegang `cacheBitmap` diserahkan ke CurlPage.setTexture(), yang
-            // akan me-recycle()-nya begitu diganti -- merusak cache & memicu
+            // akan me-recycle()-nya begitu diganti  merusak cache & memicu
             // lagi kelas crash native "freePixels" yg berulang kali sudah
             // diperbaiki sebelumnya. WAJIB disalin ulang kalau ternyata objek
             // yg dikembalikan SAMA (bukan potongan baru).
@@ -144,24 +144,24 @@ class BookPageProvider(
      * Geser konten halaman `index` sejauh `deltaYPx` (positif = konten
      * bergerak ke atas, spt scroll biasa melihat lanjutan teks). Dipanggil
      * dari BudayakanBaca saat gestur sentuhan terdeteksi sbg scroll vertikal
-     * (bukan balik halaman) -- lihat BudayakanBaca.onTouch().
+     * (bukan balik halaman)  lihat BudayakanBaca.onTouch().
      * @return true kalau posisi scroll benar-benar berubah (halaman ini
      * memang punya konten yg lebih panjang dari 1 layar & belum mentok).
      */
     @Volatile private var refreshTerakhirMs = 0L
-    // ~30fps utk update TEKSTUR scroll -- cukup mulus utk mata, tapi jauh
+    // ~30fps utk update TEKSTUR scroll  cukup mulus utk mata, tapi jauh
     // lebih murah drpd memotong bitmap + upload tekstur GL PENUH tiap
-    // event ACTION_MOVE (bisa >60x/detik di sebagian device -- itulah
+    // event ACTION_MOVE (bisa >60x/detik di sebagian device  itulah
     // penyebab "kaku/lag" yg dilaporkan). Posisi LOGIS (offsetGeserPx)
     // tetap ter-update SETIAP panggilan, cuma tekstur yg ditampilkan yg
-    // dibatasi lajunya -- lihat selesaiGeserKontenHalaman() utk memastikan
+    // dibatasi lajunya  lihat selesaiGeserKontenHalaman() utk memastikan
     // posisi terakhir tetap tampil persis begitu jari diangkat (ACTION_UP),
     // walau update itu jatuh di tengah jendela throttle.
     private val JEDA_MINIMUM_REFRESH_MS = 32L
 
     // PERBAIKAN BUG "SCROLL BARU AKTIF SETELAH BUKA RECENT & BALIK LAGI":
     // sebelumnya geserKontenHalaman()/bisaDigeser() bergantung pada
-    // `cacheKeyTerakhir[index]` -- sebuah Map yang HANYA diisi sbg EFEK
+    // `cacheKeyTerakhir[index]`  sebuah Map yang HANYA diisi sbg EFEK
     // SAMPING oleh updatePage() (dan hanya di jalur cache-HIT-nya). Ada
     // celah waktu/urutan nyata di sana: kalau updatePage() BELUM SEMPAT
     // dipanggil ULANG utk index ini setelah render async-nya selesai (mis.
@@ -169,14 +169,14 @@ class BookPageProvider(
     // "kena" tepat pas render selesai), cacheKeyTerakhir[index] tetap
     // kosong SELAMANYA sampai ADA pemicu lain (spt onPause/onResume dari
     // buka recent, yang memaksa updatePages() jalan ulang & akhirnya
-    // mengisi Map itu) -- padahal bitmap-nya SENDIRI sebenarnya SUDAH ADA
+    // mengisi Map itu)  padahal bitmap-nya SENDIRI sebenarnya SUDAH ADA
     // di cacheBitmap sejak lama, tinggal tidak "diketahui" via Map perantara
     // yang rapuh itu.
     //
     // Fix: geserKontenHalaman()/bisaDigeser() SEKARANG menghitung ulang
-    // kunci cache-nya SENDIRI lewat resolusiHalaman() (murah -- cuma bikin
+    // kunci cache-nya SENDIRI lewat resolusiHalaman() (murah  cuma bikin
     // String key, TIDAK menjalankan render) & baca cacheBitmap LANGSUNG.
-    // Tidak ada lagi Map perantara yang bisa "telat" terisi -- begitu bitmap
+    // Tidak ada lagi Map perantara yang bisa "telat" terisi  begitu bitmap
     // ADA di cache (dari jalur mana pun ia sampai ke sana), scroll langsung
     // bisa jalan, tanpa perlu event tambahan apa pun sbg pemicu.
     fun geserKontenHalaman(index: Int, deltaYPx: Int, w: Int, h: Int): Boolean {
@@ -201,7 +201,7 @@ class BookPageProvider(
     }
 
     /**
-     * Dipanggil saat gestur scroll SELESAI (ACTION_UP/CANCEL) -- paksa satu
+     * Dipanggil saat gestur scroll SELESAI (ACTION_UP/CANCEL)  paksa satu
      * refresh tekstur TANPA throttle, supaya posisi yang tampil di layar
      * selalu persis sama dgn offsetGeserPx terakhir, walau update paling
      * akhir tadi kebetulan jatuh di tengah jendela throttle (lihat
@@ -223,7 +223,7 @@ class BookPageProvider(
     /**
      * Dipakai utk indikator panah "masih ada lanjutan di bawah" (lihat
      * indikatorScrollBawah di activity_main.xml). Beda dari bisaDigeser():
-     * ini juga memperhitungkan offsetGeserPx SAAT INI -- begitu user sudah
+     * ini juga memperhitungkan offsetGeserPx SAAT INI  begitu user sudah
      * scroll sampai mentok bawah, harus balik false (indikator hilang),
      * bukan tetap true selama halaman itu panjang.
      */
@@ -240,11 +240,11 @@ class BookPageProvider(
     /**
      * Nomor arsip (posisi di ambilData(), 0-based) = nomor halaman - 1
      * (index 0 dicadangkan utk sampul depan). PEMETAAN LANGSUNG, tidak ada
-     * hitungan/estimasi/lock apa pun -- lihat dokumentasi kelas di atas.
+     * hitungan/estimasi/lock apa pun  lihat dokumentasi kelas di atas.
      */
     fun indexHalamanUntukArsip(posisiArsip: Int): Int = posisiArsip + 1
 
-    /** Kebalikan dari indexHalamanUntukArsip -- null kalau sampul depan/belakang. */
+    /** Kebalikan dari indexHalamanUntukArsip  null kalau sampul depan/belakang. */
     fun indexArsipDari(indexHalaman: Int): Int? {
         val posisiArsip = indexHalaman - 1
         val n = ambilData().size
@@ -326,15 +326,15 @@ class BookPageProvider(
     /**
      * Render halaman kiri/kanan sekitar `index` di background lebih awal
      * (tanpa menunggu diminta), supaya waktu SWIPE terasa instan setelah
-     * pengguna pernah singgah sebentar -- bukan cuma waktu dibuka persis.
+     * pengguna pernah singgah sebentar  bukan cuma waktu dibuka persis.
      * Hanya jalan kalau belum ada di cache & belum sedang diproses.
      *
      * PERBAIKAN PENTING: versi lama membuat `CurlPage()` sekali-pakai dan
-     * memanggil updatePage() dengannya dari THREAD BACKGROUND -- itu berarti
+     * memanggil updatePage() dengannya dari THREAD BACKGROUND  itu berarti
      * CurlPage.setTexture() (yang me-recycle() bitmap lama) ikut tersentuh
      * DI LUAR GL thread, melanggar kontrak GLSurfaceView (CurlPage/CurlMesh
      * cuma boleh disentuh dari GL thread). Sekarang prefetch CUMA mengisi
-     * cache lewat resolusiHalaman()+mintaRenderLatarBelakang() -- TIDAK
+     * cache lewat resolusiHalaman()+mintaRenderLatarBelakang()  TIDAK
      * PERNAH membuat atau menyentuh objek CurlPage sama sekali.
      */
     private fun prefetchTetangga(index: Int, totalArsip: Int, w: Int, h: Int, data: List<ArsipEntity>) {
@@ -342,7 +342,7 @@ class BookPageProvider(
             if (tetangga < 0 || tetangga > totalArsip + 1) continue
             val resolusi = resolusiHalaman(tetangga, w, h, data) ?: continue
             // Cek cache dulu SECARA SINKRON (murah) sebelum menjadwalkan apa
-            // pun -- updatePage() ini dipanggil tiap frame utk halaman yg
+            // pun  updatePage() ini dipanggil tiap frame utk halaman yg
             // sedang tampil, jadi kalau tidak dicek dulu, tetangga yg SUDAH
             // di-cache akan terus-menerus dijadwalkan ulang ke executor tiap
             // frame (kerja sia-sia, membanjiri thread pool tanpa manfaat).
@@ -382,7 +382,7 @@ class BookPageProvider(
 
     data class KontenBerbagi(val teksAsli: String, val namaPemilik: String, val kontenShared: String)
 
-    /** Dipakai bersama oleh render & pengecekan panjang -- SATU tempat parsing, hindari duplikasi/inkonsistensi. */
+    /** Dipakai bersama oleh render & pengecekan panjang  SATU tempat parsing, hindari duplikasi/inkonsistensi. */
     fun parseKontenBerbagi(kontenBersih: String): KontenBerbagi? {
         if (!kontenBersih.contains("--- Membagikan Status:")) return null
         val bagian = kontenBersih.split("\n\n--- Membagikan Status: ")
@@ -426,7 +426,7 @@ class BookPageProvider(
                     // PENTING: applicationContext (bukan context Activity) --
                     // lihat histori perbaikan crash "freePixels" terkait Glide
                     // di dokumentasi kelas.
-                    // PERBAIKAN: diturunkan dari 6 detik ke 3 detik -- seluruh
+                    // PERBAIKAN: diturunkan dari 6 detik ke 3 detik  seluruh
                     // render halaman ini (termasuk teks & kesiapan utk scroll)
                     // menunggu foto ini SELESAI atau GAGAL dulu; 6 detik
                     // terlalu lama utk membuat halaman "belum siap discroll".
@@ -449,10 +449,10 @@ class BookPageProvider(
             val txtKontenUtama = view.findViewById<TextView>(R.id.txtKontenUtama)
             val txtKontenShared = view.findViewById<TextView>(R.id.txtKontenShared)
             // PENYEDERHANAAN TAHAP 2: tidak perlu lagi mengecilkan/memotong
-            // teks -- ukuran font pakai default dari XML (14sp/13sp), dan
+            // teks  ukuran font pakai default dari XML (14sp/13sp), dan
             // seluruh teks ditampilkan APA ADANYA. Kalau lebih tinggi dari 1
             // layar, view (dan bitmap-nya) memang dibuat lebih tinggi --
-            // lihat renderViewKeBitmapTinggi() -- lalu digeser scroll saat
+            // lihat renderViewKeBitmapTinggi()  lalu digeser scroll saat
             // dibaca (lihat geserKontenHalaman()).
             val tinggiBarisPx = (KertasBergarisDrawable.TINGGI_BARIS_DP * context.resources.displayMetrics.density).toInt()
             TextViewCompat.setLineHeight(txtKontenUtama, tinggiBarisPx)
@@ -553,7 +553,7 @@ class BookPageProvider(
      * sama seperti sebelumnya (persis `tinggiMinimum`, layout dgn
      * android:layout_weight="1" pada ScrollView di item_buku.xml akan
      * mengisi sisa ruang secara wajar). Kalau kontennya panjang, bitmap
-     * yang dihasilkan LEBIH TINGGI dari 1 layar -- potongan yang benar2
+     * yang dihasilkan LEBIH TINGGI dari 1 layar  potongan yang benar2
      * ditampilkan ke pengguna (seukuran 1 layar, pada posisi scroll saat
      * itu) diambil belakangan oleh potongUntukTampil().
      */
@@ -566,7 +566,7 @@ class BookPageProvider(
                 val w = width.coerceAtLeast(1)
                 val hMin = tinggiMinimum.coerceAtLeast(1)
                 // Ukur dulu tinggi alaminya (UNSPECIFIED) sebelum benar2
-                // layout+gambar -- ini yang memungkinkan tahu berapa tinggi
+                // layout+gambar  ini yang memungkinkan tahu berapa tinggi
                 // total yang dibutuhkan tanpa memotong konten apa pun.
                 view.measure(
                     View.MeasureSpec.makeMeasureSpec(w, View.MeasureSpec.EXACTLY),
@@ -585,7 +585,7 @@ class BookPageProvider(
                 hasil = null
             } catch (e: OutOfMemoryError) {
                 // Konten ekstrem panjangnya (jarang) bisa gagal alokasi bitmap
-                // -- daripada crash, tampilkan apa adanya di tinggi 1 layar
+                //  daripada crash, tampilkan apa adanya di tinggi 1 layar
                 // saja (masih bisa dibaca via tombol Sumber Asli).
                 hasil = null
             } finally {
