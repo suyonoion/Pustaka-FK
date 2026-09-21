@@ -23,5 +23,14 @@ data class ArsipEntity(
     val daftarFoto: String,
     
     // KOMPARTEMEN BARU
-    val kategori: String 
+    val kategori: String,
+
+    // SUMBER ARSIP: "FK" (halaman Facebook Abah) atau "YW" (akun pribadi
+    // Abah) -- dibaca dari field "sumber" yang ditambahkan script Python
+    // saat menggabung Master_Data_Arsip_FK_*.json + Master_Data_Arsip_YW.json
+    // jadi satu file (lihat gabung_arsip.py). Dipakai utk filter "Sumber"
+    // di dialog_filter, TIDAK bisa diandalkan dari namaPenulis krn FK & YW
+    // sama-sama akun Abah tapi nama tampilnya beda (nama halaman vs nama
+    // pribadi).
+    val sumberArsip: String = ""
 )

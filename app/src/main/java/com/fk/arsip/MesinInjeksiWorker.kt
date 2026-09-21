@@ -102,6 +102,11 @@ try {
 
     val kategori = mesinDeteksiKategori(kontenPenuh)
 
+    // Field "sumber" (FK/YW) ditambahkan oleh gabung_arsip.py saat
+    // menggabung 2 file master jadi satu -- fallback "" kalau file lama
+    // (belum digabung ulang) dipakai, supaya tidak crash.
+    val sumberArsip = obj.optString("sumber", "")
+
     val daftarFoto = mutableListOf<String>()
     val mediaArray = obj.optJSONArray("media") ?: sharedObj?.optJSONArray("media")
     if (mediaArray != null) {
@@ -117,7 +122,7 @@ try {
         }
     }
 
-  muatanSementara.add(ArsipEntity(idPosting, namaPenulis, urlProfilPic, waktuRilis, tanggalBaca, kontenPenuh, tautanAsli, daftarFoto.joinToString(","), kategori))
+  muatanSementara.add(ArsipEntity(idPosting, namaPenulis, urlProfilPic, waktuRilis, tanggalBaca, kontenPenuh, tautanAsli, daftarFoto.joinToString(","), kategori, sumberArsip))
         indeks++
 
         // INJEKSI TANPA DELAY UI JUMPING

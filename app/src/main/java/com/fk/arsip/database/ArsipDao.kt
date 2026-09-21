@@ -67,4 +67,18 @@ interface ArsipDao {
 
     @Query("SELECT * FROM tabel_arsip WHERE kontenPenuh LIKE '%' || :kataKunci || '%' ORDER BY waktuRilis DESC")
     fun saringArsipPaged(kataKunci: String): PagingSource<Int, ArsipEntity>
+
+    // ========================================================
+    // FILTER SUMBER (FK/YW): query kombinasi kategori + sumber, dipakai
+    // HANYA kalau sumber yang dipilih BUKAN "Semua Sumber" -- kalau kategori
+    // juga "Semua Kategori", panggil dgn namaKategori="" (LIKE '%%' cocok
+    // ke semua baris). Sengaja dipisah dari query lama di atas (bukan
+    // menambah parameter opsional ke query yg sudah ada) supaya jalur lama
+    // yang sudah stabil (Semua Sumber) tidak tersentuh sama sekali.
+    // ========================================================
+    @Query("SELECT * FROM tabel_arsip WHERE kategori LIKE '%' || :namaKategori || '%' AND sumberArsip = :sumber ORDER BY waktuRilis DESC")
+    fun saringKombinasiSumber(namaKategori: String, sumber: String): List<ArsipEntity>
+
+    @Query("SELECT * FROM tabel_arsip WHERE kategori LIKE '%' || :namaKategori || '%' AND sumberArsip = :sumber ORDER BY waktuRilis ASC")
+    fun saringKombinasiSumberTerlama(namaKategori: String, sumber: String): List<ArsipEntity>
 }
