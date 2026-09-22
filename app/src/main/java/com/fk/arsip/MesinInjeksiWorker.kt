@@ -1,7 +1,13 @@
 package com.fk.arsip
 
+import android.app.Notification
+import android.app.NotificationChannel
+import android.app.NotificationManager
 import android.content.Context
+import android.os.Build
+import androidx.core.app.NotificationCompat
 import androidx.work.CoroutineWorker
+import androidx.work.ForegroundInfo
 import androidx.work.WorkerParameters
 import androidx.work.workDataOf
 import com.fk.arsip.database.ArsipDatabase
@@ -13,9 +19,59 @@ import java.io.File
 import java.io.FileReader
 
 class MesinInjeksiWorker(context: Context, params: WorkerParameters) : CoroutineWorker(context, params) {
+
+    companion object {
+        private const val ID_KANAL_NOTIFIKASI = "kanal_injeksi_arsip"
+        private const val ID_NOTIFIKASI = 4471
+    }
+
+    // DUGAAN KUAT AKAR BUG "INJEKSI LOOPING 0% BERULANG" (semalaman, di data
+    // seluler, app tetap terbuka tapi progress reset terus): tanpa ini,
+    // worker ini cuma job WorkManager BIASA -- kena pembatasan Doze/battery-
+    // optimization Android saat HP idle, yang jendela eksekusinya MELEBAR
+    // makin lama makin idle (persis pola "~2 jam sekali"). Sistem membunuh
+    // & MENGULANG job ini otomatis dari doWork() paling awal (kurasTangkiKotor()
+    // lagi) tanpa app pernah "tahu"/crash -- makanya app kelihatan tetap
+    // terbuka & tidak ada tanda error apa pun. setForeground() menjadikan
+    // proses ini FOREGROUND SERVICE (via notifikasi persisten) selama
+    // berjalan -- kebal dari pembatasan itu.
+    private suspend fun buatInfoForeground(teks: String): ForegroundInfo {
+        val manajerNotif = applicationContext.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            val kanal = NotificationChannel(
+                ID_KANAL_NOTIFIKASI,
+                "Penyusunan Database Arsip",
+                NotificationManager.IMPORTANCE_LOW
+            )
+            manajerNotif.createNotificationChannel(kanal)
+        }
+        val notifikasi: Notification = NotificationCompat.Builder(applicationContext, ID_KANAL_NOTIFIKASI)
+            .setContentTitle("Pustaka FK")
+            .setContentText(teks)
+            .setSmallIcon(R.drawable.ic_launcher_fk)
+            .setOngoing(true)
+            .setOnlyAlertOnce(true)
+            .build()
+        return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+            ForegroundInfo(ID_NOTIFIKASI, notifikasi, android.content.pm.ServiceInfo.FOREGROUND_SERVICE_TYPE_DATA_SYNC)
+        } else {
+            ForegroundInfo(ID_NOTIFIKASI, notifikasi)
+        }
+    }
+
     override suspend fun doWork(): Result = withContext(Dispatchers.IO) {
         val jalurFile = inputData.getString("URI_JSON_KARGO") ?: return@withContext Result.failure()
         val fileTarget = File(jalurFile)
+
+        // Coba naik jadi foreground service SEDINI mungkin. Kalau gagal
+        // (mis. izin POST_NOTIFICATIONS belum diberikan user di Android 13+),
+        // JANGAN gagalkan seluruh proses -- lanjut sbg job biasa drpd tidak
+        // jalan sama sekali (lebih baik ada risiko Doze drpd tidak ada hasil).
+        try {
+            setForeground(buatInfoForeground("Mempersiapkan data arsip..."))
+        } catch (e: Exception) {
+            e.printStackTrace()
+        }
 
         val database = ArsipDatabase.operasikanMesin(applicationContext)
         val lenganRobot = database.arsipDao()
@@ -84,6 +140,11 @@ try {
             "INDEKS" to indeks,
             "TOTAL" to estimasiTotalItem
         ))
+        try {
+            setForeground(buatInfoForeground("Menyusun database... $kalkulasiPersen% ($indeks/$estimasiTotalItem)"))
+        } catch (e: Exception) {
+            e.printStackTrace()
+        }
         System.gc()
     }
 

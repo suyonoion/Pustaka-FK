@@ -5,6 +5,15 @@
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
     <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE" 
     android:maxSdkVersion="28" />
+    <!-- Dibutuhkan supaya MesinInjeksiWorker bisa jalan sbg FOREGROUND
+         SERVICE selama proses injeksi -- kebal dari pembatasan Doze/
+         battery-optimization yang membunuh kerja latar belakang biasa
+         (dugaan kuat akar bug "injeksi looping 0% berulang" semalaman
+         di data seluler). Tanpa ini, WorkManager job biasa bisa dibunuh
+         & diulang otomatis oleh sistem berkali-kali tanpa app pernah tahu. -->
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_DATA_SYNC" />
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
     
 
   <application

@@ -2,6 +2,9 @@ package com.fk.arsip
 
 import android.app.DownloadManager
 import android.content.BroadcastReceiver
+import android.os.Build
+import androidx.core.app.ActivityCompat
+import androidx.core.content.ContextCompat
 import android.content.Context
 import android.content.Intent
 import android.content.IntentFilter
@@ -149,6 +152,19 @@ private var kecepatanEmaBytesPerSec: Double = 0.0
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
+
+        // Izin notifikasi (Android 13+/API 33) -- dibutuhkan supaya
+        // MesinInjeksiWorker.setForeground() bisa benar2 menampilkan
+        // notifikasi persisten & menjaga proses injeksi kebal dari
+        // Doze/battery-optimization. Diminta sedini mungkin, sebelum
+        // eksekusiPabrikData() sempat memulai worker di bawah.
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            if (ContextCompat.checkSelfPermission(this, android.Manifest.permission.POST_NOTIFICATIONS)
+                != android.content.pm.PackageManager.PERMISSION_GRANTED) {
+                ActivityCompat.requestPermissions(this, arrayOf(android.Manifest.permission.POST_NOTIFICATIONS), 9001)
+            }
+        }
+
         drawerLayout = findViewById(R.id.drawerLayout)
         navViewCustom = findViewById(R.id.navViewCustom)
         findViewById<android.widget.ImageView>(R.id.btnMenuDrawer).setOnClickListener {
