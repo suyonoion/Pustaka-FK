@@ -25,16 +25,6 @@ class MesinInjeksiWorker(context: Context, params: WorkerParameters) : Coroutine
         private const val ID_NOTIFIKASI = 4471
     }
 
-    // DUGAAN KUAT AKAR BUG "INJEKSI LOOPING 0% BERULANG" (semalaman, di data
-    // seluler, app tetap terbuka tapi progress reset terus): tanpa ini,
-    // worker ini cuma job WorkManager BIASA -- kena pembatasan Doze/battery-
-    // optimization Android saat HP idle, yang jendela eksekusinya MELEBAR
-    // makin lama makin idle (persis pola "~2 jam sekali"). Sistem membunuh
-    // & MENGULANG job ini otomatis dari doWork() paling awal (kurasTangkiKotor()
-    // lagi) tanpa app pernah "tahu"/crash -- makanya app kelihatan tetap
-    // terbuka & tidak ada tanda error apa pun. setForeground() menjadikan
-    // proses ini FOREGROUND SERVICE (via notifikasi persisten) selama
-    // berjalan -- kebal dari pembatasan itu.
     private suspend fun buatInfoForeground(teks: String): ForegroundInfo {
         val manajerNotif = applicationContext.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
@@ -63,10 +53,6 @@ class MesinInjeksiWorker(context: Context, params: WorkerParameters) : Coroutine
         val jalurFile = inputData.getString("URI_JSON_KARGO") ?: return@withContext Result.failure()
         val fileTarget = File(jalurFile)
 
-        // Coba naik jadi foreground service SEDINI mungkin. Kalau gagal
-        // (mis. izin POST_NOTIFICATIONS belum diberikan user di Android 13+),
-        // JANGAN gagalkan seluruh proses -- lanjut sbg job biasa drpd tidak
-        // jalan sama sekali (lebih baik ada risiko Doze drpd tidak ada hasil).
         try {
             setForeground(buatInfoForeground("Mempersiapkan data arsip..."))
         } catch (e: Exception) {

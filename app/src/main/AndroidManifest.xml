@@ -21,12 +21,6 @@
     android:largeHeap="true" 
     android:theme="@style/Theme.PustakaFK">
 
-        <!-- PERBAIKAN CRASH "foregroundServiceType 0x1 is not a subset of...
-             attribute 0x0": MesinInjeksiWorker.setForeground() meminta tipe
-             DATA_SYNC saat runtime, tapi service internal WorkManager sendiri
-             (SystemForegroundService) di versi androidx.work project ini
-             rupanya BELUM otomatis mendeklarasikan foregroundServiceType di
-             manifest library-nya -- override manual di sini supaya cocok. -->
         <service
             android:name="androidx.work.impl.foreground.SystemForegroundService"
             android:foregroundServiceType="dataSync"
