@@ -1,14 +1,17 @@
 <?xml version="1.0" encoding="utf-8"?>
-<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools">
 
     <uses-permission android:name="android.permission.INTERNET" />
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
     <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE" 
     android:maxSdkVersion="28" />
+    
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_DATA_SYNC" />
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
     
+
   <application
     android:allowBackup="true"
     android:icon="@drawable/ic_launcher_fk"
@@ -17,6 +20,17 @@
     android:supportsRtl="true"
     android:largeHeap="true" 
     android:theme="@style/Theme.PustakaFK">
+
+        <!-- PERBAIKAN CRASH "foregroundServiceType 0x1 is not a subset of...
+             attribute 0x0": MesinInjeksiWorker.setForeground() meminta tipe
+             DATA_SYNC saat runtime, tapi service internal WorkManager sendiri
+             (SystemForegroundService) di versi androidx.work project ini
+             rupanya BELUM otomatis mendeklarasikan foregroundServiceType di
+             manifest library-nya -- override manual di sini supaya cocok. -->
+        <service
+            android:name="androidx.work.impl.foreground.SystemForegroundService"
+            android:foregroundServiceType="dataSync"
+            tools:node="merge" />
         
         <activity
             android:name=".MainActivity"
