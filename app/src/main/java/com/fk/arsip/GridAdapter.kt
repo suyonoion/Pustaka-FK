@@ -71,6 +71,12 @@ class GridAdapter(
                 else if (holder is KontenViewHolder && material is KargoCampuran.StatusKonten) {
             val arsip = material.data
             
+            // 0. NAMA SUMBER STATUS -- dulu hardcode "Fatwa Kehidupan" di XML,
+            // jadi user tidak bisa bedakan status dari akun halaman FK atau
+            // akun pribadi Abah (YW). Sekarang dibaca dari ArsipEntity.namaPenulis
+            // (persis field "user" -> "name" dari JSON, lihat MesinInjeksiWorker).
+            holder.txtGridNama.text = arsip.namaPenulis.ifBlank { "Fatwa Kehidupan" }
+            
             // 1. PENYESUAIAN KATEGORI & TANGGAL
             holder.txtTanggal.text = arsip.tanggalBaca.substringBefore(" ")
             
@@ -130,6 +136,7 @@ class GridAdapter(
     class KontenViewHolder(view: View) : RecyclerView.ViewHolder(view) {
         // PENYESUAIAN TIPE DATA: Menggunakan ShapeableImageView untuk foto profil bulat
         val imgProfil: ShapeableImageView = view.findViewById(R.id.imgGridProfil)
+        val txtGridNama: TextView = view.findViewById(R.id.txtGridNama)
         val txtTanggal: TextView = view.findViewById(R.id.txtGridTanggal)
         val txtKategori: TextView = view.findViewById(R.id.txtGridKategori)
         val txtCuplikan: TextView = view.findViewById(R.id.txtGridCuplikan)

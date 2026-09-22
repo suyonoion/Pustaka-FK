@@ -42,8 +42,11 @@
                 android:layout_marginStart="8dp">
 
                 <TextView
+                    android:id="@+id/txtGridNama"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
+                    android:maxLines="1"
+                    android:ellipsize="end"
                     android:text="Fatwa Kehidupan"
                     android:textStyle="bold"
                     android:textColor="#004D40"

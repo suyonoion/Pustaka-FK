@@ -57,6 +57,7 @@ import androidx.work.WorkManager
 import androidx.work.workDataOf
 import androidx.work.WorkInfo
 import androidx.core.view.GravityCompat
+import com.google.android.material.tabs.TabLayout
 
 data class TitikNavigasi(
     val tipe: Int, 
@@ -133,6 +134,13 @@ private var kecepatanEmaBytesPerSec: Double = 0.0
     private lateinit var recyclerTimeline: RecyclerView
     private lateinit var kontainerJalurKanan: FrameLayout
     private lateinit var btnFilterSort: ImageButton
+    // TAB SUMBER (FK/YW) -- pengganti visual dari label statis "Fatwa Kehidupan"
+    // yang dulu hardcode di item_grid.xml. sedangSinkronTabSumber mencegah
+    // sinkronkanTabSumber() (dipanggil balik dari eksekusiSaringanKombinasi,
+    // mis. setelah lewat dialog filter) memicu ulang listener tab & membuat
+    // query database dobel.
+    private lateinit var tabSumberArsip: TabLayout
+    private var sedangSinkronTabSumber = false
 
     private var daftarArsipAktif: List<ArsipEntity> = listOf()
 
@@ -145,7 +153,9 @@ private var kecepatanEmaBytesPerSec: Double = 0.0
     // (titikNolJendela/radiusMuatan + subList + notifyDataSetChanged) yang
     // dulu dipakai khusus saat dataset > 5000 baris.
     private var kategoriAktifNama: String = "Semua Kategori"
-    private var sumberAktifKode: String = ""
+    // Default "FK" (Halaman Fatwa Kehidupan) -- lihat terapkanMuatanAwal(),
+    // dipakai sbg tab yang tersorot pertama kali app dibuka.
+    private var sumberAktifKode: String = "FK"
     private var sortTerlamaAktif: Boolean = false
     private var jobPagingBuku: Job? = null // sudah tidak dipakai (mode baca kini CurlView), dibiarkan agar tidak mengubah field lain di sekitarnya
     
@@ -187,6 +197,26 @@ private var kecepatanEmaBytesPerSec: Double = 0.0
         panelStatusPencarian = findViewById(R.id.panelStatusPencarian)
         loadingPencarian = findViewById(R.id.loadingPencarian)
         txtStatusPencarian = findViewById(R.id.txtStatusPencarian)
+        tabSumberArsip = findViewById(R.id.tabSumberArsip)
+        tabSumberArsip.addOnTabSelectedListener(object : TabLayout.OnTabSelectedListener {
+            override fun onTabSelected(tab: TabLayout.Tab) {
+                // Diabaikan kalau ini cuma sinkronisasi visual dari
+                // sinkronkanTabSumber() (mis. setelah dialog filter dipakai),
+                // supaya tidak query database dobel dgn eksekusiSaringanKombinasi
+                // yang memanggilnya.
+                if (sedangSinkronTabSumber) return
+                if (isMesinSibuk) {
+                    Toast.makeText(this@MainActivity, "Mesin sedang bekerja, tahan instruksi.", Toast.LENGTH_SHORT).show()
+                    sinkronkanTabSumber(sumberAktifKode)
+                    return
+                }
+                val sumberBaru = if (tab.position == 1) "YW" else "FK"
+                if (sumberBaru == sumberAktifKode) return
+                eksekusiSaringanKombinasi(kategoriAktifNama, sortTerlamaAktif, sumberBaru)
+            }
+            override fun onTabUnselected(tab: TabLayout.Tab) {}
+            override fun onTabReselected(tab: TabLayout.Tab) {}
+        })
         recyclerTimeline = findViewById(R.id.recyclerTimeline)
         kontainerJalurKanan = findViewById<FrameLayout>(R.id.kontainerJalurKanan)
         findViewById<TasbihConnectorView>(R.id.connectorTasbih).apply {
@@ -336,6 +366,7 @@ private var kecepatanEmaBytesPerSec: Double = 0.0
                 tutupModeBukuKeGrid()
                 footerBawahUtama.visibility = View.VISIBLE
                 toolbarPencarian.visibility = View.VISIBLE
+                tabSumberArsip.visibility = View.VISIBLE
                 panelStatusPencarian.visibility = View.VISIBLE
                 panelIkonBaca.visibility = View.GONE
                 barAksiBaca.visibility = View.GONE
@@ -369,6 +400,7 @@ private var kecepatanEmaBytesPerSec: Double = 0.0
                     tutupModeBukuKeGrid()
                     footerBawahUtama.visibility = View.VISIBLE
                     toolbarPencarian.visibility = View.VISIBLE
+                    tabSumberArsip.visibility = View.VISIBLE
                     panelStatusPencarian.visibility = View.VISIBLE
                     panelIkonBaca.visibility = View.GONE
                     recyclerGridMode.visibility = View.VISIBLE
@@ -379,7 +411,16 @@ private var kecepatanEmaBytesPerSec: Double = 0.0
                     tampilkanIndikator("Memuat ulang semua status...", true)
                     lifecycleScope.launch(Dispatchers.IO) {
                         val database = ArsipDatabase.operasikanMesin(this@MainActivity).arsipDao()
-                        val semuaData = database.tarikSemuaArsip()
+                        // PERBAIKAN: dulu selalu tarikSemuaArsip() (semua sumber),
+                        // jadi keluar dari mode pencarian/kategori diam-diam
+                        // membuang Tab FK/YW yang sedang aktif. Sekarang tetap
+                        // hormati sumberAktifKode -- hanya kategori & pencarian
+                        // yang direset total, Tab sumber tetap seperti semula.
+                        val semuaData = if (sumberAktifKode.isEmpty()) {
+                            database.tarikSemuaArsip()
+                        } else {
+                            database.saringKombinasiSumber("", sumberAktifKode)
+                        }
                         
                         withContext(Dispatchers.Main) {
                             pompaDataKeLayar(semuaData)
@@ -496,11 +537,17 @@ private fun eksekusiSaringanKombinasi(kategori: String, urutTerlama: Boolean, su
             tutupModeBukuKeGrid()
             footerBawahUtama.visibility = View.VISIBLE
             toolbarPencarian.visibility = View.VISIBLE
+            tabSumberArsip.visibility = View.VISIBLE
             panelStatusPencarian.visibility = View.VISIBLE
             panelIkonBaca.visibility = View.GONE
             recyclerGridMode.visibility = View.VISIBLE
             kontainerJalurKanan.visibility = View.VISIBLE
             recyclerTimeline.visibility = View.VISIBLE
+
+            // Sinkronkan sorotan Tab FK/YW dgn sumber yang baru diterapkan --
+            // titik terpusat ini menjangkau baik tap langsung di Tab maupun
+            // sumber yang dipilih lewat spinner di dialog filter.
+            sinkronkanTabSumber(sumber)
 
             val labelSumber = when (sumber) {
                 "FK" -> " • Halaman FK"
@@ -523,7 +570,30 @@ private fun eksekusiSaringanKombinasi(kategori: String, urutTerlama: Boolean, su
     }
 }
 
+// Pilih Tab FK/YW yang sesuai TANPA memicu ulang listener tap-nya (lihat
+// sedangSinkronTabSumber di deklarasi field) -- dipakai setelah sumber
+// berubah lewat jalur manapun (tap Tab langsung ATAU spinner di dialog
+// filter) supaya sorotan Tab selalu mencerminkan data yang sungguh sedang
+// ditampilkan.
+private fun sinkronkanTabSumber(sumber: String) {
+    if (!::tabSumberArsip.isInitialized) return
+    val posisiTarget = if (sumber == "YW") 1 else 0
+    if (tabSumberArsip.selectedTabPosition == posisiTarget) return
+    sedangSinkronTabSumber = true
+    tabSumberArsip.getTabAt(posisiTarget)?.select()
+    sedangSinkronTabSumber = false
+}
 
+// Dipanggil SEKALI di titik data pertama kali lengkap tersedia (baik dari
+// DB lokal yang sudah ada, maupun baru selesai diunduh+diinjeksi) --
+// menerapkan tab sumber default "Fatwa Kehidupan" (FK) sesuai permintaan
+// produk, tapi info rentang tanggal & total SELURUH arsip (muatDataAwalKeSasis)
+// tetap dihitung dulu dari data lengkap sebelum disaring, supaya cakupan
+// data yang sebenarnya tidak hilang dari pandangan user.
+private fun terapkanMuatanAwal(daftarLengkap: List<ArsipEntity>) {
+    muatDataAwalKeSasis(daftarLengkap)
+    eksekusiSaringanKombinasi("Semua Kategori", false, sumberAktifKode)
+}
 
 
 private fun perbaruiPanelTelemetri(fase: FaseInjeksi, persentase: Int = 0, volumeSelesai: Int = 0, volumeTotal: Int = 0, metrikKhusus: String = "") {
@@ -912,7 +982,15 @@ when (fase) {
 
         lifecycleScope.launch(Dispatchers.IO) {
             val database = ArsipDatabase.operasikanMesin(this@MainActivity).arsipDao()
-            val hasilSaringanAkhir = database.saringBerdasarkanKolomKategori(labelKategori)
+            // PERBAIKAN: dulu selalu query TANPA memandang sumberAktifKode --
+            // ganti kategori dari drawer diam-diam membuang filter Tab FK/YW
+            // yang sedang aktif (hasilnya campur lagi). Sekarang tetap hormati
+            // Tab yang sedang aktif, sama seperti eksekusiSaringanKombinasi().
+            val hasilSaringanAkhir = if (sumberAktifKode.isEmpty()) {
+                database.saringBerdasarkanKolomKategori(labelKategori)
+            } else {
+                database.saringKombinasiSumber(labelKategori, sumberAktifKode)
+            }
 
             withContext(Dispatchers.Main) {
     isSearchMode = false
@@ -922,8 +1000,12 @@ when (fase) {
     edtPencarian.setQuery("", false)
     edtPencarian.clearFocus()
 
-    
-    val muatanTeks = "$labelKategori • ${hasilSaringanAkhir.size} Status"
+    val labelSumber = when (sumberAktifKode) {
+        "FK" -> " • Halaman FK"
+        "YW" -> " • Akun Pribadi Abah"
+        else -> ""
+    }
+    val muatanTeks = "$labelKategori • ${hasilSaringanAkhir.size} Status$labelSumber"
     tampilkanIndikator(muatanTeks, false)
     
     panelStatusPencarian.visibility = View.VISIBLE 
@@ -931,6 +1013,7 @@ when (fase) {
     tutupModeBukuKeGrid()
     footerBawahUtama.visibility = View.VISIBLE
     toolbarPencarian.visibility = View.VISIBLE
+    tabSumberArsip.visibility = View.VISIBLE
     panelStatusPencarian.visibility = View.VISIBLE
     panelIkonBaca.visibility = View.GONE
     
@@ -1006,8 +1089,7 @@ when (fase) {
                 withContext(Dispatchers.Main) {
                     aturVisibilitasOverlayInisialisasi(false)
                     isMesinSibuk = false
-                    pompaDataKeLayar(semuaData)
-                    muatDataAwalKeSasis(semuaData)
+                    terapkanMuatanAwal(semuaData)
                     if (berkasLokal.exists()) { berkasLokal.delete() }
                 }
                 return@launch
@@ -1470,8 +1552,8 @@ private fun perbaruiDetailKecepatan(persen: Int, byteDiterima: Long, totalByte: 
                             delay(1500)
                             val database = ArsipDatabase.operasikanMesin(this@MainActivity).arsipDao()
                             val semuaData = withContext(Dispatchers.IO) { database.tarikSemuaArsip() }
-                            pompaDataKeLayar(semuaData)
                             isMesinSibuk = false
+                            terapkanMuatanAwal(semuaData)
                         }
                     }
                     WorkInfo.State.FAILED -> {
@@ -1626,6 +1708,7 @@ private fun perbaruiDetailKecepatan(persen: Int, byteDiterima: Long, totalByte: 
         // grid, bukan status halaman yg sedang dibaca). Akses drawer/cari/
         // filter sekarang lewat panelIkonBaca.
         toolbarPencarian.visibility = View.GONE
+        tabSumberArsip.visibility = View.GONE
 
         // AKTIFKAN PANEL TELEMETRI DENGAN FORMAT BARU
         panelStatusPencarian.visibility = View.GONE
@@ -1941,6 +2024,7 @@ private fun eksekusiLogikaPencarian(kataKunciMentah: String?) {
                 tutupModeBukuKeGrid()
                 footerBawahUtama.visibility = View.VISIBLE
                 toolbarPencarian.visibility = View.VISIBLE
+                tabSumberArsip.visibility = View.VISIBLE
                 panelStatusPencarian.visibility = View.VISIBLE
                 panelIkonBaca.visibility = View.GONE
                 recyclerGridMode.visibility = View.VISIBLE

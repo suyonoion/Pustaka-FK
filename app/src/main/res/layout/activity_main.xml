@@ -71,6 +71,42 @@
         android:contentDescription="Filter dan Urutkan Status" />
 </LinearLayout>
 
+            <!-- TAB SUMBER ARSIP: FK (Halaman Facebook) / YW (Akun Pribadi Abah).
+            Supaya user langsung bisa bedakan sedang melihat kumpulan status dari
+            akun mana, tanpa harus buka dialog filter dulu. Defaultnya tab FK aktif
+            (lihat sumberAktifKode & terapkanMuatanAwal() di MainActivity.kt).
+            Ditempatkan sejajar dgn toolbarPencarian/panelStatusPencarian sehingga
+            ikut disembunyikan/ditampilkan lewat pola visibility yang sama persis
+            (grid vs mode baca). -->
+            <com.google.android.material.tabs.TabLayout
+                android:id="@+id/tabSumberArsip"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginHorizontal="12dp"
+                android:layout_marginBottom="8dp"
+                app:tabMode="fixed"
+                app:tabGravity="fill"
+                app:tabIndicatorColor="#004D40"
+                app:tabIndicatorHeight="3dp"
+                app:tabSelectedTextColor="#004D40"
+                app:tabTextColor="#78909C"
+                app:tabTextAppearance="@style/TextAppearance.MaterialComponents.Button"
+                android:background="#FFFFFF">
+
+                <com.google.android.material.tabs.TabItem
+                    android:id="@+id/tabSumberFK"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="Fatwa Kehidupan" />
+
+                <com.google.android.material.tabs.TabItem
+                    android:id="@+id/tabSumberYW"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="Yolhan Wijaya" />
+
+            </com.google.android.material.tabs.TabLayout>
+
             <!-- CARD STATUS -->
             <androidx.cardview.widget.CardView
             android:id="@+id/panelStatusPencarian"
