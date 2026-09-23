@@ -185,7 +185,28 @@ class BookPageProvider(
             offsetGeserPx = 0
         }
         val resolusi = resolusiHalaman(index, w, h, ambilData()) ?: return false
-        val bmp = cacheBitmap.get(resolusi.cacheKey) ?: return false
+        val bmp = cacheBitmap.get(resolusi.cacheKey) ?: run {
+            // PERBAIKAN BUG "SCROLL BARU AKTIF SETELAH ROTASI/RECENT/TOGGLE
+            // PENCARIAN": w/h yang diserahkan CurlRenderer (getPageBitmapWidth/
+            // Height) TERNYATA bisa berubah nilainya sesaat setelah halaman
+            // pertama dirender -- mis. inset jendela (status/navigation bar)
+            // yang baru menetap satu-dua frame kemudian, atau posisi paginasi
+            // yang belum genap 1 layar penuh saat GL surface baru dibuat.
+            // Bitmap yang SUDAH tercache dari render pertama itu jadinya
+            // tersimpan di bawah cacheKey LAMA (w x h lama), sementara
+            // geserKontenHalaman() di sini selalu mencari dgn w x h TERKINI --
+            // cocok tidaknya dua-duanya kebetulan, TIDAK ADA yang pernah minta
+            // render ULANG di bawah cacheKey baru itu, jadi cache MISS-nya
+            // PERMANEN sampai ADA pemicu lain (rotasi/resume/toggle toolbar)
+            // yang memaksa updatePage() jalan lagi dgn w x h baru & akhirnya
+            // mengisi cache yang benar. Fix: sama seperti updatePage() di cache-
+            // miss-nya, MINTA render ulang di sini juga begitu ketahuan miss --
+            // gestur scroll yang sama (ACTION_MOVE berulang selama jari masih
+            // menempel) akan langsung "sembuh sendiri" begitu render selesai
+            // (~puluhan ms), tanpa perlu event eksternal apa pun sbg pemicu.
+            mintaRenderLatarBelakang(resolusi.cacheKey, resolusi.tugas, index)
+            return false
+        }
         val maxOffset = (bmp.height - h).coerceAtLeast(0)
         if (maxOffset <= 0) return false
         val baru = (offsetGeserPx + deltaYPx).coerceIn(0, maxOffset)
@@ -229,7 +250,14 @@ class BookPageProvider(
      */
     fun adaLanjutanDiBawah(index: Int, w: Int, h: Int): Boolean {
         val resolusi = resolusiHalaman(index, w, h, ambilData()) ?: return false
-        val bmp = cacheBitmap.get(resolusi.cacheKey) ?: return false
+        val bmp = cacheBitmap.get(resolusi.cacheKey) ?: run {
+            // Sama seperti di geserKontenHalaman(): jangan diam2 nyerah kalau
+            // cache-nya belum ada utk ukuran w x h TERKINI -- minta render
+            // supaya indikator ini pun ikut "sembuh sendiri" begitu selesai,
+            // tanpa perlu rotasi/resume/toggle sbg pemicu.
+            mintaRenderLatarBelakang(resolusi.cacheKey, resolusi.tugas, index)
+            return false
+        }
         val maxOffset = (bmp.height - h).coerceAtLeast(0)
         if (maxOffset <= 0) return false
         val offsetSaatIni = if (index == indexSedangDibaca) offsetGeserPx else 0
