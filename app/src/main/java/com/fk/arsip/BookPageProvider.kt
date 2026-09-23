@@ -492,6 +492,14 @@ class BookPageProvider(
             view.findViewById<TextView>(R.id.txtTanggal).text = arsip.tanggalBaca
             view.findViewById<TextView>(R.id.txtKategori).text = arsip.kategori
             view.findViewById<TextView>(R.id.txtNomorHalaman).text = "Halaman : $nomorArsip/$totalArsip"
+            // PERBAIKAN: txtNamaSumberBuku dulu tidak pernah di-bind di sini
+            // (cuma ada di BukuAdapter.kt yang ternyata TIDAK dipakai lagi --
+            // rendering halaman baca sesungguhnya lewat inflate manual di
+            // atas ini). Akibatnya teks default hardcode di item_buku.xml
+            // ("Fatwa Kehidupan") selalu tampil apa adanya, tidak pernah
+            // ikut arsip.namaPenulis (user->name JSON) meski datanya YW.
+            view.findViewById<TextView>(R.id.txtNamaSumberBuku).text =
+                arsip.namaPenulis.ifBlank { "Fatwa Kehidupan" }
             view.findViewById<ImageView>(R.id.imgProfilAbah)?.setImageResource(R.drawable.profil_abah)
             view.findViewById<View>(R.id.wadahProfilPenulis).visibility = View.VISIBLE
             view.findViewById<View>(R.id.wadahFooterDekoratif).visibility = View.GONE
