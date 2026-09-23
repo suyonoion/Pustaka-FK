@@ -157,6 +157,12 @@ private var kecepatanEmaBytesPerSec: Double = 0.0
     // dipakai sbg tab yang tersorot pertama kali app dibuka.
     private var sumberAktifKode: String = "FK"
     private var sortTerlamaAktif: Boolean = false
+    // Kata kunci pencarian yang SEDANG aktif (kosong = tidak sedang mencari),
+    // disimpan terpisah dari isi SearchView krn eksekusiSaringanKombinasi()
+    // mengosongkan SearchView tiap kali dipanggil. Dipakai supaya pencarian
+    // ikut "dipindah" ke Tab baru saat user tap FK/YW, persis seperti
+    // kategoriAktifNama sudah lebih dulu ikut Tab -- lihat terapkanPerubahanSumber().
+    private var kataKunciAktif: String = ""
     private var jobPagingBuku: Job? = null // sudah tidak dipakai (mode baca kini CurlView), dibiarkan agar tidak mengubah field lain di sekitarnya
     
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -194,6 +200,17 @@ private var kecepatanEmaBytesPerSec: Double = 0.0
         btnFilterSort.setOnClickListener {
         bukaKatupDialogFilter()
         }
+        // TOMBOL HOME: reset kategori/pencarian/sort/mode-buku sekaligus,
+        // langsung ke "Semua Arsip" utk Tab (sumber) yg sedang aktif --
+        // memakai ulang eksekusiSaringanKombinasi() yg sudah menangani
+        // semua reset itu (dipakai juga oleh Tab FK/YW & dialog filter).
+        findViewById<ImageButton>(R.id.btnHomeArsip).setOnClickListener {
+            if (isMesinSibuk) {
+                Toast.makeText(this@MainActivity, "Mesin sedang bekerja, tahan instruksi.", Toast.LENGTH_SHORT).show()
+            } else {
+                eksekusiSaringanKombinasi("Semua Kategori", false, sumberAktifKode)
+            }
+        }
         panelStatusPencarian = findViewById(R.id.panelStatusPencarian)
         loadingPencarian = findViewById(R.id.loadingPencarian)
         txtStatusPencarian = findViewById(R.id.txtStatusPencarian)
@@ -212,7 +229,7 @@ private var kecepatanEmaBytesPerSec: Double = 0.0
                 }
                 val sumberBaru = if (tab.position == 1) "YW" else "FK"
                 if (sumberBaru == sumberAktifKode) return
-                eksekusiSaringanKombinasi(kategoriAktifNama, sortTerlamaAktif, sumberBaru)
+                terapkanPerubahanSumber(sumberBaru)
             }
             override fun onTabUnselected(tab: TabLayout.Tab) {}
             override fun onTabReselected(tab: TabLayout.Tab) {}
@@ -349,7 +366,23 @@ private var kecepatanEmaBytesPerSec: Double = 0.0
             override fun handleOnBackPressed() {
                 if (drawerLayout.isDrawerOpen(androidx.core.view.GravityCompat.START)) {
                     drawerLayout.closeDrawer(androidx.core.view.GravityCompat.START)
-                } 
+                }
+                else if (sedangModeBuku && toolbarPencarian.visibility == View.VISIBLE) {
+                    // PERBAIKAN: back ditekan saat kolom pencarian sedang
+                    // terbuka DI ATAS mode buku (dibuka via btnBacaCari, lihat
+                    // pasangPanelIkonBaca()) -- sebelumnya langsung jatuh ke
+                    // cabang "sedangModeBuku" di bawah dan keluar total ke
+                    // grid, padahal maksud user cuma mau BATALKAN pencarian.
+                    // Sekarang: tutup kolom pencarian saja (sama seperti tap
+                    // ulang ikon cari), tetap di halaman buku yang sama.
+                    // Tekan back SEKALI LAGI (setelah ini) baru keluar ke grid,
+                    // lewat cabang sedangModeBuku di bawah seperti biasa.
+                    toolbarPencarian.visibility = View.GONE
+                    edtPencarian.setQuery("", false)
+                    edtPencarian.clearFocus()
+                    val imm = getSystemService(Context.INPUT_METHOD_SERVICE) as InputMethodManager
+                    imm.hideSoftInputFromWindow(edtPencarian.windowToken, 0)
+                }
                 else if (sedangModeBuku) {
                 // PERBAIKAN: sebelumnya visibility CurlView (curlViewBuku,
                 // di dalam wadahModeBuku) di-toggle GONE/VISIBLE langsung
@@ -387,6 +420,7 @@ private var kecepatanEmaBytesPerSec: Double = 0.0
 
                 else if (isSearchMode || edtPencarian.query.toString().isNotEmpty() || modeKategoriAktif) {
                     isSearchMode = false
+                    kataKunciAktif = ""
                     modeKategoriAktif = false 
                     sortTerlamaAktif = false
                     
@@ -523,6 +557,7 @@ private fun eksekusiSaringanKombinasi(kategori: String, urutTerlama: Boolean, su
 
         withContext(Dispatchers.Main) {
             isSearchMode = false
+            kataKunciAktif = ""
             modeKategoriAktif = (kategori != "Semua Kategori")
             kategoriAktifNama = kategori
             sortTerlamaAktif = urutTerlama
@@ -567,6 +602,24 @@ private fun eksekusiSaringanKombinasi(kategori: String, urutTerlama: Boolean, su
             pompaDataKeLayar(kargoSaringan)
             isMesinSibuk = false
         }
+    }
+}
+
+// Dipanggil setiap kali sumber (Tab FK/YW) berubah lewat tap Tab langsung --
+// meneruskan ke jalur yang tepat sesuai state saat ini. Kategori (drawer)
+// SUDAH lebih dulu "ikut" Tab lewat eksekusiSaringanKombinasi(kategoriAktifNama,
+// ...) di atas; pencarian belum, karena fungsi itu cuma menangani
+// kategori+sumber, bukan kata kunci. Fungsi ini menutup celah itu: kalau
+// kataKunciAktif tidak kosong, ulangi pencarian yang sama dengan sumber baru
+// (bukan reset ke "Semua Kategori" seperti kalau lewat eksekusiSaringanKombinasi).
+private fun terapkanPerubahanSumber(sumberBaru: String) {
+    if (isSearchMode && kataKunciAktif.isNotEmpty()) {
+        if (isMesinSibuk) return
+        sumberAktifKode = sumberBaru
+        sinkronkanTabSumber(sumberBaru)
+        eksekusiLogikaPencarian(kataKunciAktif)
+    } else {
+        eksekusiSaringanKombinasi(kategoriAktifNama, sortTerlamaAktif, sumberBaru)
     }
 }
 
@@ -994,6 +1047,7 @@ when (fase) {
 
             withContext(Dispatchers.Main) {
     isSearchMode = false
+    kataKunciAktif = ""
     modeKategoriAktif = true
     kategoriAktifNama = labelKategori
     sortTerlamaAktif = false
@@ -1998,6 +2052,7 @@ private fun eksekusiLogikaPencarian(kataKunciMentah: String?) {
 
     val kataKunci = kataKunciMentah?.trim() ?: ""
     isSearchMode = kataKunci.isNotEmpty()
+    kataKunciAktif = kataKunci
 
     panelStatusPencarian.visibility = View.VISIBLE
     loadingPencarian.visibility = View.VISIBLE
@@ -2005,10 +2060,16 @@ private fun eksekusiLogikaPencarian(kataKunciMentah: String?) {
 
     lifecycleScope.launch(Dispatchers.IO) {
         val lenganRobot = ArsipDatabase.operasikanMesin(this@MainActivity).arsipDao()
-        val kargoKasar = if (kataKunci.isEmpty()) {
-            lenganRobot.tarikSemuaArsip()
+        // PERBAIKAN: dulu selalu tarikSemuaArsip()/saringArsip() (semua
+        // sumber) apapun Tab yang sedang aktif -- hasilnya gabungan FK+YW,
+        // padahal user sedang lihat salah satu Tab. Sekarang mengikuti pola
+        // yang sama seperti eksekusiSaringanKategori(): kalau sumberAktifKode
+        // kosong ("Semua Sumber") jalur lama tak tersentuh, kalau tidak
+        // kosong pakai query kombinasi kata kunci + sumber.
+        val kargoKasar = if (sumberAktifKode.isEmpty()) {
+            if (kataKunci.isEmpty()) lenganRobot.tarikSemuaArsip() else lenganRobot.saringArsip(kataKunci)
         } else {
-            lenganRobot.saringArsip(kataKunci)
+            if (kataKunci.isEmpty()) lenganRobot.saringKombinasiSumber("", sumberAktifKode) else lenganRobot.saringArsipSumber(kataKunci, sumberAktifKode)
         }
 
         val hasilSaringanPresisi = if (kataKunci.isNotEmpty()) {
@@ -2041,10 +2102,15 @@ private fun eksekusiLogikaPencarian(kataKunciMentah: String?) {
             pompaDataKeLayar(hasilSaringanPresisi)
             loadingPencarian.visibility = View.GONE
 
+            val labelSumber = when (sumberAktifKode) {
+                "FK" -> " • Halaman FK"
+                "YW" -> " • Akun Pribadi Abah"
+                else -> ""
+            }
             val muatanTeks = if (kataKunci.isNotEmpty()) {
-                "Pencarian: $kataKunci (${hasilSaringanPresisi.size} arsip)"
+                "Pencarian: $kataKunci (${hasilSaringanPresisi.size} arsip)$labelSumber"
             } else {
-                "Semua Arsip (${hasilSaringanPresisi.size} arsip)"
+                "Semua Arsip (${hasilSaringanPresisi.size} arsip)$labelSumber"
             }
             txtStatusPencarian.text = muatanTeks
 

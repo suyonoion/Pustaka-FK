@@ -81,4 +81,13 @@ interface ArsipDao {
 
     @Query("SELECT * FROM tabel_arsip WHERE kategori LIKE '%' || :namaKategori || '%' AND sumberArsip = :sumber ORDER BY waktuRilis ASC")
     fun saringKombinasiSumberTerlama(namaKategori: String, sumber: String): List<ArsipEntity>
+
+    // ========================================================
+    // PENCARIAN + SUMBER: sama seperti saringKombinasiSumber() tapi untuk
+    // kotak pencarian (kontenPenuh LIKE), bukan kategori -- dipakai supaya
+    // hasil pencarian ikut mengikuti Tab FK/YW yang sedang aktif, persis
+    // seperti filter kategori dari drawer.
+    // ========================================================
+    @Query("SELECT * FROM tabel_arsip WHERE kontenPenuh LIKE '%' || :kataKunci || '%' AND sumberArsip = :sumber ORDER BY waktuRilis DESC")
+    fun saringArsipSumber(kataKunci: String, sumber: String): List<ArsipEntity>
 }

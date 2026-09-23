@@ -38,6 +38,7 @@ class BukuAdapter : PagingDataAdapter<ArsipEntity, BukuAdapter.BukuViewHolder>(D
 
     class BukuViewHolder(view: View) : RecyclerView.ViewHolder(view) {
         val imgProfil = view.findViewById<ImageView>(R.id.imgProfilAbah)
+        val txtNamaSumber = view.findViewById<TextView>(R.id.txtNamaSumberBuku)
         val txtTanggal = view.findViewById<TextView>(R.id.txtTanggal)
         val txtKategori = view.findViewById<TextView>(R.id.txtKategori)
         val txtNomorHalaman = view.findViewById<TextView>(R.id.txtNomorHalaman)
@@ -90,6 +91,7 @@ class BukuAdapter : PagingDataAdapter<ArsipEntity, BukuAdapter.BukuViewHolder>(D
             holder.wadahFoto.visibility = View.GONE
             holder.txtTanggal.text = ""
             holder.txtKategori.text = ""
+            holder.txtNamaSumber.text = ""
             holder.txtNomorHalaman.text = "Halaman : ${position + 1}/$itemCount"
             holder.imgProfil.setImageResource(R.drawable.profil_abah)
             holder.btnTautan.setOnClickListener(null)
@@ -150,6 +152,11 @@ class BukuAdapter : PagingDataAdapter<ArsipEntity, BukuAdapter.BukuViewHolder>(D
 
         holder.txtTanggal.text = arsip.tanggalBaca
         holder.txtKategori.text = arsip.kategori
+        // PERBAIKAN: dulu hardcode "Fatwa Kehidupan" di item_buku.xml (tanpa
+        // id), sama seperti bug di GridAdapter -- sekarang dibaca dari
+        // arsip.namaPenulis (field user->name JSON) supaya mode buku juga
+        // ikut membedakan status dari FK vs akun pribadi YW.
+        holder.txtNamaSumber.text = arsip.namaPenulis.ifBlank { "Fatwa Kehidupan" }
         holder.txtNomorHalaman.text = "Halaman : ${position + 1}/$itemCount"
         holder.imgProfil.setImageResource(R.drawable.profil_abah)
 

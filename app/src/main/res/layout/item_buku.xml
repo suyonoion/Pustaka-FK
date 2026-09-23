@@ -47,6 +47,7 @@
                 android:textSize="15sp"
                 android:textStyle="bold" />
             <TextView
+                android:id="@+id/txtNamaSumberBuku"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:text="Fatwa Kehidupan"
