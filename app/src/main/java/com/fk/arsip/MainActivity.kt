@@ -126,6 +126,12 @@ private var kecepatanEmaBytesPerSec: Double = 0.0
     // Bagikan/Lampiran) selalu baca dari sini, bukan dari index terpisah,
     // supaya tidak pernah ketinggalan/tidak sinkron.
     private var arsipSedangTampil: ArsipEntity? = null
+    // Index halaman (penomoran BookPageProvider, 0=sampul) yang SEDANG
+    // tampil -- diperbarui bareng arsipSedangTampil di perbaruiBarAksiBaca().
+    // Dipakai tombol scroll manual (btnBacaScrollAtas/Bawah, lihat
+    // pasangTombolScrollManual()) supaya tahu halaman mana yg harus digeser
+    // tanpa perlu bergantung pada index dari gestur CurlView.
+    private var indexHalamanSaatIni: Int = 0
     private lateinit var edtPencarian: SearchView
     private lateinit var panelStatusPencarian: CardView
     private lateinit var loadingPencarian: ProgressBar
@@ -361,6 +367,7 @@ private var kecepatanEmaBytesPerSec: Double = 0.0
         })
         pasangBarAksiBaca()
         pasangPanelIkonBaca()
+        pasangTombolScrollManual()
 
         onBackPressedDispatcher.addCallback(this, object : OnBackPressedCallback(true) {
             override fun handleOnBackPressed() {
@@ -1884,12 +1891,68 @@ private fun perbaruiDetailKecepatan(persen: Int, byteDiterima: Long, totalByte: 
     }
 
     /**
+     * AKAL-AKALAN UTK BUG "SWIPE ATAS/BAWAH TIDAK SEGERA AKTIF": tombol
+     * ▲/▼ (btnBacaScrollAtas/Bawah, lihat catatan di activity_main.xml) yang
+     * memanggil BookPageProvider.geserKontenHalaman() LANGSUNG dari kode --
+     * TIDAK LEWAT gestur sentuh CurlView sama sekali, jadi selalu bekerja
+     * apa pun status disambiguasi gestur BudayakanBaca.onTouch() saat itu.
+     *
+     * Tekan-tahan (bukan cuma tap sekali) mengulang geser tiap
+     * JEDA_TAHAN_MS sampai jari diangkat, meniru rasa "scrollbar" yang bisa
+     * ditahan, bukan cuma sekali lompat per tap.
+     */
+    private fun pasangTombolScrollManual() {
+        val jedaTahanMs = 90L
+        val pxSekaliTekan = 220
+
+        fun geserSekali(deltaY: Int) {
+            val pageW = curlViewBuku.pageBitmapWidth
+            val pageH = curlViewBuku.pageBitmapHeight
+            if (pageW > 0 && pageH > 0) {
+                bookPageProvider.geserKontenHalaman(indexHalamanSaatIni, deltaY, pageW, pageH)
+                bookPageProvider.selesaiGeserKontenHalaman(indexHalamanSaatIni)
+                perbaruiIndikatorScroll(indexHalamanSaatIni)
+            }
+        }
+
+        // deltaY POSITIF = lihat konten SELANJUTNYA (ke bawah), sama seperti
+        // konvensi di BudayakanBaca.onTouch()/geserKontenHalaman().
+        fun pasangTombolTahan(idView: Int, deltaYSekaliTekan: Int) {
+            val tombol = findViewById<View>(idView)
+            val handler = android.os.Handler(android.os.Looper.getMainLooper())
+            val tugasUlang = object : Runnable {
+                override fun run() {
+                    geserSekali(deltaYSekaliTekan)
+                    handler.postDelayed(this, jedaTahanMs)
+                }
+            }
+            tombol.setOnTouchListener { _, event ->
+                when (event.action) {
+                    android.view.MotionEvent.ACTION_DOWN -> {
+                        geserSekali(deltaYSekaliTekan)
+                        handler.postDelayed(tugasUlang, 350) // jeda awal sebelum mulai berulang, spy tap tunggal tidak "dobel loncat"
+                    }
+                    android.view.MotionEvent.ACTION_UP,
+                    android.view.MotionEvent.ACTION_CANCEL -> {
+                        handler.removeCallbacks(tugasUlang)
+                    }
+                }
+                false // tetap teruskan ke onClick/ripple, cuma menumpang utk deteksi tahan
+            }
+        }
+
+        pasangTombolTahan(R.id.btnBacaScrollAtas, -pxSekaliTekan)
+        pasangTombolTahan(R.id.btnBacaScrollBawah, pxSekaliTekan)
+    }
+
+    /**
      * Dipanggil dari MainActivity.curlViewBuku.setPenggantiHalamanListener
      * (SUDAH di-runOnUiThread oleh pemanggilnya). indexHalaman di sini
      * memakai penomoran BookPageProvider: 0 = sampul depan, 1..N = arsip,
      * N+1 = sampul belakang -- jadi arsip sungguhan ada di indexHalaman-1.
      */
     private fun perbaruiBarAksiBaca(indexHalaman: Int) {
+        indexHalamanSaatIni = indexHalaman
         val arsip = bookPageProvider.indexArsipDari(indexHalaman)?.let { idx -> daftarArsipAktif.getOrNull(idx) }
         arsipSedangTampil = arsip
 

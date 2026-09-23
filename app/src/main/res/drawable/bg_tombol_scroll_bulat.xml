@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Latar bulat utk tombol scroll manual (btnBacaScrollAtas/Bawah), gaya
+     sama dgn bg_indikator_scroll_bawah (hijau tua + alpha), tapi shape oval
+     supaya jadi lingkaran, bukan pill memanjang. -->
+<shape xmlns:android="http://schemas.android.com/apk/res/android"
+    android:shape="oval">
+    <solid android:color="#CC004D40" />
+</shape>

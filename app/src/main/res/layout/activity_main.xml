@@ -307,6 +307,108 @@
                 android:focusable="false"
                 android:elevation="4dp"
                 android:visibility="gone" />
+
+            <!-- AKAL-AKALAN UTK BUG "SWIPE ATAS/BAWAH TIDAK LANGSUNG AKTIF":
+                gestur swipe di CurlView kadang tidak segera direspons (lihat
+                catatan panjang di BudayakanBaca.onTouch() & BookPageProvider
+                .geserKontenHalaman()). Dua tombol ini adalah JALUR ALTERNATIF
+                yg TIDAK LEWAT gestur sentuh CurlView sama sekali. Tap
+                (atau tahan utk scroll berulang) langsung memanggil
+                BookPageProvider.geserKontenHalaman() dari kode (lihat
+                pasangTombolScrollManual() di MainActivity.kt), jadi selalu
+                bekerja apa pun status gestur CurlView-nya. Ditempatkan
+                menempel tepi kanan supaya tidak mengganggu area baca. -->
+            <TextView
+                android:id="@+id/btnBacaScrollAtas"
+                android:layout_width="42dp"
+                android:layout_height="42dp"
+                android:layout_alignParentEnd="true"
+                android:layout_above="@id/btnBacaScrollBawah"
+                android:layout_marginEnd="10dp"
+                android:layout_marginBottom="14dp"
+                android:text="&#8593;"
+                android:textSize="20sp"
+                android:textColor="#FFFFFF"
+                android:gravity="center"
+                android:background="@drawable/bg_tombol_scroll_bulat"
+                android:elevation="4dp"
+                android:clickable="true"
+                android:focusable="true"
+                android:contentDescription="Geser konten ke atas" />
+
+            <TextView
+                android:id="@+id/btnBacaScrollBawah"
+                android:layout_width="42dp"
+                android:layout_height="42dp"
+                android:layout_alignParentEnd="true"
+                android:layout_centerVertical="true"
+                android:layout_marginEnd="10dp"
+                android:text="&#8595;"
+                android:textSize="20sp"
+                android:textColor="#FFFFFF"
+                android:gravity="center"
+                android:background="@drawable/bg_tombol_scroll_bulat"
+                android:elevation="4dp"
+                android:clickable="true"
+                android:focusable="true"
+                android:contentDescription="Geser konten ke bawah" />
+
+            <!-- AKAL-AKALAN/WORKAROUND: swipe atas-bawah di CurlView kadang
+                 tidak segera "menyala" (lihat catatan panjang di
+                 BookPageProvider.geserKontenHalaman()). Daripada bergantung
+                 sepenuhnya pada deteksi gestur yg rawan timing, sediakan JUGA
+                 tombol tekan-tahan naik/turun yang manggil geserKontenHalaman()
+                 langsung dari sentuhan tombol biasa (View.OnTouchListener,
+                 TIDAK lewat disambiguasi gestur CurlView sama sekali).
+                 Selalu bekerja terlepas dari bug di atas kesembuhan sendiri
+                 atau tidak. Ditaruh permanen "visible" (bukan gone) karena
+                 wadahModeBuku sendiri sudah ditranslate ke luar layar saat
+                 TIDAK sedang membaca (lihat catatan pre-warm di MainActivity),
+                 jadi tidak perlu toggle visibility terpisah lagi di titik
+                 manapun. Halaman sampul/tanpa konten panjang tetap aman,
+                 geserKontenHalaman() sendiri sudah menolak (maxOffset<=0)
+                 kalau memang tidak ada yg perlu digeser. -->
+            <LinearLayout
+                android:id="@+id/wadahTombolScrollBaca"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_alignParentEnd="true"
+                android:layout_centerVertical="true"
+                android:layout_marginEnd="10dp"
+                android:orientation="vertical"
+                android:gravity="center">
+
+                <TextView
+                    android:id="@+id/btnScrollBacaAtas"
+                    android:layout_width="42dp"
+                    android:layout_height="42dp"
+                    android:layout_marginBottom="10dp"
+                    android:text="&#8593;"
+                    android:textSize="20sp"
+                    android:textStyle="bold"
+                    android:textColor="#FFFFFF"
+                    android:gravity="center"
+                    android:background="@drawable/bg_indikator_scroll_bawah"
+                    android:elevation="4dp"
+                    android:clickable="true"
+                    android:focusable="true"
+                    android:contentDescription="Geser konten ke atas" />
+
+                <TextView
+                    android:id="@+id/btnScrollBacaBawah"
+                    android:layout_width="42dp"
+                    android:layout_height="42dp"
+                    android:text="&#8595;"
+                    android:textSize="20sp"
+                    android:textStyle="bold"
+                    android:textColor="#FFFFFF"
+                    android:gravity="center"
+                    android:background="@drawable/bg_indikator_scroll_bawah"
+                    android:elevation="4dp"
+                    android:clickable="true"
+                    android:focusable="true"
+                    android:contentDescription="Geser konten ke bawah" />
+            </LinearLayout>
         </RelativeLayout>
 
         <!-- SKELETON/PLACEHOLDER GRID: tampil saat data grid & timeline belum siap dibind, agar area ini tidak terlihat "mati"/blank kosong. Disembunyikan otomatis di pompaDataKeLayar(). -->
