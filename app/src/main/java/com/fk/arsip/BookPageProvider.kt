@@ -67,6 +67,7 @@ import java.util.concurrent.TimeUnit
 class BookPageProvider(
     private val context: Context,
     private val ambilData: () -> List<ArsipEntity>,
+    private val skalaTeks: () -> Float,
     private val refreshHalaman: (Int) -> Unit
 ) : BudayakanBaca.PageProvider {
 
@@ -232,6 +233,20 @@ class BookPageProvider(
         if (index != indexSedangDibaca) return
         refreshTerakhirMs = android.os.SystemClock.uptimeMillis()
         refreshHalaman(index)
+    }
+
+    /**
+     * Dipanggil dari MainActivity begitu user menekan +/- ukuran teks.
+     * SELURUH cacheBitmap dibuang (bukan cuma halaman yg sedang tampil) krn
+     * ukuran teks memengaruhi tinggi konten SEMUA halaman, bukan cuma satu
+     * -- yg lain akan dirender ulang otomatis dgn skala baru begitu
+     * dikunjungi lagi (lewat updatePage() cache-miss seperti biasa).
+     * offsetGeserPx direset ke 0 krn tinggi konten berubah, posisi scroll
+     * lama (dalam px) sudah tidak relevan lagi.
+     */
+    fun bersihkanCacheKarenaUkuranTeksBerubah() {
+        cacheBitmap.evictAll()
+        offsetGeserPx = 0
     }
 
     /** Apakah halaman `index` punya konten yg lebih panjang dari 1 layar (butuh/bisa discroll). */
@@ -485,6 +500,18 @@ class BookPageProvider(
             val tinggiBarisPx = (KertasBergarisDrawable.TINGGI_BARIS_DP * context.resources.displayMetrics.density).toInt()
             TextViewCompat.setLineHeight(txtKontenUtama, tinggiBarisPx)
             TextViewCompat.setLineHeight(txtKontenShared, tinggiBarisPx)
+
+            // FITUR UKURAN TEKS (+/-): skalaTeks() dibaca LIVE di sini setiap
+            // kali halaman benar2 dirender (bukan cuma sekali di awal), krn
+            // seluruh cacheBitmap dibersihkan (lihat
+            // bersihkanCacheKarenaUkuranTeksBerubah()) tiap kali user
+            // menekan +/-, jadi render berikutnya otomatis memakai skala
+            // terbaru tanpa perlu cache key terpisah per skala.
+            val skala = skalaTeks().coerceIn(0.8f, 1.6f)
+            txtKontenUtama.setTextSize(android.util.TypedValue.COMPLEX_UNIT_SP, 14f * skala)
+            txtKontenShared.setTextSize(android.util.TypedValue.COMPLEX_UNIT_SP, 13f * skala)
+            TextViewCompat.setLineHeight(txtKontenUtama, (tinggiBarisPx * skala).toInt())
+            TextViewCompat.setLineHeight(txtKontenShared, (tinggiBarisPx * skala).toInt())
 
             val wadahDinamisKonten = view.findViewById<android.widget.LinearLayout>(R.id.wadahDinamisKonten)
             val wadahHeaderShared = view.findViewById<android.widget.LinearLayout>(R.id.wadahHeaderShared)

@@ -280,7 +280,7 @@ private var kecepatanEmaBytesPerSec: Double = 0.0
         // begitu render sebuah halaman (yang tadinya belum ada di cache)
         // selesai, supaya CurlView tahu harus ambil tekstur final & gambar
         // ulang -- lihat BudayakanBaca.refreshPageTexture().
-        bookPageProvider = BookPageProvider(this, { daftarArsipAktif }) { index ->
+        bookPageProvider = BookPageProvider(this, { daftarArsipAktif }, { skalaTeksSaatIni() }) { index ->
             curlViewBuku.refreshPageTexture(index)
         }
         curlViewBuku.setPageProvider(bookPageProvider)
@@ -1883,11 +1883,175 @@ private fun perbaruiDetailKecepatan(persen: Int, byteDiterima: Long, totalByte: 
         val belumTersedia = View.OnClickListener {
             Toast.makeText(this, "Segera hadir.", Toast.LENGTH_SHORT).show()
         }
-        findViewById<View>(R.id.btnBacaEksporPdf).setOnClickListener(belumTersedia)
-        findViewById<View>(R.id.btnBacaTandai).setOnClickListener(belumTersedia)
-        findViewById<View>(R.id.btnBacaHalamanTersimpan).setOnClickListener(belumTersedia)
-        findViewById<View>(R.id.btnBacaUkuranTeks).setOnClickListener(belumTersedia)
+        findViewById<View>(R.id.btnBacaEksporPdf).setOnClickListener { salinTeksStatusAktif() }
+        findViewById<View>(R.id.btnBacaTandai).setOnClickListener { toggleBookmarkArsipAktif() }
+        findViewById<View>(R.id.btnBacaHalamanTersimpan).setOnClickListener { tampilkanDaftarTersimpan() }
+        findViewById<View>(R.id.btnBacaUkuranTeks).setOnClickListener { tampilkanDialogUkuranTeks() }
+        // Mode gelap/terang belum dibangun (butuh varian warna kertas/teks
+        // terpisah di BookPageProvider.renderHalamanArsip, cakupan
+        // tersendiri) -- dibiarkan placeholder utk sementara.
         findViewById<View>(R.id.btnBacaModeGelap).setOnClickListener(belumTersedia)
+    }
+
+    // ==========================================================================
+    // FITUR PANEL BACA: SALIN TEKS / SIMPAN (BOOKMARK) / UKURAN TEKS
+    // ==========================================================================
+    // Preferensi ringan (bookmark & skala teks) -- tidak butuh tabel Room
+    // baru, cukup SharedPreferences krn cuma sekumpulan idPosting + satu
+    // angka skala, tidak ada relasi/query kompleks yg perlu.
+    private fun prefsBaca() = getSharedPreferences("preferensi_baca", MODE_PRIVATE)
+
+    private fun idBookmarkTersimpan(): MutableSet<String> =
+        prefsBaca().getStringSet("bookmark_ids", emptySet())?.toMutableSet() ?: mutableSetOf()
+
+    private fun isBookmarked(idPosting: String): Boolean = idBookmarkTersimpan().contains(idPosting)
+
+    private fun skalaTeksSaatIni(): Float = prefsBaca().getFloat("skala_teks", 1.0f)
+
+    /** Salin kontenPenuh arsip yang SEDANG tampil ke clipboard. */
+    private fun salinTeksStatusAktif() {
+        val arsip = arsipSedangTampil
+        if (arsip == null) {
+            Toast.makeText(this, "Tidak ada teks di halaman ini.", Toast.LENGTH_SHORT).show()
+            return
+        }
+        val cm = getSystemService(CLIPBOARD_SERVICE) as android.content.ClipboardManager
+        cm.setPrimaryClip(android.content.ClipData.newPlainText("Status Pustaka FK", arsip.kontenPenuh))
+        Toast.makeText(this, "Teks status disalin.", Toast.LENGTH_SHORT).show()
+    }
+
+    /** Toggle bookmark utk arsip yg SEDANG tampil, lalu segarkan ikon bintang. */
+    private fun toggleBookmarkArsipAktif() {
+        val arsip = arsipSedangTampil
+        if (arsip == null) {
+            Toast.makeText(this, "Tidak ada status di halaman ini.", Toast.LENGTH_SHORT).show()
+            return
+        }
+        val set = idBookmarkTersimpan()
+        val kiniTersimpan = if (set.contains(arsip.idPosting)) {
+            set.remove(arsip.idPosting)
+            false
+        } else {
+            set.add(arsip.idPosting)
+            true
+        }
+        prefsBaca().edit().putStringSet("bookmark_ids", set).apply()
+        perbaruiIkonBintang(kiniTersimpan)
+        Toast.makeText(
+            this,
+            if (kiniTersimpan) "Status disimpan." else "Status dihapus dari simpanan.",
+            Toast.LENGTH_SHORT
+        ).show()
+    }
+
+    private fun perbaruiIkonBintang(tersimpan: Boolean) {
+        findViewById<ImageButton>(R.id.btnBacaTandai).setImageResource(
+            if (tersimpan) android.R.drawable.btn_star_big_on else android.R.drawable.btn_star_big_off
+        )
+    }
+
+    /**
+     * Daftar status yang sudah ditandai/disimpan -- dialog sederhana, tap
+     * satu baris utk lompat ke halaman itu (kalau arsipnya ada di
+     * daftarArsipAktif, yaitu sesuai Tab/kategori yang SEDANG aktif; kalau
+     * tidak ketemu di situ, beri tahu apa adanya daripada diam2 gagal).
+     */
+    private fun tampilkanDaftarTersimpan() {
+        val ids = idBookmarkTersimpan()
+        if (ids.isEmpty()) {
+            Toast.makeText(this, "Belum ada status yang disimpan.", Toast.LENGTH_SHORT).show()
+            return
+        }
+        lifecycleScope.launch(Dispatchers.IO) {
+            val database = ArsipDatabase.operasikanMesin(this@MainActivity).arsipDao()
+            val semuaArsip = database.tarikSemuaArsip()
+            val tersimpan = semuaArsip.filter { it.idPosting in ids }
+                .sortedByDescending { it.waktuRilis }
+            withContext(Dispatchers.Main) {
+                if (tersimpan.isEmpty()) {
+                    Toast.makeText(this@MainActivity, "Belum ada status yang disimpan.", Toast.LENGTH_SHORT).show()
+                    return@withContext
+                }
+                val label = tersimpan.map { arsip ->
+                    val cuplikan = arsip.kontenPenuh.take(50).replace("\n", " ").trim()
+                    "${arsip.tanggalBaca.substringBefore(" ")} • $cuplikan${if (arsip.kontenPenuh.length > 50) "…" else ""}"
+                }.toTypedArray()
+                android.app.AlertDialog.Builder(this@MainActivity)
+                    .setTitle("Status Tersimpan (${tersimpan.size})")
+                    .setItems(label) { _, posisiDialog ->
+                        val target = tersimpan[posisiDialog]
+                        val posisiDiTabAktif = daftarArsipAktif.indexOfFirst { it.idPosting == target.idPosting }
+                        if (posisiDiTabAktif >= 0) {
+                            val indexTarget = bookPageProvider.indexHalamanUntukArsip(posisiDiTabAktif)
+                            curlViewBuku.setCurrentIndex(indexTarget)
+                        } else {
+                            Toast.makeText(
+                                this@MainActivity,
+                                "Status ini ada di Tab/kategori lain -- pindah ke situ dulu baru bisa dibuka.",
+                                Toast.LENGTH_LONG
+                            ).show()
+                        }
+                    }
+                    .setNegativeButton("Tutup", null)
+                    .show()
+            }
+        }
+    }
+
+    /**
+     * Dialog kecil +/- ukuran teks, skala 0.8x..1.6x per 0.1. Setiap
+     * perubahan langsung disimpan & memicu bersihkanCacheKarenaUkuranTeksBerubah()
+     * + refresh halaman yg sedang tampil, supaya efeknya langsung terlihat
+     * tanpa perlu keluar-masuk mode baca.
+     */
+    private fun tampilkanDialogUkuranTeks() {
+        val wadah = android.widget.LinearLayout(this).apply {
+            orientation = android.widget.LinearLayout.HORIZONTAL
+            gravity = android.view.Gravity.CENTER
+            val pad = (16 * resources.displayMetrics.density).toInt()
+            setPadding(pad, pad, pad, pad)
+        }
+        val txtPersen = TextView(this).apply {
+            textSize = 16f
+            gravity = android.view.Gravity.CENTER
+            val lebar = (72 * resources.displayMetrics.density).toInt()
+            layoutParams = android.widget.LinearLayout.LayoutParams(lebar, android.widget.LinearLayout.LayoutParams.WRAP_CONTENT)
+        }
+        fun render() {
+            txtPersen.text = "${(skalaTeksSaatIni() * 100).toInt()}%"
+        }
+        render()
+
+        fun ubahSkala(delta: Float) {
+            val baru = (skalaTeksSaatIni() + delta).coerceIn(0.8f, 1.6f)
+            prefsBaca().edit().putFloat("skala_teks", baru).apply()
+            render()
+            bookPageProvider.bersihkanCacheKarenaUkuranTeksBerubah()
+            curlViewBuku.refreshPageTexture(indexHalamanSaatIni)
+            perbaruiIndikatorScroll(indexHalamanSaatIni)
+        }
+
+        val btnKecil = android.widget.Button(this).apply {
+            text = "A-"
+            setOnClickListener { ubahSkala(-0.1f) }
+        }
+        val btnBesar = android.widget.Button(this).apply {
+            text = "A+"
+            setOnClickListener { ubahSkala(0.1f) }
+        }
+        val marginH = (12 * resources.displayMetrics.density).toInt()
+        wadah.addView(btnKecil)
+        wadah.addView(txtPersen, android.widget.LinearLayout.LayoutParams(
+            (72 * resources.displayMetrics.density).toInt(),
+            android.widget.LinearLayout.LayoutParams.WRAP_CONTENT
+        ).apply { marginStart = marginH; marginEnd = marginH })
+        wadah.addView(btnBesar)
+
+        android.app.AlertDialog.Builder(this)
+            .setTitle("Ukuran Teks")
+            .setView(wadah)
+            .setPositiveButton("Selesai", null)
+            .show()
     }
 
     /**
@@ -1955,6 +2119,7 @@ private fun perbaruiDetailKecepatan(persen: Int, byteDiterima: Long, totalByte: 
         indexHalamanSaatIni = indexHalaman
         val arsip = bookPageProvider.indexArsipDari(indexHalaman)?.let { idx -> daftarArsipAktif.getOrNull(idx) }
         arsipSedangTampil = arsip
+        perbaruiIkonBintang(arsip != null && isBookmarked(arsip.idPosting))
 
         val adaLampiran = arsip != null && arsip.daftarFoto.isNotBlank()
         findViewById<TextView>(R.id.txtLabelLampiran).text =
