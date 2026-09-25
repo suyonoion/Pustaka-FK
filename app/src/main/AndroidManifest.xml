@@ -51,6 +51,11 @@
     android:exported="false"
     android:label="Galeri Foto"
     android:theme="@style/Theme.MaterialComponents.DayNight.NoActionBar" />
+        <activity
+    android:name=".HalamanTersimpanActivity"
+    android:exported="false"
+    android:label="Status Tersimpan"
+    android:theme="@style/Theme.MaterialComponents.DayNight.NoActionBar" />
         
     </application>
 </manifest>

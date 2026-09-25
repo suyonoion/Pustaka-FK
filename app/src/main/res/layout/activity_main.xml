@@ -223,12 +223,10 @@
                 android:src="@android:drawable/btn_star_big_off"
                 android:contentDescription="Simpan / tandai halaman" />
 
-            <ImageButton
-                android:id="@+id/btnBacaHalamanTersimpan"
-                style="@style/TombolIkonPanelBaca"
-                android:src="@android:drawable/ic_menu_agenda"
-                android:contentDescription="Halaman tersimpan" />
-
+            <!-- PERBAIKAN: ikon "Halaman tersimpan" (btnBacaHalamanTersimpan)
+                 dipindah keluar dari sini , sekarang jadi menu tersendiri
+                 di drawer (menuHalamanTersimpan), di atas KATEGORI STATUS,
+                 sesuai permintaan. -->
             <ImageButton
                 android:id="@+id/btnBacaUkuranTeks"
                 style="@style/TombolIkonPanelBaca"
@@ -313,50 +311,15 @@
                 android:elevation="4dp"
                 android:visibility="gone" />
 
-            <!-- AKAL-AKALAN UTK BUG "SWIPE ATAS/BAWAH TIDAK LANGSUNG AKTIF":
-                gestur swipe di CurlView kadang tidak segera direspons (lihat
-                catatan panjang di BudayakanBaca.onTouch() & BookPageProvider
-                .geserKontenHalaman()). Dua tombol ini adalah JALUR ALTERNATIF
-                yg TIDAK LEWAT gestur sentuh CurlView sama sekali. Tap
-                (atau tahan utk scroll berulang) langsung memanggil
-                BookPageProvider.geserKontenHalaman() dari kode (lihat
-                pasangTombolScrollManual() di MainActivity.kt), jadi selalu
-                bekerja apa pun status gestur CurlView-nya. Ditempatkan
-                menempel tepi kanan supaya tidak mengganggu area baca. -->
-            <TextView
-                android:id="@+id/btnBacaScrollAtas"
-                android:layout_width="42dp"
-                android:layout_height="42dp"
-                android:layout_alignParentEnd="true"
-                android:layout_above="@id/btnBacaScrollBawah"
-                android:layout_marginEnd="10dp"
-                android:layout_marginBottom="14dp"
-                android:text="&#8593;"
-                android:textSize="20sp"
-                android:textColor="#FFFFFF"
-                android:gravity="center"
-                android:background="@drawable/bg_tombol_scroll_bulat"
-                android:elevation="4dp"
-                android:clickable="true"
-                android:focusable="true"
-                android:contentDescription="Geser konten ke atas" />
-
-            <TextView
-                android:id="@+id/btnBacaScrollBawah"
-                android:layout_width="42dp"
-                android:layout_height="42dp"
-                android:layout_alignParentEnd="true"
-                android:layout_centerVertical="true"
-                android:layout_marginEnd="10dp"
-                android:text="&#8595;"
-                android:textSize="20sp"
-                android:textColor="#FFFFFF"
-                android:gravity="center"
-                android:background="@drawable/bg_tombol_scroll_bulat"
-                android:elevation="4dp"
-                android:clickable="true"
-                android:focusable="true"
-                android:contentDescription="Geser konten ke bawah" />
+            <!-- PERBAIKAN: tombol scroll manual (btnBacaScrollAtas/Bawah)
+                 DIHAPUS , tetap tidak segera aktif tanpa dibuka lewat
+                 recent apps dulu (sama seperti swipe aslinya). Bug akar
+                 masalahnya ada di siklus render CurlView/GLSurfaceView
+                 sendiri, bukan di gestur sentuh atau di cache , akal-akalan
+                 lewat tombol biasa (View.OnTouchListener) tidak menyentuh
+                 akar itu sama sekali, jadi ikut kena masalah yang sama.
+                 Dibiarkan sebagai known issue sesuai arahan, prioritas
+                 dialihkan ke fitur lain. -->
         </RelativeLayout>
 
         <!-- SKELETON/PLACEHOLDER GRID: tampil saat data grid & timeline belum siap dibind, agar area ini tidak terlihat "mati"/blank kosong. Disembunyikan otomatis di pompaDataKeLayar(). -->
@@ -806,6 +769,29 @@
                     android:textSize="13sp" 
                     android:paddingVertical="8dp" 
                     android:paddingHorizontal="16dp" 
+                    app:tint="#004D40"
+                    android:background="?android:attr/selectableItemBackground"/>
+                <View 
+                    android:layout_width="match_parent" 
+                    android:layout_height="1dp" 
+                    android:background="#E0E0E0" 
+                    android:layout_marginVertical="4dp"/>
+
+                <!-- MENU HALAMAN TERSIMPAN (status yang ditandai/bookmark),
+                     sengaja ditaruh di sini (bukan di panel ikon mode baca
+                     lagi) sesuai permintaan: di atas KATEGORI STATUS, di
+                     bawah Galeri Foto. -->
+                <TextView
+                    android:id="@+id/menuHalamanTersimpan"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:text="Halaman Tersimpan"
+                    android:drawableStart="@android:drawable/btn_star_big_on"
+                    android:drawablePadding="12dp"
+                    android:textColor="#212121"
+                    android:textSize="13sp"
+                    android:paddingVertical="8dp"
+                    android:paddingHorizontal="16dp"
                     app:tint="#004D40"
                     android:background="?android:attr/selectableItemBackground"/>
                 <View 

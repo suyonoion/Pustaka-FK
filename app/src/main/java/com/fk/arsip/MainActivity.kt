@@ -31,6 +31,8 @@ import android.widget.ProgressBar
 import android.widget.ScrollView
 import androidx.appcompat.widget.SearchView
 import androidx.activity.OnBackPressedCallback
+import androidx.activity.result.ActivityResultLauncher
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AppCompatActivity
 import androidx.drawerlayout.widget.DrawerLayout
 import androidx.lifecycle.lifecycleScope
@@ -128,10 +130,27 @@ private var kecepatanEmaBytesPerSec: Double = 0.0
     private var arsipSedangTampil: ArsipEntity? = null
     // Index halaman (penomoran BookPageProvider, 0=sampul) yang SEDANG
     // tampil -- diperbarui bareng arsipSedangTampil di perbaruiBarAksiBaca().
-    // Dipakai tombol scroll manual (btnBacaScrollAtas/Bawah, lihat
-    // pasangTombolScrollManual()) supaya tahu halaman mana yg harus digeser
-    // tanpa perlu bergantung pada index dari gestur CurlView.
+    // Dipakai fitur ukuran teks (+/-) & refresh terkait supaya tahu halaman
+    // mana yg sedang aktif tanpa perlu bergantung pada index dari gestur
+    // CurlView.
     private var indexHalamanSaatIni: Int = 0
+    // idPosting yang harus dibuka begitu Tab yang sesuai selesai dimuat --
+    // diisi tanganiHasilHalamanTersimpan(), dieksekusi & dikosongkan lagi
+    // oleh cobaLompatKeArsipTertunda() di ujung eksekusiSaringanKombinasi().
+    private var idPostingTujuanLompat: String? = null
+    // Diregistrasi di sini (bukan di dalam onCreate) krn registerForActivityResult
+    // WAJIB dipanggil sebelum Activity mencapai status STARTED -- deklarasi
+    // properti dijamin berjalan sesaat setelah super.onCreate(), aman.
+    private val launcherHalamanTersimpan: ActivityResultLauncher<Intent> =
+        registerForActivityResult(ActivityResultContracts.StartActivityForResult()) { hasil ->
+            if (hasil.resultCode == RESULT_OK) {
+                val idPosting = hasil.data?.getStringExtra("idPosting")
+                val sumberArsipTarget = hasil.data?.getStringExtra("sumberArsip")
+                if (idPosting != null && sumberArsipTarget != null) {
+                    tanganiHasilHalamanTersimpan(idPosting, sumberArsipTarget)
+                }
+            }
+        }
     private lateinit var edtPencarian: SearchView
     private lateinit var panelStatusPencarian: CardView
     private lateinit var loadingPencarian: ProgressBar
@@ -367,7 +386,6 @@ private var kecepatanEmaBytesPerSec: Double = 0.0
         })
         pasangBarAksiBaca()
         pasangPanelIkonBaca()
-        pasangTombolScrollManual()
 
         onBackPressedDispatcher.addCallback(this, object : OnBackPressedCallback(true) {
             override fun handleOnBackPressed() {
@@ -608,6 +626,10 @@ private fun eksekusiSaringanKombinasi(kategori: String, urutTerlama: Boolean, su
             // Dorong muatan baru ke rantai grid dan buku
             pompaDataKeLayar(kargoSaringan)
             isMesinSibuk = false
+            // Kalau ada lompatan tertunda dari Halaman Tersimpan (lihat
+            // bukaHalamanTersimpan()), eksekusi sekarang setelah data Tab
+            // yang benar selesai dimuat.
+            cobaLompatKeArsipTertunda()
         }
     }
 }
@@ -879,6 +901,12 @@ when (fase) {
     val intent = Intent(this, GaleriActivity::class.java)
     startActivity(intent)
 }
+
+    findViewById<TextView>(R.id.menuHalamanTersimpan).setOnClickListener { menuHT ->
+        sorotMenuTerpilih(menuHT)
+        drawerLayout.closeDrawer(GravityCompat.START)
+        bukaHalamanTersimpan()
+    }
     
     }
 
@@ -1885,7 +1913,6 @@ private fun perbaruiDetailKecepatan(persen: Int, byteDiterima: Long, totalByte: 
         }
         findViewById<View>(R.id.btnBacaEksporPdf).setOnClickListener { salinTeksStatusAktif() }
         findViewById<View>(R.id.btnBacaTandai).setOnClickListener { toggleBookmarkArsipAktif() }
-        findViewById<View>(R.id.btnBacaHalamanTersimpan).setOnClickListener { tampilkanDaftarTersimpan() }
         findViewById<View>(R.id.btnBacaUkuranTeks).setOnClickListener { tampilkanDialogUkuranTeks() }
         // Mode gelap/terang belum dibangun (butuh varian warna kertas/teks
         // terpisah di BookPageProvider.renderHalamanArsip, cakupan
@@ -1951,50 +1978,38 @@ private fun perbaruiDetailKecepatan(persen: Int, byteDiterima: Long, totalByte: 
     }
 
     /**
-     * Daftar status yang sudah ditandai/disimpan -- dialog sederhana, tap
-     * satu baris utk lompat ke halaman itu (kalau arsipnya ada di
-     * daftarArsipAktif, yaitu sesuai Tab/kategori yang SEDANG aktif; kalau
-     * tidak ketemu di situ, beri tahu apa adanya daripada diam2 gagal).
+     * Halaman Tersimpan sekarang jadi layar tersendiri (HalamanTersimpanActivity,
+     * menu drawer di atas KATEGORI STATUS) -- lebih lega utk daftar panjang
+     * & preview 3 baris per item drpd dialog kecil. Hasilnya (idPosting +
+     * sumberArsip yg dipilih user) dikembalikan lewat ActivityResult; lihat
+     * launcherHalamanTersimpan & cobaLompatKeArsipTertunda() di bawah.
      */
-    private fun tampilkanDaftarTersimpan() {
-        val ids = idBookmarkTersimpan()
-        if (ids.isEmpty()) {
-            Toast.makeText(this, "Belum ada status yang disimpan.", Toast.LENGTH_SHORT).show()
-            return
-        }
-        lifecycleScope.launch(Dispatchers.IO) {
-            val database = ArsipDatabase.operasikanMesin(this@MainActivity).arsipDao()
-            val semuaArsip = database.tarikSemuaArsip()
-            val tersimpan = semuaArsip.filter { it.idPosting in ids }
-                .sortedByDescending { it.waktuRilis }
-            withContext(Dispatchers.Main) {
-                if (tersimpan.isEmpty()) {
-                    Toast.makeText(this@MainActivity, "Belum ada status yang disimpan.", Toast.LENGTH_SHORT).show()
-                    return@withContext
-                }
-                val label = tersimpan.map { arsip ->
-                    val cuplikan = arsip.kontenPenuh.take(50).replace("\n", " ").trim()
-                    "${arsip.tanggalBaca.substringBefore(" ")} • $cuplikan${if (arsip.kontenPenuh.length > 50) "…" else ""}"
-                }.toTypedArray()
-                android.app.AlertDialog.Builder(this@MainActivity)
-                    .setTitle("Status Tersimpan (${tersimpan.size})")
-                    .setItems(label) { _, posisiDialog ->
-                        val target = tersimpan[posisiDialog]
-                        val posisiDiTabAktif = daftarArsipAktif.indexOfFirst { it.idPosting == target.idPosting }
-                        if (posisiDiTabAktif >= 0) {
-                            val indexTarget = bookPageProvider.indexHalamanUntukArsip(posisiDiTabAktif)
-                            curlViewBuku.setCurrentIndex(indexTarget)
-                        } else {
-                            Toast.makeText(
-                                this@MainActivity,
-                                "Status ini ada di Tab/kategori lain -- pindah ke situ dulu baru bisa dibuka.",
-                                Toast.LENGTH_LONG
-                            ).show()
-                        }
-                    }
-                    .setNegativeButton("Tutup", null)
-                    .show()
-            }
+    private fun bukaHalamanTersimpan() {
+        launcherHalamanTersimpan.launch(Intent(this, HalamanTersimpanActivity::class.java))
+    }
+
+    /**
+     * Dipanggil begitu HalamanTersimpanActivity mengembalikan pilihan user.
+     * idPosting yg dituju BISA jadi ada di Tab (sumber) yang BERBEDA dari
+     * yg sedang aktif -- makanya selalu pindah dulu ke Tab yg sesuai lewat
+     * eksekusiSaringanKombinasi(), baru lompat SETELAH datanya selesai
+     * dimuat (lihat pemanggilan cobaLompatKeArsipTertunda() di ujung fungsi
+     * itu), bukan langsung cari di daftarArsipAktif yang bisa jadi masih
+     * berisi data Tab lama.
+     */
+    private fun tanganiHasilHalamanTersimpan(idPosting: String, sumberArsipTarget: String) {
+        idPostingTujuanLompat = idPosting
+        eksekusiSaringanKombinasi("Semua Kategori", false, sumberArsipTarget)
+    }
+
+    private fun cobaLompatKeArsipTertunda() {
+        val id = idPostingTujuanLompat ?: return
+        idPostingTujuanLompat = null
+        val posisi = daftarArsipAktif.indexOfFirst { it.idPosting == id }
+        if (posisi >= 0) {
+            bukaModeBuku(posisi)
+        } else {
+            Toast.makeText(this, "Status tersimpan itu tidak ditemukan.", Toast.LENGTH_SHORT).show()
         }
     }
 
@@ -2055,59 +2070,15 @@ private fun perbaruiDetailKecepatan(persen: Int, byteDiterima: Long, totalByte: 
     }
 
     /**
-     * AKAL-AKALAN UTK BUG "SWIPE ATAS/BAWAH TIDAK SEGERA AKTIF": tombol
-     * ▲/▼ (btnBacaScrollAtas/Bawah, lihat catatan di activity_main.xml) yang
-     * memanggil BookPageProvider.geserKontenHalaman() LANGSUNG dari kode --
-     * TIDAK LEWAT gestur sentuh CurlView sama sekali, jadi selalu bekerja
-     * apa pun status disambiguasi gestur BudayakanBaca.onTouch() saat itu.
-     *
-     * Tekan-tahan (bukan cuma tap sekali) mengulang geser tiap
-     * JEDA_TAHAN_MS sampai jari diangkat, meniru rasa "scrollbar" yang bisa
-     * ditahan, bukan cuma sekali lompat per tap.
+     * PERBAIKAN: tombol scroll manual (btnBacaScrollAtas/Bawah) DIHAPUS --
+     * ternyata masih terkena bug yang sama (baru aktif setelah dibuka lewat
+     * recent apps), berarti akar masalahnya bukan di gestur sentuh/cache
+     * seperti dugaan awal, melainkan di siklus render CurlView/GLSurfaceView
+     * itu sendiri -- tombol biasa yang cuma memanggil geserKontenHalaman()
+     * dari kode TIDAK menyentuh akar itu sama sekali. Dibiarkan sbg known
+     * issue sesuai arahan; fungsi pasangTombolScrollManual() & elemen XML
+     * terkait sudah dibuang semua, bukan cuma disembunyikan.
      */
-    private fun pasangTombolScrollManual() {
-        val jedaTahanMs = 90L
-        val pxSekaliTekan = 220
-
-        fun geserSekali(deltaY: Int) {
-            val pageW = curlViewBuku.pageBitmapWidth
-            val pageH = curlViewBuku.pageBitmapHeight
-            if (pageW > 0 && pageH > 0) {
-                bookPageProvider.geserKontenHalaman(indexHalamanSaatIni, deltaY, pageW, pageH)
-                bookPageProvider.selesaiGeserKontenHalaman(indexHalamanSaatIni)
-                perbaruiIndikatorScroll(indexHalamanSaatIni)
-            }
-        }
-
-        // deltaY POSITIF = lihat konten SELANJUTNYA (ke bawah), sama seperti
-        // konvensi di BudayakanBaca.onTouch()/geserKontenHalaman().
-        fun pasangTombolTahan(idView: Int, deltaYSekaliTekan: Int) {
-            val tombol = findViewById<View>(idView)
-            val handler = android.os.Handler(android.os.Looper.getMainLooper())
-            val tugasUlang = object : Runnable {
-                override fun run() {
-                    geserSekali(deltaYSekaliTekan)
-                    handler.postDelayed(this, jedaTahanMs)
-                }
-            }
-            tombol.setOnTouchListener { _, event ->
-                when (event.action) {
-                    android.view.MotionEvent.ACTION_DOWN -> {
-                        geserSekali(deltaYSekaliTekan)
-                        handler.postDelayed(tugasUlang, 350) // jeda awal sebelum mulai berulang, spy tap tunggal tidak "dobel loncat"
-                    }
-                    android.view.MotionEvent.ACTION_UP,
-                    android.view.MotionEvent.ACTION_CANCEL -> {
-                        handler.removeCallbacks(tugasUlang)
-                    }
-                }
-                false // tetap teruskan ke onClick/ripple, cuma menumpang utk deteksi tahan
-            }
-        }
-
-        pasangTombolTahan(R.id.btnBacaScrollAtas, -pxSekaliTekan)
-        pasangTombolTahan(R.id.btnBacaScrollBawah, pxSekaliTekan)
-    }
 
     /**
      * Dipanggil dari MainActivity.curlViewBuku.setPenggantiHalamanListener
