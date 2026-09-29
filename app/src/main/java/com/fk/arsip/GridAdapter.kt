@@ -88,8 +88,8 @@ class GridAdapter(
             }
             
             // 2. PENGELASAN CUPLIKAN TEKS (Dikalibrasi ke batas 200 karakter untuk ruang 5 baris)
-            val cuplikan = if (arsip.kontenPenuh.length > 200) {
-                arsip.kontenPenuh.substring(0, 200) + "..."
+            val cuplikan = if (arsip.kontenPenuh.length > 400) {
+                arsip.kontenPenuh.substring(0, 400) + "...(Baca selengkapnya)"
             } else {
                 arsip.kontenPenuh
             }
