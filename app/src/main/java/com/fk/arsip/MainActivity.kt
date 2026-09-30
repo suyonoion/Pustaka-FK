@@ -84,13 +84,13 @@ enum class FaseInjeksi(
     val idGambar: Int,
     val isIndeterminate: Boolean = true
 ) {
-    FASE_1("Menyiapkan Pustaka", R.drawable.img_1_persiapan, isIndeterminate = true),
-    FASE_2("Menghubungkan ke Sumber Arsip", R.drawable.img_2_koneksi, isIndeterminate = true),
-    FASE_3("Mengunduh Arsip Fatwa Kehidupan", R.drawable.img_3_unduh, isIndeterminate = false), 
-    KONEKSI_BURUK("Koneksi terputus, periksa jaringan...", R.drawable.img_koneksi_buruk, isIndeterminate = true), 
-    FASE_4("Membuka & Merapikan Arsip...", R.drawable.img_4_bongkar, isIndeterminate = true),
-    FASE_5("Memeriksa dan menyimpan arsip ke pustaka...", R.drawable.img_5_injeksi, isIndeterminate = false), 
-    FASE_6("Selesai. Pustaka siap dibaca.", R.drawable.img_6_selesai, isIndeterminate = false) 
+    FASE_1("Mempersiapkan Jalur Data", R.drawable.img_1_persiapan, isIndeterminate = true),
+    FASE_2("Menghubungkan ke Server Data", R.drawable.img_2_koneksi, isIndeterminate = true),
+    FASE_3("Mengunduh Arsip Status Fatwa Kehidupan", R.drawable.img_3_unduh, isIndeterminate = false), 
+    KONEKSI_BURUK("Koneksi Terputus, Cek Koneksi ...", R.drawable.img_koneksi_buruk, isIndeterminate = true), 
+    FASE_4("Membongkar & Menyusun Data...", R.drawable.img_4_bongkar, isIndeterminate = true),
+    FASE_5("Checking Keutuhan Data & Injeksi baris data ke SQLite...", R.drawable.img_5_injeksi, isIndeterminate = false), 
+    FASE_6("Proses selesai. Data Siap Digunakan.", R.drawable.img_6_selesai, isIndeterminate = false) 
 }
 
 
@@ -467,7 +467,7 @@ private var kecepatanEmaBytesPerSec: Double = 0.0
                     recyclerTimeline.visibility = View.VISIBLE
                     // ---------------------------------------------------------------
                     
-                    tampilkanIndikator("Memuat Ulang Semua Status...", true)
+                    tampilkanIndikator("Memuat ulang semua status...", true)
                     lifecycleScope.launch(Dispatchers.IO) {
                         val database = ArsipDatabase.operasikanMesin(this@MainActivity).arsipDao()
                         // PERBAIKAN: dulu selalu tarikSemuaArsip() (semua sumber),
@@ -561,7 +561,7 @@ private var kecepatanEmaBytesPerSec: Double = 0.0
 private fun eksekusiSaringanKombinasi(kategori: String, urutTerlama: Boolean, sumber: String = sumberAktifKode) {
     if (isMesinSibuk) return
     isMesinSibuk = true
-    tampilkanIndikator("Menata arsip dan memilah status...", true)
+    tampilkanIndikator("Mereset jalur dan menyaring kargo...", true)
 
     lifecycleScope.launch(Dispatchers.IO) {
         val lenganRobot = ArsipDatabase.operasikanMesin(this@MainActivity).arsipDao()
@@ -615,9 +615,9 @@ private fun eksekusiSaringanKombinasi(kategori: String, urutTerlama: Boolean, su
                 else -> ""
             }
             val indikatorTeks = if (kategori == "Semua Kategori") {
-                "Semua Arsip (${kargoSaringan.size} Status)$labelSumber"
+                "Semua Arsip (${kargoSaringan.size} status)$labelSumber"
             } else {
-                "$kategori (${kargoSaringan.size} Status)$labelSumber"
+                "$kategori (${kargoSaringan.size} status)$labelSumber"
             }
             
             tampilkanIndikator(indikatorTeks, false)
@@ -810,6 +810,10 @@ when (fase) {
         wadahModeBuku.translationX = wadahModeBuku.resources.displayMetrics.widthPixels * 2f
         indikatorScrollBawah.visibility = View.GONE
         recyclerGridMode.post { perbaruiIndikatorScrollGrid() }
+        // Lihat catatan panjang di BudayakanBaca.init()/aturModeRenderAktif():
+        // balik ke WHEN_DIRTY saat tidak sedang dibaca, supaya tidak terus
+        // menggambar tiap vsync & memakan baterai/CPU sia-sia.
+        curlViewBuku.aturModeRenderAktif(false)
     }
 
     private fun bukaModeBukuKeAtas() {
@@ -817,6 +821,10 @@ when (fase) {
         wadahModeBuku.visibility = View.VISIBLE
         wadahModeBuku.translationX = 0f
         wadahModeBuku.bringToFront()
+        // PERBAIKAN BUG SWIPE/SCROLL MACET: RENDERMODE_CONTINUOUSLY selama
+        // benar2 sedang membaca -- lihat catatan panjang di
+        // BudayakanBaca.init()/aturModeRenderAktif() utk alasan lengkapnya.
+        curlViewBuku.aturModeRenderAktif(true)
     }
 
     private var curlViewSedangResume = false

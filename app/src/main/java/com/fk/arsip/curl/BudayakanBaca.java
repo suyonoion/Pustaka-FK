@@ -198,6 +198,33 @@ public class BudayakanBaca extends GLSurfaceView implements View.OnTouchListener
 		setRenderer(mRenderer);
 		setRenderMode(GLSurfaceView.RENDERMODE_WHEN_DIRTY);
 		setOnTouchListener(this);
+		// PERBAIKAN BUG "SWIPE/SCROLL MACET, BARU JALAN SETELAH BUKA RECENT
+		// APPS/ROTASI/TOGGLE PENCARIAN": semua fix sebelumnya (disambiguasi
+		// gestur, cacheKey, mAnimate macet, requestRender() yg hilang di
+		// berbagai titik -- lihat catatan2 PERBAIKAN lain di file ini)
+		// sudah benar SECARA LOGIKA, tapi bug tetap terulang di sebagian
+		// device. RENDERMODE_WHEN_DIRTY artinya GLThread TIDUR sampai
+		// dibangunkan lewat requestRender() (wait()/notifyAll() di
+		// GLSurfaceView.GLThread) -- ini API lama yg dikenal PUNYA riwayat
+		// race condition di sejumlah versi Android/OEM (notifyAll() yg
+		// terjadi tepat sebelum GLThread benar2 masuk wait() bisa TIDAK
+		// pernah "membangunkannya" krn notify datang duluan, JVM tidak
+		// menyimpan notifikasi yg terlewat -- dan rotasi/recent apps/toggle
+		// UI kebetulan memicu jalur lifecycle GLSurfaceView (onPause/
+		// onResume, surface baru) yg BERBEDA dari requestRender() biasa,
+		// jadi "membangunkan" GLThread lewat cara lain, bukan berarti
+		// akar masalahnya ketemu di situ). Tombol manual yg cuma
+		// memanggil requestRender() dari kode pun sudah dicoba & TETAP
+		// kena bug yg sama -- artinya bug ini di lapisan GLThread/RENDERMODE
+		// itu sendiri, di luar jangkauan perbaikan level gestur/cache.
+		//
+		// Fix: aturModeRenderAktif(true) dipanggil MainActivity begitu
+		// masuk mode baca (RENDERMODE_CONTINUOUSLY -- GL menggambar tiap
+		// vsync, TIDAK bergantung wait()/notifyAll() sama sekali, jadi
+		// race di atas tidak relevan lagi) & aturModeRenderAktif(false)
+		// saat kembali ke grid (balik ke WHEN_DIRTY spy tidak terus
+		// menggambar & memakan baterai/CPU saat CurlView TIDAK sedang
+		// dilihat user).
 		mTouchSlop = android.view.ViewConfiguration.get(ctx).getScaledTouchSlop();
 
 		// Even though left and right pages are static we have to allocate room
@@ -307,6 +334,15 @@ public class BudayakanBaca extends GLSurfaceView implements View.OnTouchListener
 	// dengan cacheKey yang dipakai saat bitmap itu sungguhan dirender &
 	// disimpan, jadi cacheBitmap.get() selalu null & scroll selalu gagal
 	// diam-diam (return false), berapa lama pun ditunggu.
+	/**
+	 * Lihat catatan panjang di init() dekat setRenderMode(). Dipanggil
+	 * MainActivity: true begitu masuk mode baca, false begitu kembali ke
+	 * grid.
+	 */
+	public void aturModeRenderAktif(boolean aktif) {
+		setRenderMode(aktif ? GLSurfaceView.RENDERMODE_CONTINUOUSLY : GLSurfaceView.RENDERMODE_WHEN_DIRTY);
+	}
+
 	public int getPageBitmapWidth() {
 		return mPageBitmapWidth;
 	}

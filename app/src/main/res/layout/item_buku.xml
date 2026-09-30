@@ -9,12 +9,21 @@
     android:paddingTop="16dp"
     android:paddingBottom="16dp">
 
+    <!-- PERBAIKAN TATA LETAK: gravity BARIS ini sebelumnya "center_vertical".
+         Kalau nama/tanggal/kategori panjang & jadi berbaris banyak (2-3
+         baris), foto profil & badge "Halaman: X/Y" ikut disorong ke TENGAH
+         blok teks yang jadi tinggi itu , terlihat "mengambang" & berantakan
+         (foto/badge tidak lagi sejajar dgn baris PERTAMA nama). Ganti ke
+         "top" supaya foto & badge SELALU nempel rapi di baris atas, apa pun
+         panjang nama/kategori & berapa baris hasil wrap-nya , berlaku sama
+         baik portrait maupun landscape krn ini soal alignment, bukan lebar
+         piksel tertentu. -->
     <LinearLayout
         android:id="@+id/wadahHeaderHalaman"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:orientation="horizontal"
-        android:gravity="center_vertical"
+        android:gravity="top"
         android:paddingBottom="12dp">
         <!-- wadahProfilPenulis: avatar+nama+tanggal+kategori — DISEMBUNYIKAN
         di halaman LANJUTAN (subIndex>0), lihat BookPageProvider. txtNomorHalaman
@@ -53,31 +62,26 @@
                 android:text="Fatwa Kehidupan"
                 android:textColor="#00B0FF"
                 android:textSize="12sp" />
-            <LinearLayout
-                android:layout_width="wrap_content"
+            <!-- PERBAIKAN: sebelumnya 3 TextView terpisah (tanggal, " • ",
+                 kategori) berjejer dalam satu LinearLayout horizontal ,
+                 LinearLayout TIDAK bisa mereflow beberapa View sekaligus ke
+                 baris berikutnya, jadi kalau kategorinya panjang (mis.
+                 "Ekonomi Makro, Politik & Pemerintahan"), cuma TextView
+                 kategori sendiri yang wrap, sementara tanggal & bullet tetap
+                 di baris pertama , baris keduanya jadi "menggantung" mulai
+                 dari margin kiri, tidak sejajar dgn awal kata sebelumnya.
+                 Sekarang digabung jadi SATU TextView (teksnya disusun & diberi
+                 warna/bold utk bagian kategori lewat SpannableString di
+                 BookPageProvider.renderHalamanArsip()), supaya seluruh teks
+                 mengalir & wrap sebagai satu kesatuan yang rapi, apa pun
+                 panjangnya & di orientasi apa pun. -->
+            <TextView
+                android:id="@+id/txtTanggalKategori"
+                android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:orientation="horizontal">
-                <TextView
-                    android:id="@+id/txtTanggal"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:text="Tanggal"
-                    android:textSize="10sp"
-                    android:textColor="#424242"/>
-                <TextView
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:text=" • "
-                    android:textSize="10sp"/>
-                <TextView
-                    android:id="@+id/txtKategori"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:text="Kategori"
-                    android:textColor="#D32F2F"
-                    android:textStyle="bold"
-                    android:textSize="10sp"/>
-            </LinearLayout>
+                android:text="Tanggal • Kategori"
+                android:textSize="10sp"
+                android:textColor="#424242"/>
         </LinearLayout>
         </LinearLayout>
         <TextView

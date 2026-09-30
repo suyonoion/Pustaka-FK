@@ -39,8 +39,13 @@ class BukuAdapter : PagingDataAdapter<ArsipEntity, BukuAdapter.BukuViewHolder>(D
     class BukuViewHolder(view: View) : RecyclerView.ViewHolder(view) {
         val imgProfil = view.findViewById<ImageView>(R.id.imgProfilAbah)
         val txtNamaSumber = view.findViewById<TextView>(R.id.txtNamaSumberBuku)
-        val txtTanggal = view.findViewById<TextView>(R.id.txtTanggal)
-        val txtKategori = view.findViewById<TextView>(R.id.txtKategori)
+        // PERBAIKAN: txtTanggal & txtKategori digabung jadi satu id
+        // (txtTanggalKategori) di item_buku.xml -- lihat catatan di sana &
+        // di BookPageProvider.renderHalamanArsip() (jalur yg SUNGGUHAN
+        // dipakai; kelas ini sendiri sudah dead code, tidak diinstansiasi
+        // di mana pun, tapi tetap harus ikut cocok dgn id yg ada di XML
+        // biar bisa kompilasi).
+        val txtTanggalKategori = view.findViewById<TextView>(R.id.txtTanggalKategori)
         val txtNomorHalaman = view.findViewById<TextView>(R.id.txtNomorHalaman)
         val scrollKontenBuku = view.findViewById<ScrollView>(R.id.scrollKontenBuku)
         val wadahKontenBerbaris = view.findViewById<LinearLayout>(R.id.wadahKontenBerbaris)
@@ -89,8 +94,7 @@ class BukuAdapter : PagingDataAdapter<ArsipEntity, BukuAdapter.BukuViewHolder>(D
             holder.txtKontenShared.visibility = View.GONE
             holder.wadahFoto.removeAllViews()
             holder.wadahFoto.visibility = View.GONE
-            holder.txtTanggal.text = ""
-            holder.txtKategori.text = ""
+            holder.txtTanggalKategori.text = ""
             holder.txtNamaSumber.text = ""
             holder.txtNomorHalaman.text = "Halaman : ${position + 1}/$itemCount"
             holder.imgProfil.setImageResource(R.drawable.profil_abah)
@@ -150,8 +154,7 @@ class BukuAdapter : PagingDataAdapter<ArsipEntity, BukuAdapter.BukuViewHolder>(D
     holder.txtKontenShared.visibility = View.GONE
 }
 
-        holder.txtTanggal.text = arsip.tanggalBaca
-        holder.txtKategori.text = arsip.kategori
+        holder.txtTanggalKategori.text = "${arsip.tanggalBaca} • ${arsip.kategori}"
         // PERBAIKAN: dulu hardcode "Fatwa Kehidupan" di item_buku.xml (tanpa
         // id), sama seperti bug di GridAdapter -- sekarang dibaca dari
         // arsip.namaPenulis (field user->name JSON) supaya mode buku juga

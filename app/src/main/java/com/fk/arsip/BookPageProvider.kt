@@ -544,8 +544,25 @@ class BookPageProvider(
                 }
             }
 
-            view.findViewById<TextView>(R.id.txtTanggal).text = arsip.tanggalBaca
-            view.findViewById<TextView>(R.id.txtKategori).text = arsip.kategori
+            // PERBAIKAN TATA LETAK: txtTanggal & txtKategori dulu 2 TextView
+            // terpisah (lihat catatan di item_buku.xml) -- sekarang digabung
+            // jadi satu txtTanggalKategori supaya wrap sebagai satu kesatuan
+            // teks yang rapi. Bagian kategori diberi bold+merah lewat span,
+            // meniru gaya visual txtKategori yang lama.
+            val teksTanggalKategori = "${arsip.tanggalBaca} • ${arsip.kategori}"
+            val spannableTanggalKategori = android.text.SpannableString(teksTanggalKategori)
+            val mulaiKategori = teksTanggalKategori.length - arsip.kategori.length
+            spannableTanggalKategori.setSpan(
+                android.text.style.StyleSpan(android.graphics.Typeface.BOLD),
+                mulaiKategori, teksTanggalKategori.length,
+                android.text.Spannable.SPAN_EXCLUSIVE_EXCLUSIVE
+            )
+            spannableTanggalKategori.setSpan(
+                android.text.style.ForegroundColorSpan(android.graphics.Color.parseColor("#D32F2F")),
+                mulaiKategori, teksTanggalKategori.length,
+                android.text.Spannable.SPAN_EXCLUSIVE_EXCLUSIVE
+            )
+            view.findViewById<TextView>(R.id.txtTanggalKategori).text = spannableTanggalKategori
             view.findViewById<TextView>(R.id.txtNomorHalaman).text = "Halaman : $nomorArsip/$totalArsip"
             // PERBAIKAN: txtNamaSumberBuku dulu tidak pernah di-bind di sini
             // (cuma ada di BukuAdapter.kt yang ternyata TIDAK dipakai lagi --
