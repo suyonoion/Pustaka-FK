@@ -810,10 +810,6 @@ when (fase) {
         wadahModeBuku.translationX = wadahModeBuku.resources.displayMetrics.widthPixels * 2f
         indikatorScrollBawah.visibility = View.GONE
         recyclerGridMode.post { perbaruiIndikatorScrollGrid() }
-        // Lihat catatan panjang di BudayakanBaca.init()/aturModeRenderAktif():
-        // balik ke WHEN_DIRTY saat tidak sedang dibaca, supaya tidak terus
-        // menggambar tiap vsync & memakan baterai/CPU sia-sia.
-        curlViewBuku.aturModeRenderAktif(false)
     }
 
     private fun bukaModeBukuKeAtas() {
@@ -821,10 +817,6 @@ when (fase) {
         wadahModeBuku.visibility = View.VISIBLE
         wadahModeBuku.translationX = 0f
         wadahModeBuku.bringToFront()
-        // PERBAIKAN BUG SWIPE/SCROLL MACET: RENDERMODE_CONTINUOUSLY selama
-        // benar2 sedang membaca -- lihat catatan panjang di
-        // BudayakanBaca.init()/aturModeRenderAktif() utk alasan lengkapnya.
-        curlViewBuku.aturModeRenderAktif(true)
     }
 
     private var curlViewSedangResume = false
@@ -1188,6 +1180,8 @@ when (fase) {
                     isMesinSibuk = false
                     terapkanMuatanAwal(semuaData)
                     if (berkasLokal.exists()) { berkasLokal.delete() }
+                    // Lihat catatan lengkap di batalkanUnduhanUsangJikaAda().
+                    batalkanUnduhanUsangJikaAda()
                 }
                 return@launch
             }
@@ -1206,6 +1200,13 @@ when (fase) {
                     isMesinSibuk = true
                     aturVisibilitasOverlayInisialisasi(true)
                     perbaruiPanelTelemetri(FaseInjeksi.FASE_4, 0, 0, 0)
+                    // Lihat catatan lengkap di batalkanUnduhanUsangJikaAda() --
+                    // ini titik KUNCI-nya: bypass file valid ditemukan &
+                    // akan dipakai, jadi unduhan lama apa pun yg masih
+                    // nyangkut di sistem HARUS dibatalkan di sini juga,
+                    // supaya tidak diam2 menimpa file bypass ini nanti kalau
+                    // koneksi kembali.
+                    batalkanUnduhanUsangJikaAda()
                     jalankanMesinInjeksiOtonom(berkasLokal.absolutePath)
                 }
                 return@launch
@@ -1233,28 +1234,39 @@ when (fase) {
     // yang benar-benar mengeksekusi; yang kedua otomatis diabaikan.
     private var idUnduhanSudahDitangani: Long = -1L
 
+    /**
+     * PERBAIKAN "HALAMAN LOADING DATABASE KOSONG TERUS-MENERUS": titik
+     * terpusat utk "menyerah dari unduhan/injeksi, tampilkan apa pun yang
+     * SUDAH ada di DB lokal (sekalipun kosong) alih-alih membiarkan grid/
+     * timeline tertahan selamanya di skeleton loading". Sebelumnya logika
+     * ini ada 2x tersalin persis sama di tanganiSelesainyaUnduhan() (jalur
+     * gagal & jalur gagal-pendaratan file), TAPI cabang "unduhan hilang/
+     * dibatalkan" di pantauTekananUnduhan() (baris cursor kosong) dan jalur
+     * menunggu-koneksi-tanpa-batas-waktu di aktifkanMesinPenyedot() TIDAK
+     * ikut memanggil ini -- makanya kasus2 itu tetap kosong selamanya
+     * meski overlay sudah hilang. Sekarang dipakai di semua titik yg sama.
+     */
+    private fun tampilkanDataYangAdaSajaDahulu() {
+        aturVisibilitasOverlayInisialisasi(false)
+        isMesinSibuk = false
+        lifecycleScope.launch(Dispatchers.IO) {
+            val lenganRobot = ArsipDatabase.operasikanMesin(this@MainActivity).arsipDao()
+            val dataTersisa = lenganRobot.tarikSemuaArsip()
+            withContext(Dispatchers.Main) {
+                pompaDataKeLayar(dataTersisa)
+                muatDataAwalKeSasis(dataTersisa)
+            }
+        }
+    }
+
     private fun tanganiSelesainyaUnduhan(idUnduhan: Long, sukses: Boolean) {
         synchronized(this) {
             if (idUnduhanSudahDitangani == idUnduhan) return
             idUnduhanSudahDitangani = idUnduhan
         }
         if (!sukses) {
-            // PERBAIKAN: sebelumnya jalur gagal ini hanya menyembunyikan
-            // overlay & menampilkan Toast -- grid/timeline TIDAK PERNAH
-            // diberi data (pompaDataKeLayar/muatDataAwalKeSasis tidak
-            // dipanggil), sehingga teks skeleton default "Memuat status..."
-            // tertahan selamanya di layar meski proses sudah berhenti.
-            aturVisibilitasOverlayInisialisasi(false)
-            isMesinSibuk = false
             Toast.makeText(this, "Tekanan unduhan gagal. Cek jaringan.", Toast.LENGTH_LONG).show()
-            lifecycleScope.launch(Dispatchers.IO) {
-                val lenganRobot = ArsipDatabase.operasikanMesin(this@MainActivity).arsipDao()
-                val dataTersisa = lenganRobot.tarikSemuaArsip()
-                withContext(Dispatchers.Main) {
-                    pompaDataKeLayar(dataTersisa)
-                    muatDataAwalKeSasis(dataTersisa)
-                }
-            }
+            tampilkanDataYangAdaSajaDahulu()
             return
         }
         val fileTempSelesai = File(getExternalFilesDir(null), "$namaFile.temp")
@@ -1276,17 +1288,8 @@ when (fase) {
             aturKunciDrawer(true)
             jalankanMesinInjeksiOtonom(fileAsli.absolutePath)
         } else {
-            aturVisibilitasOverlayInisialisasi(false)
-            isMesinSibuk = false
             Toast.makeText(this, "Gagal memproses pendaratan file. Ruang penuh atau terkunci.", Toast.LENGTH_LONG).show()
-            lifecycleScope.launch(Dispatchers.IO) {
-                val lenganRobot = ArsipDatabase.operasikanMesin(this@MainActivity).arsipDao()
-                val dataTersisa = lenganRobot.tarikSemuaArsip()
-                withContext(Dispatchers.Main) {
-                    pompaDataKeLayar(dataTersisa)
-                    muatDataAwalKeSasis(dataTersisa)
-                }
-            }
+            tampilkanDataYangAdaSajaDahulu()
         }
     }
 
@@ -1331,8 +1334,26 @@ private fun aktifkanMesinPenyedot() {
     if (!isJaringanTersedia()) {
         perbaruiPanelTelemetri(FaseInjeksi.KONEKSI_BURUK, 0, 0, 0)
         lifecycleScope.launch(Dispatchers.IO) {
+            var percobaan = 0
+            var sudahTampilkanDataSeadanya = false
             while (!isJaringanTersedia()) {
                 delay(3000)
+                percobaan++
+                // PERBAIKAN "HALAMAN LOADING KOSONG TERUS-MENERUS KALAU
+                // INTERNET OFF/BURUK": sebelumnya loop ini menunggu koneksi
+                // TANPA BATAS WAKTU sebelum user diizinkan melihat apa pun --
+                // kalau memang belum/lama tidak ada koneksi, user terjebak di
+                // overlay loading kosong selamanya. Sekarang, setelah ~15
+                // detik menunggu, tampilkan dulu apa pun yg SUDAH ada di DB
+                // lokal (tampilkanDataYangAdaSajaDahulu() -- lihat definisi
+                // lengkapnya) SAMBIL loop ini tetap lanjut memantau koneksi di
+                // latar belakang; begitu koneksi kembali, unduhan tetap
+                // otomatis dimulai seperti biasa (lewat pemanggilan
+                // aktifkanMesinPenyedot() di bawah, tidak berubah).
+                if (percobaan == 5 && !sudahTampilkanDataSeadanya) {
+                    sudahTampilkanDataSeadanya = true
+                    withContext(Dispatchers.Main) { tampilkanDataYangAdaSajaDahulu() }
+                }
             }
             withContext(Dispatchers.Main) {
                 aktifkanMesinPenyedot()
@@ -1379,6 +1400,57 @@ private fun aktifkanMesinPenyedot() {
 
 }
 
+    /**
+     * PERBAIKAN "BYPASS FILE JSON HANYA BEKERJA SAAT OFFLINE": kalau user
+     * menaruh file JSON sendiri di Android/data/.../files/ (bypass unduhan),
+     * eksekusiPabrikData() memang SUDAH benar langsung memakainya lewat
+     * jalankanMesinInjeksiOtonom() TANPA mengecek koneksi sama sekali --
+     * TAPI itu tidak cukup kalau ternyata ADA unduhan LAMA yang masih
+     * tersimpan di antrian DownloadManager milik SISTEM (mis. dari sesi
+     * sebelumnya, sebelum file bypass ditaruh) dalam status PENDING/PAUSED
+     * menunggu koneksi. DownloadManager adalah layanan SISTEM yang
+     * mengingat & melanjutkan unduhannya SENDIRI, independen dari keputusan
+     * apa pun yang MainActivity buat sesi ini -- begitu koneksi kembali,
+     * unduhan lama itu bisa diam-diam selesai & (lewat pasangSensorPendaratan/
+     * pantauTekananUnduhan) menimpa file bypass yang sudah dipakai user
+     * dengan hasil unduhan baru. Itulah kenapa bypass "kelihatannya" cuma
+     * bekerja saat offline -- online, unduhan usang ini akhirnya sempat
+     * selesai & menimpa.
+     *
+     * Fix: begitu app MEMUTUSKAN tidak perlu unduh (bypass file valid ATAU
+     * data DB sudah cukup), batalkan proaktif SEMUA unduhan lama bertajuk
+     * sama yang mungkin masih nyangkut di sistem, supaya tidak ada lagi yang
+     * bisa "bangun" belakangan & menimpa keputusan sesi ini.
+     */
+    private fun batalkanUnduhanUsangJikaAda() {
+        try {
+            val downloadManager = getSystemService(Context.DOWNLOAD_SERVICE) as DownloadManager
+            val query = DownloadManager.Query().setFilterByStatus(
+                DownloadManager.STATUS_RUNNING or DownloadManager.STATUS_PENDING or
+                DownloadManager.STATUS_PAUSED or DownloadManager.STATUS_FAILED or
+                DownloadManager.STATUS_SUCCESSFUL
+            )
+            val idUntukDihapus = mutableListOf<Long>()
+            downloadManager.query(query)?.use { cursor ->
+                val titleIndex = cursor.getColumnIndex(DownloadManager.COLUMN_TITLE)
+                val idIndex = cursor.getColumnIndex(DownloadManager.COLUMN_ID)
+                while (cursor.moveToNext()) {
+                    if (titleIndex != -1 && cursor.getString(titleIndex) == "Arsip Fatwa Kehidupan") {
+                        idUntukDihapus.add(cursor.getLong(idIndex))
+                    }
+                }
+            }
+            if (idUntukDihapus.isNotEmpty()) {
+                downloadManager.remove(*idUntukDihapus.toLongArray())
+            }
+        } catch (e: Exception) {
+            // Bukan kegagalan fatal -- kalau gagal membatalkan, paling buruk
+            // bug lama berpotensi terulang; jangan sampai malah menghentikan
+            // alur bypass/pemakaian data yang sudah valid gara-gara ini.
+            e.printStackTrace()
+        }
+    }
+
     private fun cariPipaAktif(downloadManager: DownloadManager): Long {
         val query = DownloadManager.Query().setFilterByStatus(
             DownloadManager.STATUS_RUNNING or DownloadManager.STATUS_PENDING or DownloadManager.STATUS_PAUSED
@@ -1408,6 +1480,12 @@ private fun pantauTekananUnduhan(idUnduhan: Long, downloadManager: DownloadManag
         // BUFFER PENAHAN FLUKTUASI (Mencegah kedip kedip)
         var hitunganArusNol = 0
         var tangkiMemoriTelemetri = "Membuka katup aliran data..."
+        // PERBAIKAN "HALAMAN LOADING KOSONG TERUS-MENERUS KALAU INTERNET
+        // OFF/BURUK": sama seperti fix di aktifkanMesinPenyedot() -- jangan
+        // blokir user tanpa batas waktu kalau koneksi terputus DI TENGAH
+        // unduhan yang sudah berjalan (bukan cuma sebelum mulai).
+        var percobaanOffline = 0
+        var sudahTampilkanDataSeadanya = false
         
         while (isMengunduh) {
             val jaringanAktif = isJaringanTersedia()
@@ -1415,9 +1493,15 @@ private fun pantauTekananUnduhan(idUnduhan: Long, downloadManager: DownloadManag
             if (!jaringanAktif) {
                 beradaDiFaseGagalJaringan = true
                 withContext(Dispatchers.Main) { perbaruiPanelTelemetri(FaseInjeksi.KONEKSI_BURUK, 0, 0, 0) }
+                percobaanOffline++
+                if (percobaanOffline == 5 && !sudahTampilkanDataSeadanya) {
+                    sudahTampilkanDataSeadanya = true
+                    withContext(Dispatchers.Main) { tampilkanDataYangAdaSajaDahulu() }
+                }
                 delay(3000)
                 continue
             }
+            percobaanOffline = 0
 
             if (beradaDiFaseGagalJaringan && jaringanAktif) {
                 beradaDiFaseGagalJaringan = false
@@ -1506,10 +1590,17 @@ private fun pantauTekananUnduhan(idUnduhan: Long, downloadManager: DownloadManag
                     }
                 }
             } else {
+                // PERBAIKAN: baris unduhan ini SUDAH TIDAK ADA SAMA SEKALI di
+                // DownloadManager -- ini persis yg terjadi kalau user
+                // MEMBATALKAN unduhan lewat notifikasi sistem (bukan cuma
+                // gagal/FAILED, tapi baris query-nya benar2 hilang). Sebelumnya
+                // cabang ini cuma menyembunyikan overlay tanpa pernah memberi
+                // data ke grid/timeline -- skeleton loading jadi tertahan
+                // selamanya walau overlay-nya sendiri sudah tidak terlihat.
                 isMengunduh = false
                 withContext(Dispatchers.Main) {
-                    aturVisibilitasOverlayInisialisasi(false)
-                    isMesinSibuk = false
+                    Toast.makeText(this@MainActivity, "Unduhan dibatalkan.", Toast.LENGTH_SHORT).show()
+                    tampilkanDataYangAdaSajaDahulu()
                 }
             }
             cursor?.close()
