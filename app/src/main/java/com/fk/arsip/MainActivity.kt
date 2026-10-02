@@ -261,10 +261,7 @@ private var kecepatanEmaBytesPerSec: Double = 0.0
         })
         recyclerTimeline = findViewById(R.id.recyclerTimeline)
         kontainerJalurKanan = findViewById<FrameLayout>(R.id.kontainerJalurKanan)
-        findViewById<TasbihConnectorView>(R.id.connectorTasbih).apply {
-    totalLangkah = 6
-    tinggiBarisPx = 64f * resources.displayMetrics.density
-}
+        findViewById<TasbihConnectorView>(R.id.connectorTasbih).totalLangkah = 6
 
         recyclerGridMode.layoutManager = GridLayoutManager(this, 2)
         sesuaikanKompartemenGrid() 
@@ -683,7 +680,7 @@ private fun perbaruiPanelTelemetri(fase: FaseInjeksi, persentase: Int = 0, volum
     // 1. Ambil semua view - ini boleh, tapi lebih bagus di bind di onCreate sekali aja
     val indikatorVisual = findViewById<ImageView>(R.id.indikatorVisualMesin)
     val teksStatus = findViewById<TextView>(R.id.teksStatusInisialisasi)
-    val progressBar = findViewById<ProgressBar>(R.id.progressBarInisialisasi)
+    val progressBar = findViewById<BeadProgressView>(R.id.progressBarInisialisasi)
     val teksDetail = findViewById<TextView>(R.id.teksDetailProgress)
     val teksNasehat = findViewById<TextView>(R.id.teksNasehatInisialisasi)
     val pembatas = findViewById<View>(R.id.pembatasSektor)
@@ -721,8 +718,7 @@ panelStepper.visibility = View.VISIBLE
         else -> fase.pesan
     }
     
-    indikatorVisual.setImageResource(fase.idGambar)
-    (indikatorVisual.drawable as? android.graphics.drawable.Animatable)?.start()
+    // Gambar buku tasbih tetap di semua fase (desain Gambar B), tidak lagi diganti per fase.
     
     perbaruiVisualStepper(fase)
 
@@ -1625,7 +1621,7 @@ private fun formatKecepatanPersisi(bytesPerSec: Double): String {
 // FUNGSI PENJAGA TAMPILAN PANEL TELEMETRI DENGAN RINCIAN SPEED METER
 private fun perbaruiDetailKecepatan(persen: Int, byteDiterima: Long, totalByte: Long, kecepatanTeks: String) {
     val vTeksDetail = findViewById<TextView>(R.id.teksDetailProgress)
-    val progressBar = findViewById<ProgressBar>(R.id.progressBarInisialisasi)
+    val progressBar = findViewById<BeadProgressView>(R.id.progressBarInisialisasi)
 
     val mbDiterima = String.format("%.1f", byteDiterima / (1024.0 * 1024.0))
     val mbTotal = String.format("%.1f", totalByte / (1024.0 * 1024.0))
@@ -2552,16 +2548,16 @@ private fun perbaruiVisualStepper(faseAktif: FaseInjeksi) {
 
     val dataStepper = listOf(
         "Mempersiapkan Jalur Data",
-        "Menghubungkan ke Server",
-        "Mengunduh Arsip",
-        "Membongkar Arsip",
-        "Injeksi ke SQLite",
-        "Inisialisasi Selesai"
+        "Langkah 2: Menghubungkan ke Server",
+        "Langkah 3: Mengunduh Arsip",
+        "Langkah 4: Membongkar Arsip",
+        "Langkah 5: Injeksi ke SQLite",
+        "Langkah 6: Inisialisasi Selesai"
     )
 
-    val warnaAktif = android.graphics.Color.parseColor("#FFB300")
-    val warnaSelesai = android.graphics.Color.parseColor("#EEDC9A")
-    val warnaInaktif = android.graphics.Color.parseColor("#8D7B68")
+    val warnaAktif = android.graphics.Color.parseColor("#F5D79A")
+    val warnaSelesai = android.graphics.Color.parseColor("#F0CF94")
+    val warnaInaktif = android.graphics.Color.parseColor("#8C8378")
     val warnaTeksTasbihNyala = android.graphics.Color.parseColor("#3E2723")
     val warnaTeksTasbihMati = android.graphics.Color.parseColor("#FFFFFF")
 
@@ -2582,7 +2578,6 @@ private fun perbaruiVisualStepper(faseAktif: FaseInjeksi) {
 
         vNum.text = (i + 1).toString()
         vLbl.text = dataStepper[i]
-        vNum.translationX = connectorTasbih.offsetXUntukBaris(i)
 
         when {
             i + 1 < nomorUrut -> {
