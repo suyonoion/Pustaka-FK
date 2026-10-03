@@ -153,7 +153,7 @@ private var kecepatanEmaBytesPerSec: Double = 0.0
         }
     private lateinit var edtPencarian: SearchView
     private lateinit var panelStatusPencarian: CardView
-    private lateinit var loadingPencarian: ProgressBar
+    private lateinit var loadingPencarian: View
     private lateinit var txtStatusPencarian: TextView
     private lateinit var gridAdapter: GridAdapter
     private lateinit var recyclerTimeline: RecyclerView
@@ -300,7 +300,7 @@ private var kecepatanEmaBytesPerSec: Double = 0.0
             curlViewBuku.refreshPageTexture(index)
         }
         curlViewBuku.setPageProvider(bookPageProvider)
-        curlViewBuku.setBackgroundColor(android.graphics.Color.parseColor("#00251A"))
+        curlViewBuku.setBackgroundColor(android.graphics.Color.parseColor("#1C1109"))
         // PERBAIKAN TUMPANG TINDIH VISUAL: SurfaceView (curlViewBuku) dikomposit
         // di layer terpisah oleh sistem, TIDAK mengikuti urutan gambar View biasa
         // -- bringToFront() antar recyclerGridMode/wadahModeBuku tidak menjamin
@@ -678,7 +678,7 @@ private fun terapkanMuatanAwal(daftarLengkap: List<ArsipEntity>) {
 private fun perbaruiPanelTelemetri(fase: FaseInjeksi, persentase: Int = 0, volumeSelesai: Int = 0, volumeTotal: Int = 0, metrikKhusus: String = "") {
     
     // 1. Ambil semua view - ini boleh, tapi lebih bagus di bind di onCreate sekali aja
-    val indikatorVisual = findViewById<ImageView>(R.id.indikatorVisualMesin)
+    val indikatorVisual = findViewById<VisualFaseView>(R.id.indikatorVisualMesin)
     val teksStatus = findViewById<TextView>(R.id.teksStatusInisialisasi)
     val progressBar = findViewById<BeadProgressView>(R.id.progressBarInisialisasi)
     val teksDetail = findViewById<TextView>(R.id.teksDetailProgress)
@@ -718,7 +718,8 @@ panelStepper.visibility = View.VISIBLE
         else -> fase.pesan
     }
     
-    // Gambar buku tasbih tetap di semua fase (desain Gambar B), tidak lagi diganti per fase.
+    // Visual bergerak: kitab + tasbih, emblem fase (gambar lama berwarna kayu/emas) ganti per fase.
+    indikatorVisual.setFase(fase.idGambar, fase.nomor())
     
     perbaruiVisualStepper(fase)
 
@@ -969,7 +970,7 @@ when (fase) {
                 layoutParams = LinearLayout.LayoutParams((1.5f * scale).toInt(), LinearLayout.LayoutParams.MATCH_PARENT).apply {
                     setMargins((24 * scale).toInt(), 0, 0, 0) 
                 }
-                setBackgroundColor(android.graphics.Color.parseColor("#B0BEC5"))
+                setBackgroundColor(android.graphics.Color.parseColor("#D2BDA3"))
             }
 
             val wadahTeksAnak = LinearLayout(this).apply {
@@ -993,7 +994,7 @@ when (fase) {
                 // Rel Horizontal Penghubung
                 val relHorizontal = View(this).apply {
                     layoutParams = LinearLayout.LayoutParams((12 * scale).toInt(), (1.5f * scale).toInt())
-                    setBackgroundColor(android.graphics.Color.parseColor("#B0BEC5"))
+                    setBackgroundColor(android.graphics.Color.parseColor("#D2BDA3"))
                 }
 
                 val teksAnak = TextView(this).apply {
@@ -1046,10 +1047,10 @@ when (fase) {
             }
         }
 
-        // Terapkan warna aktif pada item baru (Hijau Transparan #E0F2F1)
-        viewBaru.setBackgroundColor(android.graphics.Color.parseColor("#E0F2F1"))
+        // Terapkan warna aktif pada item baru (Hijau Transparan #F0EBE2)
+        viewBaru.setBackgroundColor(android.graphics.Color.parseColor("#F0EBE2"))
         if (viewBaru is TextView) {
-            viewBaru.setTextColor(android.graphics.Color.parseColor("#004D40"))
+            viewBaru.setTextColor(android.graphics.Color.parseColor("#3A2313"))
         }
 
         // Simpan acuan

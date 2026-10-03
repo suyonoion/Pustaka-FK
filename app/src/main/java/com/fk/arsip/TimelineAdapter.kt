@@ -49,42 +49,29 @@ class TimelineAdapter(
         val skala = ctx.resources.displayMetrics.density
 
         if (holder is TahunViewHolder && titik.tipe == TIPE_TAHUN) {
+            // Tahun = biji tasbih agak runcing
             holder.txtLabel.text = titik.teks
-            holder.txtLabel.textSize = 11f
-            holder.txtLabel.setTextColor(Color.parseColor("#FFFFFF"))
+            holder.txtLabel.textSize = 12f
+            holder.txtLabel.setTextColor(Color.parseColor("#F0CF94"))
             holder.txtLabel.setTypeface(null, Typeface.BOLD)
-            holder.txtLabel.setBackgroundResource(R.drawable.bg_timeline_tahun)
+            holder.txtLabel.background = ManikDrawable(ManikDrawable.Gaya.RUNCING)
 
             holder.itemView.isClickable = false
             holder.itemView.setOnClickListener(null)
 
         } else if (holder is BulanViewHolder && titik.tipe == TIPE_BULAN) {
+            // Bulan = biji tasbih bulat; terpilih = emas menyala
             holder.txtLabel.text = titik.teks
-            holder.txtLabel.textSize = 10f
+            holder.txtLabel.textSize = 9f
             holder.txtLabel.setTypeface(null, Typeface.BOLD)
 
-            holder.txtLabel.setPadding(
-                (2 * skala).toInt(),
-                (5 * skala).toInt(),
-                (2 * skala).toInt(),
-                (5 * skala).toInt()
-            )
-
             if (position == posisiTerpilih) {
-                // Aktif: pakai warna clickable kita tadi #B2DFDB
-                holder.txtLabel.setBackgroundResource(R.drawable.bg_timeline_aktif)
-                holder.txtLabel.setTextColor(ContextCompat.getColor(ctx, R.color.timeline_pil_aktif_text)) // #263238
-
+                holder.txtLabel.background = ManikDrawable(ManikDrawable.Gaya.MENYALA)
+                holder.txtLabel.setTextColor(Color.parseColor("#4A2A0C"))
             } else {
-                if (titik.warnaGenap) {
-                    // Genap: #E0F2F1
-                    holder.txtLabel.setBackgroundResource(R.drawable.bg_timeline_genap)
-                    holder.txtLabel.setTextColor(ContextCompat.getColor(ctx, R.color.text_primary))
-                } else {
-                    // Ganjil: #F0FDFD
-                    holder.txtLabel.setBackgroundResource(R.drawable.bg_timeline_ganjil)
-                    holder.txtLabel.setTextColor(ContextCompat.getColor(ctx, R.color.text_primary))
-                }
+                holder.txtLabel.background =
+                    ManikDrawable(ManikDrawable.Gaya.KAYU, if (titik.warnaGenap) 0 else 1)
+                holder.txtLabel.setTextColor(Color.parseColor("#F5E3BC"))
             }
 
             holder.itemView.setOnClickListener {

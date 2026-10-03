@@ -4,5 +4,5 @@
      supaya jadi lingkaran, bukan pill memanjang. -->
 <shape xmlns:android="http://schemas.android.com/apk/res/android"
     android:shape="oval">
-    <solid android:color="#CC004D40" />
+    <solid android:color="#CC3A2313" />
 </shape>

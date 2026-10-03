@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!-- Latar panelIkonBaca — disamakan dgn warna panelStatusPencarian
-     (timeline_pil_stroke, #004D40) supaya konsisten dgn elemen hijau tua
+     (timeline_pil_stroke, #3A2313) supaya konsisten dgn elemen hijau tua
      lain di app, solid (bukan transparan lagi — sekarang bar sungguhan,
      bukan overlay mengambang), tanpa lengkung sudut. -->
 <shape xmlns:android="http://schemas.android.com/apk/res/android"

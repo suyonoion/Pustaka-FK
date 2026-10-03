@@ -18,7 +18,7 @@
             android:layout_height="wrap_content"
             android:text="“"
             android:textSize="24sp"
-            android:textColor="#0F3A5F3A"
+            android:textColor="#0F674732"
             android:fontFamily="serif"
             android:layout_gravity="top|start"
             android:layout_marginStart="10dp"
@@ -48,7 +48,7 @@
                 android:layout_height="wrap_content"
                 android:layout_marginTop="10dp"
                 android:text="- Sumber"
-                android:textColor="#7BA87B"
+                android:textColor="#B9956A"
                 android:textSize="10sp"
                 android:fontFamily="sans-serif-medium"
                 android:gravity="end"/>

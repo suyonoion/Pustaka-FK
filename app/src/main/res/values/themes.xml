@@ -32,7 +32,7 @@
         <item name="android:layout_width">2dp</item>
         <item name="android:layout_height">10dp</item>
         <item name="android:layout_marginStart">9dp</item>
-        <item name="android:background">#00695C</item>
+        <item name="android:background">#4F2F1A</item>
     </style>
     
 </resources>

@@ -5,12 +5,12 @@
     android:viewportHeight="24">
     <!-- Garis Vertikal Utama -->
     <path
-        android:strokeColor="#B0BEC5"
+        android:strokeColor="#D2BDA3"
         android:strokeWidth="1.5"
         android:pathData="M12,0 L12,24" />
     <!-- Garis Horizontal Penghubung Cabang -->
     <path
-        android:strokeColor="#B0BEC5"
+        android:strokeColor="#D2BDA3"
         android:strokeWidth="1.5"
         android:pathData="M12,12 L24,12" />
 </vector>

@@ -297,7 +297,7 @@ private fun terapkanWarna(teksLengkap: String): android.text.SpannableString {
     if (pembatasIndex != -1) {
         // Pertanyaan (Biru) - Sebelum pembatas
         spannable.setSpan(
-            android.text.style.ForegroundColorSpan(android.graphics.Color.parseColor("#004D40")), 
+            android.text.style.ForegroundColorSpan(android.graphics.Color.parseColor("#3A2313")), 
             0, pembatasIndex, android.text.Spannable.SPAN_EXCLUSIVE_EXCLUSIVE
         )
         // Jawaban (Hijau) - Setelah pembatas

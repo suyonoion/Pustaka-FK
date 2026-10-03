@@ -52,7 +52,7 @@
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:text="Syeikh Muhammad Zuhri"
-                android:textColor="#004D40"
+                android:textColor="#3A2313"
                 android:textSize="15sp"
                 android:textStyle="bold" />
             <TextView
@@ -60,7 +60,7 @@
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:text="Fatwa Kehidupan"
-                android:textColor="#00B0FF"
+                android:textColor="#DF9320"
                 android:textSize="12sp" />
             <!-- PERBAIKAN: sebelumnya 3 TextView terpisah (tanggal, " • ",
                  kategori) berjejer dalam satu LinearLayout horizontal ,
@@ -92,12 +92,12 @@
             android:textSize="11sp"
             android:textStyle="bold"
             android:textColor="#D4AF37"
-            android:background="#E0F2F1"
+            android:background="#F0EBE2"
             android:paddingHorizontal="8dp"
             android:paddingVertical="4dp"/>
     </LinearLayout>
 
-    <View android:layout_width="match_parent" android:layout_height="1dp" android:background="#E0E0E0" android:layout_marginBottom="12dp"/>
+    <View android:layout_width="match_parent" android:layout_height="1dp" android:background="#D8C7AB" android:layout_marginBottom="12dp"/>
 
     <ScrollView
         android:id="@+id/scrollKontenBuku"
@@ -121,7 +121,7 @@
                 android:textColor="#212121"
                 android:autoLink="web"
                 android:linksClickable="true"
-                android:textColorLink="#00B0FF"
+                android:textColorLink="#DF9320"
                 android:layout_marginBottom="10dp"/>
 
             <!-- WADAH DINAMIS (Merangkum Teks Shared + Foto/Video) -->
@@ -159,14 +159,14 @@
                             android:id="@+id/txtNamaPemilikShared"
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
-                            android:textColor="#1C1E21"
+                            android:textColor="#231E1A"
                             android:textSize="14sp"
                             android:textStyle="bold"/>
                         <TextView
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
                             android:text="Status Dibagikan"
-                            android:textColor="#65676B"
+                            android:textColor="#776859"
                             android:textSize="11sp"/>
                     </LinearLayout>
                 </LinearLayout>
@@ -177,10 +177,10 @@
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:textSize="13sp"
-                    android:textColor="#1C1E21"
+                    android:textColor="#231E1A"
                     android:autoLink="web"
                     android:linksClickable="true"
-                    android:textColorLink="#00B0FF"
+                    android:textColorLink="#DF9320"
                     android:layout_marginBottom="8dp"
                     android:visibility="gone"/>
 
@@ -207,7 +207,7 @@
                     android:background="?android:attr/selectableItemBackground"
                     android:padding="6dp">
                     <ImageView android:layout_width="16dp" android:layout_height="16dp" app:srcCompat="@drawable/logo_fb"/>
-                    <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Sumber Asli" android:textColor="#1976D2" android:textSize="12sp" android:textStyle="bold" android:layout_marginStart="8dp"/>
+                    <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Sumber Asli" android:textColor="#B47C36" android:textSize="12sp" android:textStyle="bold" android:layout_marginStart="8dp"/>
                 </LinearLayout>
                 <View android:layout_width="0dp" android:layout_height="0dp" android:layout_weight="1"/>
                 <LinearLayout

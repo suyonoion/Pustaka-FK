@@ -3,7 +3,7 @@
     <!-- Rel Dasar (Dibuat lebih gelap dari latar belakang utama) -->
     <item>
         <shape android:shape="ring" android:thicknessRatio="12" android:useLevel="false">
-            <solid android:color="#00332C" /> 
+            <solid android:color="#26170D" /> 
         </shape>
     </item>
     
@@ -12,8 +12,8 @@
         <rotate android:fromDegrees="270" android:toDegrees="270">
             <shape android:shape="ring" android:thicknessRatio="12" android:useLevel="true">
                 <gradient 
-                    android:startColor="#80CBC4" 
-                    android:endColor="#00E5FF" 
+                    android:startColor="#CCA97F" 
+                    android:endColor="#DF9320" 
                     android:type="sweep" />
             </shape>
         </rotate>

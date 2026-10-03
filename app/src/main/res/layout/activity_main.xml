@@ -39,7 +39,7 @@
         android:focusable="true"
         android:background="?android:attr/selectableItemBackgroundBorderless"
         app:srcCompat="@drawable/ic_hamburger_menu"
-        app:tint="#004D40" />
+        app:tint="#3A2313" />
 
     <!-- KOTAK PENCARIAN -->
        <!-- KOTAK PENCARIAN -->
@@ -52,7 +52,7 @@
     android:layout_marginHorizontal="2dp"
     android:paddingVertical="2dp"
     android:paddingHorizontal="2dp"
-    android:background="#FFFFFF"
+    android:background="#F5EAD4"
     app:iconifiedByDefault="false"
     app:queryHint="Cari status..."
     android:elevation="2dp"
@@ -98,12 +98,12 @@
                 android:layout_marginBottom="8dp"
                 app:tabMode="fixed"
                 app:tabGravity="fill"
-                app:tabIndicatorColor="#004D40"
+                app:tabIndicatorColor="#3A2313"
                 app:tabIndicatorHeight="3dp"
-                app:tabSelectedTextColor="#004D40"
-                app:tabTextColor="#78909C"
+                app:tabSelectedTextColor="#3A2313"
+                app:tabTextColor="#B38E62"
                 app:tabTextAppearance="@style/TextAppearance.MaterialComponents.Button"
-                android:background="#FFFFFF">
+                android:background="#F5EAD4">
 
                 <com.google.android.material.tabs.TabItem
                     android:id="@+id/tabSumberFK"
@@ -141,12 +141,11 @@
                 android:padding="4dp">
 
                 <!-- Lampu Sinyal Pemuatan (Telah diberi dimensi presisi) -->
-               <ProgressBar 
-                   android:id="@+id/loadingPencarian" 
-                   android:layout_width="14dp" 
-                   android:layout_height="14dp" 
+               <com.fk.arsip.TasbihSpinnerView
+                   android:id="@+id/loadingPencarian"
+                   android:layout_width="20dp"
+                   android:layout_height="20dp"
                    android:layout_marginEnd="6dp"
-                   android:indeterminateTint="#FFFFFF"
                    android:visibility="gone"/>
 
                 <!-- Teks Dominan Rata Tengah -->
@@ -333,10 +332,9 @@
             android:background="@color/bg_halaman"
             android:visibility="visible">
 
-            <ProgressBar
-                android:layout_width="34dp"
-                android:layout_height="34dp"
-                android:indeterminateTint="@color/primary" />
+            <com.fk.arsip.TasbihSpinnerView
+                android:layout_width="52dp"
+                android:layout_height="52dp" />
 
             <TextView
                 android:layout_width="wrap_content"
@@ -408,7 +406,7 @@
                         android:textSize="12sp"/>
                 </LinearLayout>
 
-                <View android:layout_width="1dp" android:layout_height="24dp" android:background="#DDDDDD"/>
+                <View android:layout_width="1dp" android:layout_height="24dp" android:background="#CDB896"/>
 
                 <LinearLayout
                     android:id="@+id/btnAksiBagikan"
@@ -434,7 +432,7 @@
                         android:textSize="12sp"/>
                 </LinearLayout>
 
-                <View android:layout_width="1dp" android:layout_height="24dp" android:background="#DDDDDD"/>
+                <View android:layout_width="1dp" android:layout_height="24dp" android:background="#CDB896"/>
 
                 <LinearLayout
                     android:id="@+id/btnAksiLampiran"
@@ -589,32 +587,30 @@
     android:background="@android:color/transparent">
             
             <!-- PILAR SEKAT: GARIS TIMELINE -->
-          <View 
-                        android:layout_width="1dp"
-                        android:layout_height="match_parent"
-                        android:background="#B2DFDB"
-                        android:layout_marginStart="19dp"
-                        android:layout_marginTop="20dp"
-                        />
+          <View
+                android:layout_width="2.5dp"
+                android:layout_height="match_parent"
+                android:layout_gravity="end"
+                android:layout_marginEnd="28.75dp"
+                android:layout_marginTop="8dp"
+                android:background="#2B170C" />
 
             <!-- RECYCLERVIEW TIMELINE -->
            <androidx.recyclerview.widget.RecyclerView
     android:id="@+id/recyclerTimeline"
-    android:layout_width="wrap_content"
+    android:layout_width="60dp"
     android:layout_height="wrap_content"
     android:layout_gravity="end"
-    android:layout_marginEnd="2dp"
-    android:layout_marginStart="20dp"
     android:clipChildren="false" />
 
             <!-- SKELETON TIMELINE: titik loading kecil selagi recyclerTimeline masih kosong (belum ada adapter/data), agar kolom timeline tidak terlihat mati/blank. Disembunyikan di pompaDataKeLayar(). -->
-            <ProgressBar
+            <com.fk.arsip.TasbihSpinnerView
                 android:id="@+id/loadingTimelineKecil"
-                android:layout_width="18dp"
-                android:layout_height="18dp"
-                android:layout_marginStart="20dp"
+                android:layout_width="26dp"
+                android:layout_height="26dp"
+                android:layout_gravity="end"
+                android:layout_marginEnd="17dp"
                 android:layout_marginTop="12dp"
-                android:indeterminateTint="@color/primary"
                 android:visibility="visible" />
         </FrameLayout>
 
@@ -629,7 +625,7 @@
         android:layout_width="280dp"
         android:layout_height="match_parent"
         android:layout_gravity="start"
-        android:background="#FAFAFA"
+        android:background="#EFE3CE"
         android:orientation="vertical"
         android:clickable="true"
         android:focusable="true">
@@ -667,7 +663,7 @@
     android:src="@drawable/profil_abah" 
     app:shapeAppearanceOverlay="@style/ShapeAppearance.PustakaFK.Circle"
     app:strokeWidth="1.5dp"
-    app:strokeColor="#80CBC4" 
+    app:strokeColor="#CCA97F" 
     android:layout_marginBottom="12dp" />
 
                 <TextView
@@ -713,7 +709,7 @@
                     android:textSize="13sp" 
                     android:paddingVertical="8dp" 
                     android:paddingHorizontal="16dp" 
-                    app:tint="#004D40"
+                    app:tint="#3A2313"
                     android:background="?android:attr/selectableItemBackground"/>
 
                 <TextView 
@@ -727,7 +723,7 @@
                     android:textSize="13sp" 
                     android:paddingVertical="8dp" 
                     android:paddingHorizontal="16dp" 
-                    app:tint="#004D40"
+                    app:tint="#3A2313"
                     android:background="?android:attr/selectableItemBackground"/>
 
                 <TextView 
@@ -741,7 +737,7 @@
                     android:textSize="13sp" 
                     android:paddingVertical="8dp" 
                     android:paddingHorizontal="16dp" 
-                    app:tint="#004D40"
+                    app:tint="#3A2313"
                     android:background="?android:attr/selectableItemBackground"/>
                 
                 <TextView 
@@ -756,7 +752,7 @@
                     android:paddingVertical="8dp" 
                     android:paddingHorizontal="16dp" 
                     android:background="?android:attr/selectableItemBackground"
-                    app:tint="#004D40" />
+                    app:tint="#3A2313" />
   <!-- MENU GALERI FOTO (TAMBAHAN BARU) -->
                 <TextView 
                     android:id="@+id/menuGaleriFoto" 
@@ -769,12 +765,12 @@
                     android:textSize="13sp" 
                     android:paddingVertical="8dp" 
                     android:paddingHorizontal="16dp" 
-                    app:tint="#004D40"
+                    app:tint="#3A2313"
                     android:background="?android:attr/selectableItemBackground"/>
                 <View 
                     android:layout_width="match_parent" 
                     android:layout_height="1dp" 
-                    android:background="#E0E0E0" 
+                    android:background="#D8C7AB" 
                     android:layout_marginVertical="4dp"/>
 
                 <!-- MENU HALAMAN TERSIMPAN (status yang ditandai/bookmark),
@@ -792,12 +788,12 @@
                     android:textSize="13sp"
                     android:paddingVertical="8dp"
                     android:paddingHorizontal="16dp"
-                    app:tint="#004D40"
+                    app:tint="#3A2313"
                     android:background="?android:attr/selectableItemBackground"/>
                 <View 
                     android:layout_width="match_parent" 
                     android:layout_height="1dp" 
-                    android:background="#E0E0E0" 
+                    android:background="#D8C7AB" 
                     android:layout_marginVertical="4dp"/>
                 
                 <TextView
@@ -805,7 +801,7 @@
                     android:layout_height="wrap_content"
                     android:text="KATEGORI STATUS"
                     android:textStyle="bold"
-                    android:textColor="#004D40"
+                    android:textColor="#3A2313"
                     android:paddingHorizontal="14dp"
                     android:paddingVertical="6dp"
                     android:textSize="12sp"/>

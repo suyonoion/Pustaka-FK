@@ -5,10 +5,10 @@
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
     android:layout_marginBottom="10dp"
-    app:cardBackgroundColor="#004D40"
+    app:cardBackgroundColor="#3A2313"
     app:cardCornerRadius="10dp"
     app:cardElevation="2dp"
-    app:strokeColor="#004D40"
+    app:strokeColor="#3A2313"
     app:strokeWidth="1.2dp"
     android:theme="@style/Theme.MaterialComponents.Light">
 
@@ -21,7 +21,7 @@
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:background="#004D40"
+            android:background="#3A2313"
             android:orientation="horizontal"
             android:gravity="center_vertical"
             android:paddingHorizontal="12dp"
@@ -81,7 +81,7 @@
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
                         android:text="Nama Akun / Halaman"
-                        android:textColor="#004D40"
+                        android:textColor="#3A2313"
                         android:textSize="13sp"
                         android:textStyle="bold" />
 
@@ -91,7 +91,7 @@
                         android:layout_height="wrap_content"
                         android:layout_marginTop="4dp"
                         android:text="Deskripsi singkat mengenai peruntukan akun atau halaman..."
-                        android:textColor="#455A64"
+                        android:textColor="#714F38"
                         android:textSize="11sp"
                         android:lineSpacingExtra="2dp" />
                     <LinearLayout
@@ -134,7 +134,7 @@
             <View
                 android:layout_width="match_parent"
                 android:layout_height="1dp"
-                android:background="#ECEFF1"
+                android:background="#F3F0EA"
                 android:layout_marginTop="10dp"
                 android:layout_marginBottom="8dp" />
 

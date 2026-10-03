@@ -23,7 +23,7 @@
             android:id="@+id/txtTanggalTersimpan"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:textColor="#004D40"
+            android:textColor="#3A2313"
             android:textStyle="bold"
             android:textSize="12sp" />
 

@@ -113,10 +113,10 @@
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
                         android:layout_marginBottom="16dp"
-                        app:cardBackgroundColor="#FFFFFF"
+                        app:cardBackgroundColor="#FBF3E2"
                         app:cardCornerRadius="12dp"
                         app:cardElevation="2dp"
-                        app:strokeColor="#004D40"
+                        app:strokeColor="#3A2313"
                         app:strokeWidth="1.5dp">
 
                         <LinearLayout
@@ -128,7 +128,7 @@
                             <LinearLayout
                                 android:layout_width="match_parent"
                                 android:layout_height="wrap_content"
-                                android:background="#004D40"
+                                android:background="#3A2313"
                                 android:orientation="horizontal"
                                 android:gravity="center_vertical"
                                 android:paddingHorizontal="12dp"
@@ -170,20 +170,20 @@
                                             android:layout_height="wrap_content"
                                             android:text="Pustaka FK"
                                             android:textSize="8.5sp"
-                                            android:textColor="#B2DFDB" />
+                                            android:textColor="#D9CDB8" />
 
                                         <TextView
                                             android:layout_width="wrap_content"
                                             android:layout_height="wrap_content"
                                             android:text=" • "
                                             android:textSize="8.5sp"
-                                            android:textColor="#80CBC4" />
+                                            android:textColor="#CCA97F" />
 
                                         <TextView
                                             android:layout_width="wrap_content"
                                             android:layout_height="wrap_content"
                                             android:text="Profil Aplikasi"
-                                            android:textColor="#80CBC4"
+                                            android:textColor="#CCA97F"
                                             android:textStyle="bold|italic"
                                             android:textSize="8.5sp" />
                                     </LinearLayout>
@@ -212,16 +212,16 @@
                                     android:layout_height="wrap_content"
                                     android:text="@string/desc_app"
                                     android:textSize="12sp"
-                                    android:textColor="#37474F"
+                                    android:textColor="#593F2D"
                                     android:lineSpacingExtra="3dp"
                                     android:autoLink="web"
                                     android:linksClickable="true"
-                                    android:textColorLink="#004D40" />
+                                    android:textColorLink="#3A2313" />
 
                                 <View 
                                     android:layout_width="match_parent" 
                                     android:layout_height="1dp" 
-                                    android:background="#E0E0E0"
+                                    android:background="#D8C7AB"
                                     android:layout_marginTop="10dp"
                                     android:layout_marginBottom="8dp"/>
 
@@ -242,12 +242,12 @@
                                             android:layout_width="12dp" 
                                             android:layout_height="12dp" 
                                             android:src="@android:drawable/ic_menu_mylocation" 
-                                            app:tint="#B0BEC5"/>
+                                            app:tint="#D2BDA3"/>
                                         <TextView 
                                             android:layout_width="wrap_content" 
                                             android:layout_height="wrap_content" 
                                             android:text="SanFK" 
-                                            android:textColor="#90A4AE" 
+                                            android:textColor="#C0A27E" 
                                             android:textSize="9sp" 
                                             android:layout_marginStart="3dp"/>
                                     </LinearLayout>
@@ -262,12 +262,12 @@
                                             android:layout_width="12dp" 
                                             android:layout_height="12dp" 
                                             app:srcCompat="@drawable/logo_saung" 
-                                            app:tint="#B0BEC5"/>
+                                            app:tint="#D2BDA3"/>
                                         <TextView 
                                             android:layout_width="wrap_content" 
                                             android:layout_height="wrap_content" 
                                             android:text="Saung" 
-                                            android:textColor="#90A4AE" 
+                                            android:textColor="#C0A27E" 
                                             android:textSize="9sp" 
                                             android:layout_marginStart="3dp"/>
                                     </LinearLayout>
@@ -282,12 +282,12 @@
                                             android:layout_width="12dp" 
                                             android:layout_height="12dp" 
                                             app:srcCompat="@drawable/ic_launcher_zf" 
-                                            app:tint="#B0BEC5"/>
+                                            app:tint="#D2BDA3"/>
                                         <TextView 
                                             android:layout_width="wrap_content" 
                                             android:layout_height="wrap_content" 
                                             android:text="ZF" 
-                                            android:textColor="#90A4AE" 
+                                            android:textColor="#C0A27E" 
                                             android:textSize="9sp" 
                                             android:layout_marginStart="3dp"/>
                                     </LinearLayout>

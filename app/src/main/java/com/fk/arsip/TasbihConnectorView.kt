@@ -32,7 +32,7 @@ class TasbihConnectorView @JvmOverloads constructor(
         const val ROW_DP = 47f
         const val TOP_PAD_DP = 42f
         const val EKOR_DP = 142f // jarak dari pusat biji terakhir sampai ujung rumbai
-        const val POSISI_X = 0.134f // pusat biji besar sbg fraksi lebar view
+        const val POSISI_X_DP = 52f // pusat biji besar dari tepi kiri (dp, tetap => jarak ke label konstan)
     }
 
     var totalLangkah: Int = 6
@@ -59,7 +59,7 @@ class TasbihConnectorView @JvmOverloads constructor(
         textSize = 17f * resources.displayMetrics.scaledDensity
     }
 
-    private fun xPusat() = width * POSISI_X
+    private fun xPusat() = dp(POSISI_X_DP)
     private fun yBaris(i: Int) = dp(TOP_PAD_DP) + dp(ROW_DP) * i + dp(ROW_DP) / 2f
 
     override fun onMeasure(w: Int, h: Int) {

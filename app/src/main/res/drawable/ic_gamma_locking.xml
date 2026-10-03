@@ -17,7 +17,7 @@
 
     <!-- Jalur Kanan (f2): Frekuensi Stimulus (Clinical Cyan) -->
     <path
-        android:strokeColor="#00B0FF"
+        android:strokeColor="#DF9320"
         android:strokeWidth="3.5"
         android:pathData="M 10,54 C 30,88 40,88 54,54 C 68,20 78,20 98,54"
         android:strokeLineCap="round" />
@@ -25,13 +25,13 @@
     <!-- Titik Kerapatan Informasi (Gamma Locking 40.68 Hz) -->
     <path
         android:fillColor="#050505"
-        android:strokeColor="#00B0FF"
+        android:strokeColor="#DF9320"
         android:strokeWidth="3"
         android:pathData="M 54,46 L 62,54 L 54,62 L 46,54 Z" />
         
     <!-- Inti Kerapatan (Spacetime Core) -->
     <path
-        android:fillColor="#00B0FF"
+        android:fillColor="#DF9320"
         android:pathData="M 54,51 A 3,3 0 1 1 54,57 A 3,3 0 1 1 54,51" />
 
 </vector>
