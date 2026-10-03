@@ -240,6 +240,19 @@ private var kecepatanEmaBytesPerSec: Double = 0.0
         loadingPencarian = findViewById(R.id.loadingPencarian)
         txtStatusPencarian = findViewById(R.id.txtStatusPencarian)
         tabSumberArsip = findViewById(R.id.tabSumberArsip)
+        // Di landscape Material bisa membungkus lebar tab (jadi sempit & bertumpuk). Paksa
+        // mode fixed + gravity fill dan bagi lebar sama rata (bobot 1) setiap kali di-layout.
+        tabSumberArsip.tabMode = TabLayout.MODE_FIXED
+        tabSumberArsip.tabGravity = TabLayout.GRAVITY_FILL
+        tabSumberArsip.addOnLayoutChangeListener { _, _, _, _, _, _, _, _, _ ->
+            val strip = tabSumberArsip.getChildAt(0) as? android.view.ViewGroup ?: return@addOnLayoutChangeListener
+            var perlu = false
+            for (i in 0 until strip.childCount) {
+                val lp = strip.getChildAt(i).layoutParams as? android.widget.LinearLayout.LayoutParams ?: continue
+                if (lp.width != 0 || lp.weight != 1f) { lp.width = 0; lp.weight = 1f; perlu = true }
+            }
+            if (perlu) strip.requestLayout()
+        }
         tabSumberArsip.addOnTabSelectedListener(object : TabLayout.OnTabSelectedListener {
             override fun onTabSelected(tab: TabLayout.Tab) {
                 // Diabaikan kalau ini cuma sinkronisasi visual dari
@@ -864,6 +877,7 @@ when (fase) {
     }
 
     override fun onDestroy() {
+        tutupDialogOffline()
         super.onDestroy()
         // Matikan thread pool render halaman supaya tidak bocor/nyala terus
         // setelah Activity ditutup (lihat BookPageProvider).
@@ -1268,8 +1282,76 @@ when (fase) {
             withContext(Dispatchers.Main) {
                 pompaDataKeLayar(dataTersisa)
                 muatDataAwalKeSasis(dataTersisa)
+                // Jangan biarkan pengguna di layar kosong tanpa penjelasan.
+                if (!isJaringanTersedia()) {
+                    if (dataTersisa.isEmpty()) {
+                        tampilkanDialogOffline()
+                    } else {
+                        Toast.makeText(
+                            this@MainActivity,
+                            "Anda sedang offline. Menampilkan data yang sudah tersimpan.",
+                            Toast.LENGTH_LONG
+                        ).show()
+                    }
+                }
             }
         }
+    }
+
+    private var dialogOffline: androidx.appcompat.app.AlertDialog? = null
+
+    /** Dialog penjelasan + langkah pemulihan saat belum ada data dan perangkat offline. */
+    private fun tampilkanDialogOffline() {
+        if (isFinishing || isDestroyed || dialogOffline?.isShowing == true) return
+        val isi = layoutInflater.inflate(R.layout.dialog_offline, null)
+        isi.findViewById<TextView>(R.id.txtOfflineIsi).text =
+            "Pustaka FK perlu mengunduh data arsip (sekitar 115 MB) saat pertama kali dibuka. " +
+            "Saat ini perangkat tidak terhubung ke internet, kemungkinan mode pesawat aktif " +
+            "atau Wi-Fi dan data seluler mati.\n\n" +
+            "Yang perlu dilakukan:\n" +
+            "1. Matikan mode pesawat, lalu nyalakan Wi-Fi atau data seluler.\n" +
+            "2. Pastikan sinyal stabil (disarankan Wi-Fi) dan ruang penyimpanan kosong minimal 500 MB.\n" +
+            "3. Tekan \"Coba Lagi\", atau biarkan aplikasi terbuka: unduhan dimulai otomatis begitu koneksi kembali.\n\n" +
+            "Selama data belum ada, daftar arsip akan kosong."
+        val dialog = androidx.appcompat.app.AlertDialog.Builder(this)
+            .setView(isi)
+            .setCancelable(true)
+            .setPositiveButton("Coba Lagi", null)
+            .setNeutralButton("Pengaturan Jaringan", null)
+            .setNegativeButton("Tutup", null)
+            .create()
+        dialog.setOnShowListener {
+            val coklat = android.graphics.Color.parseColor("#6B4226")
+            dialog.getButton(androidx.appcompat.app.AlertDialog.BUTTON_POSITIVE).apply {
+                setTextColor(coklat)
+                setOnClickListener {
+                    if (isJaringanTersedia()) {
+                        dialog.dismiss()
+                        Toast.makeText(this@MainActivity, "Koneksi kembali, memulai unduhan...", Toast.LENGTH_SHORT).show()
+                    } else {
+                        Toast.makeText(this@MainActivity, "Masih offline. Cek mode pesawat / Wi-Fi.", Toast.LENGTH_SHORT).show()
+                    }
+                }
+            }
+            dialog.getButton(androidx.appcompat.app.AlertDialog.BUTTON_NEUTRAL).apply {
+                setTextColor(coklat)
+                setOnClickListener {
+                    try {
+                        startActivity(Intent(android.provider.Settings.ACTION_WIRELESS_SETTINGS))
+                    } catch (e: Exception) {
+                        try { startActivity(Intent(android.provider.Settings.ACTION_SETTINGS)) } catch (_: Exception) {}
+                    }
+                }
+            }
+            dialog.getButton(androidx.appcompat.app.AlertDialog.BUTTON_NEGATIVE).setTextColor(android.graphics.Color.parseColor("#8C6A45"))
+        }
+        dialogOffline = dialog
+        dialog.show()
+    }
+
+    private fun tutupDialogOffline() {
+        dialogOffline?.let { if (it.isShowing) it.dismiss() }
+        dialogOffline = null
     }
 
     private fun tanganiSelesainyaUnduhan(idUnduhan: Long, sukses: Boolean) {
@@ -1369,6 +1451,7 @@ private fun aktifkanMesinPenyedot() {
                 }
             }
             withContext(Dispatchers.Main) {
+                tutupDialogOffline()
                 aktifkanMesinPenyedot()
             }
         }
@@ -1518,7 +1601,7 @@ private fun pantauTekananUnduhan(idUnduhan: Long, downloadManager: DownloadManag
 
             if (beradaDiFaseGagalJaringan && jaringanAktif) {
                 beradaDiFaseGagalJaringan = false
-                withContext(Dispatchers.Main) { perbaruiPanelTelemetri(FaseInjeksi.FASE_3, 0, 0, 0) }
+                withContext(Dispatchers.Main) { tutupDialogOffline(); perbaruiPanelTelemetri(FaseInjeksi.FASE_3, 0, 0, 0) }
             }
 
             val query = DownloadManager.Query().setFilterById(idUnduhan)
@@ -2523,7 +2606,8 @@ private fun eksekusiLogikaPencarian(kataKunciMentah: String?) {
         val totalVolume = daftarArsipGlobal.size
         txtStatusPencarian.text = "Arsip 24/03/2014 s.d $tanggalTerbaruFormatted Total $totalVolume Status"
     } else {
-        txtStatusPencarian.text = "Sistem Telemetri: 0 Arsip Terdeteksi"
+        txtStatusPencarian.text = if (isJaringanTersedia()) "Sistem Telemetri: 0 Arsip Terdeteksi"
+                                  else "Belum ada data arsip \u2022 Perangkat offline"
     }
 }
 

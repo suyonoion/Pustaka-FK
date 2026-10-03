@@ -35,10 +35,21 @@ class MesinInjeksiWorker(context: Context, params: WorkerParameters) : Coroutine
             )
             manajerNotif.createNotificationChannel(kanal)
         }
+        // Ketuk notifikasi => kembali ke aplikasi (MainActivity singleTask: tidak membuat instance baru).
+        val intentBuka = android.content.Intent(applicationContext, MainActivity::class.java).apply {
+            action = android.content.Intent.ACTION_MAIN
+            addCategory(android.content.Intent.CATEGORY_LAUNCHER)
+            flags = android.content.Intent.FLAG_ACTIVITY_NEW_TASK or android.content.Intent.FLAG_ACTIVITY_SINGLE_TOP
+        }
+        val pendingBuka = android.app.PendingIntent.getActivity(
+            applicationContext, 0, intentBuka,
+            android.app.PendingIntent.FLAG_UPDATE_CURRENT or android.app.PendingIntent.FLAG_IMMUTABLE
+        )
         val notifikasi: Notification = NotificationCompat.Builder(applicationContext, ID_KANAL_NOTIFIKASI)
             .setContentTitle("Pustaka FK")
             .setContentText(teks)
             .setSmallIcon(R.drawable.ic_launcher_fk)
+            .setContentIntent(pendingBuka)
             .setOngoing(true)
             .setOnlyAlertOnce(true)
             .build()
