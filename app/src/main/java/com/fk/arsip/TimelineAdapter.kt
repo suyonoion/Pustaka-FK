@@ -51,7 +51,7 @@ class TimelineAdapter(
         if (holder is TahunViewHolder && titik.tipe == TIPE_TAHUN) {
             // Tahun = biji tasbih agak runcing
             holder.txtLabel.text = titik.teks
-            holder.txtLabel.textSize = 12f
+            holder.txtLabel.textSize = 11f
             holder.txtLabel.setTextColor(Color.parseColor("#F0CF94"))
             holder.txtLabel.setTypeface(null, Typeface.BOLD)
             holder.txtLabel.background = ManikDrawable(ManikDrawable.Gaya.RUNCING)
@@ -62,7 +62,7 @@ class TimelineAdapter(
         } else if (holder is BulanViewHolder && titik.tipe == TIPE_BULAN) {
             // Bulan = biji tasbih bulat; terpilih = emas menyala
             holder.txtLabel.text = titik.teks
-            holder.txtLabel.textSize = 9f
+            holder.txtLabel.textSize = 8f
             holder.txtLabel.setTypeface(null, Typeface.BOLD)
 
             if (position == posisiTerpilih) {
@@ -71,7 +71,7 @@ class TimelineAdapter(
             } else {
                 holder.txtLabel.background =
                     ManikDrawable(ManikDrawable.Gaya.KAYU, if (titik.warnaGenap) 0 else 1)
-                holder.txtLabel.setTextColor(Color.parseColor("#F5E3BC"))
+                holder.txtLabel.setTextColor(Color.parseColor("#FFF6E0"))
             }
 
             holder.itemView.setOnClickListener {
@@ -90,4 +90,7 @@ class TimelineAdapter(
     }
 
     override fun getItemCount(): Int = daftarTitik.size
+
+    /** Paksa semua biji digambar ulang dengan state terbaru (dipanggil saat timeline muncul lagi). */
+    fun segarkan() = notifyDataSetChanged()
 }

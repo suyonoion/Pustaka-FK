@@ -36,9 +36,9 @@ class ManikDrawable(private val gaya: Gaya, private val seri: Int = 0) : Drawabl
         val cx = (l + r) / 2f; val cy = (t + bt) / 2f
 
         val (inti, tengah, tepi) = when (gaya) {
-            Gaya.KAYU -> if (seri == 0) Triple("#9A6A44", "#5E3B25", "#2B170C") else Triple("#8A5E3E", "#4E3020", "#26140A")
+            Gaya.KAYU -> if (seri == 0) Triple("#D2AE86", "#B3834F", "#84583A") else Triple("#C8A27A", "#A97A48", "#7C5232")
             Gaya.MENYALA -> Triple("#FFE2A8", "#F0A040", "#B05A1C")
-            Gaya.RUNCING -> Triple("#7A5535", "#3F2616", "#1C0F08")
+            Gaya.RUNCING -> Triple("#C09566", "#946336", "#664226")
         }
         pIsi.style = Paint.Style.FILL
         pIsi.shader = RadialGradient(cx - w * 0.2f, cy - h * 0.25f, maxOf(w, h) * 0.85f,
@@ -62,7 +62,7 @@ class ManikDrawable(private val gaya: Gaya, private val seri: Int = 0) : Drawabl
         // serat kayu halus
         if (gaya != Gaya.MENYALA) {
             c.save(); c.clipPath(jalur)
-            pGaris.strokeWidth = 0.8f * dens; pGaris.color = Color.argb(60, 15, 6, 2)
+            pGaris.strokeWidth = 0.8f * dens; pGaris.color = Color.argb(40, 60, 30, 10)
             for (k in -2..2) c.drawLine(l, cy + k * h * 0.2f, r, cy + k * h * 0.2f + h * 0.12f, pGaris)
             c.restore()
         }
@@ -70,9 +70,9 @@ class ManikDrawable(private val gaya: Gaya, private val seri: Int = 0) : Drawabl
         // bingkai
         pGaris.strokeWidth = (if (gaya == Gaya.RUNCING) 1.4f else 1f) * dens
         pGaris.color = when (gaya) {
-            Gaya.RUNCING -> Color.parseColor("#D9A94E")
+            Gaya.RUNCING -> Color.parseColor("#D2A24C")
             Gaya.MENYALA -> Color.parseColor("#6B3A12")
-            else -> Color.parseColor("#22120A")
+            else -> Color.parseColor("#6B4A2E")
         }
         c.drawPath(jalur, pGaris)
 

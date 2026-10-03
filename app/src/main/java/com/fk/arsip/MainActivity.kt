@@ -426,7 +426,8 @@ private var kecepatanEmaBytesPerSec: Double = 0.0
                 panelIkonBaca.visibility = View.GONE
                 barAksiBaca.visibility = View.GONE
                 recyclerGridMode.visibility = View.VISIBLE
-                kontainerJalurKanan.visibility = View.VISIBLE 
+                kontainerJalurKanan.visibility = View.VISIBLE
+                segarkanTimeline()
                 recyclerTimeline.visibility = View.VISIBLE
                 // FORMAT TELEMETRI KATEGORI SAAT KEMBALI
                 panelStatusPencarian.visibility = View.VISIBLE
@@ -461,6 +462,7 @@ private var kecepatanEmaBytesPerSec: Double = 0.0
                     panelIkonBaca.visibility = View.GONE
                     recyclerGridMode.visibility = View.VISIBLE
                     kontainerJalurKanan.visibility = View.VISIBLE
+                    segarkanTimeline()
                     recyclerTimeline.visibility = View.VISIBLE
                     // ---------------------------------------------------------------
                     
@@ -599,6 +601,7 @@ private fun eksekusiSaringanKombinasi(kategori: String, urutTerlama: Boolean, su
             panelIkonBaca.visibility = View.GONE
             recyclerGridMode.visibility = View.VISIBLE
             kontainerJalurKanan.visibility = View.VISIBLE
+            segarkanTimeline()
             recyclerTimeline.visibility = View.VISIBLE
 
             // Sinkronkan sorotan Tab FK/YW dgn sumber yang baru diterapkan --
@@ -801,6 +804,18 @@ when (fase) {
     // tersentuh -- tidak mengembalikan risiko crash yg sudah diperbaiki),
     // tapi apa pun yang dikomposit di sana otomatis jatuh di luar area yang
     // terlihat, apa pun mekanisme komposit SurfaceView di device ini.
+    /** Pastikan timeline kanan tampil utuh (alpha normal, digambar ulang) setelah muncul kembali. */
+    private fun segarkanTimeline() {
+        kontainerJalurKanan.animate().cancel()
+        kontainerJalurKanan.alpha = 1f
+        recyclerTimeline.alpha = 1f
+        recyclerTimeline.post {
+            (recyclerTimeline.adapter as? TimelineAdapter)?.segarkan()
+            recyclerTimeline.invalidate()
+            kontainerJalurKanan.invalidate()
+        }
+    }
+
     private fun tutupModeBukuKeGrid() {
         sedangModeBuku = false
         recyclerGridMode.bringToFront()
@@ -1106,6 +1121,7 @@ when (fase) {
     // --- INJEKSI KATUP TIMELINE: BUKA PAKSA ---
     recyclerGridMode.visibility = View.VISIBLE
     kontainerJalurKanan.visibility = View.VISIBLE
+    segarkanTimeline()
     recyclerTimeline.visibility = View.VISIBLE
     // ------------------------------------------
     
@@ -1861,6 +1877,9 @@ private fun perbaruiDetailKecepatan(persen: Int, byteDiterima: Long, totalByte: 
 
                 recyclerTimeline.layoutManager = androidx.recyclerview.widget.LinearLayoutManager(this@MainActivity)
                 recyclerTimeline.adapter = adapterTimeline
+                recyclerTimeline.itemAnimator = null // tanpa cross-fade alpha antar item
+                while (recyclerTimeline.itemDecorationCount > 0) recyclerTimeline.removeItemDecorationAt(0)
+                recyclerTimeline.addItemDecoration(TaliTimelineDecoration(resources.displayMetrics.density))
 
                 // PERBAIKAN: begitu grid & timeline sudah benar-benar terisi data,
                 // sembunyikan skeleton/placeholder loading agar tidak menutupi konten.
@@ -2392,6 +2411,7 @@ private fun eksekusiLogikaPencarian(kataKunciMentah: String?) {
                 // pencarian yang dilakukan SAAT sedang di mode buku membuka
                 // grid hasil pencarian tapi timeline kanan tetap tersembunyi.
                 kontainerJalurKanan.visibility = View.VISIBLE
+                segarkanTimeline()
             }
 
             pompaDataKeLayar(hasilSaringanPresisi)

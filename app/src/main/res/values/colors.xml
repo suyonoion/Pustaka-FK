@@ -2,7 +2,7 @@
 <resources>
 <color name="primary">#6B4226</color>        
 <color name="primary_light">#8B5A33</color>  
-<color name="bg_main">#EFE3CE</color>        
+<color name="bg_main">#FFFFFF</color>        
 <color name="text_primary">#3E2A1C</color>   
 <color name="accent_teal">#B8803A</color>
 <color name="primary_dark">#2A1810</color>
@@ -19,9 +19,9 @@
 <color name="text_emas">#D4AF37</color>
 <color name="text_secondary">#7A6A5A</color>
     <!-- Background -->
-    <color name="bg_halaman">#E8DAC3</color>
-    <color name="bg_odd">#F7EEDD</color>
-    <color name="bg_even">#EBDCC3</color>
+    <color name="bg_halaman">#FFFFFF</color>
+    <color name="bg_odd">#FFFFFF</color>
+    <color name="bg_even">#FFFFFF</color>
     <color name="bg_clickable">#D8C09A</color>
     <!-- Timeline -->
 <color name="timeline_line">#8B6A45</color>
