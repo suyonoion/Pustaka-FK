@@ -3,7 +3,7 @@
     xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent"
-    android:layout_height="130dp"
+    android:layout_height="wrap_content"
     android:layout_margin="4dp"
     app:cardBackgroundColor="#FFFEFA"
     app:cardCornerRadius="8dp"
@@ -14,7 +14,7 @@
 
     <RelativeLayout
         android:layout_width="match_parent"
-        android:layout_height="match_parent"
+        android:layout_height="wrap_content"
         android:padding="8dp">
 
         <!-- HEADER MINIATUR -->
@@ -102,12 +102,11 @@
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_below="@id/blokHeaderGrid"
-            android:layout_above="@+id/blokFooterGrid"
             android:text="Cuplikan teks fatwa atau status..."
-            android:textSize="9.5sp"
+            android:textSize="11sp"
             android:textColor="#593F2D"
-            android:maxLines="5"
-            android:minLines="5" 
+            android:maxLines="10"
+            android:minLines="10" 
             android:ellipsize="end"
             android:layout_marginTop="6dp"
             android:layout_marginBottom="4dp"
@@ -118,7 +117,7 @@
         android:layout_width="match_parent" 
         android:layout_height="1dp" 
         android:background="#D8C7AB"
-        android:layout_above="@+id/blokFooterGrid"
+        android:layout_below="@id/txtGridCuplikan"
         android:layout_marginBottom="4dp"/>
 
         <!-- FOOTER MINIATUR -->
@@ -126,7 +125,7 @@
             android:id="@+id/blokFooterGrid"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_alignParentBottom="true"
+            android:layout_below="@id/garisBawah"
             android:orientation="horizontal"
             android:gravity="center_vertical">
 
@@ -164,11 +163,15 @@
             <TextView
                 android:id="@+id/txtIndeksGrid"
                 android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
+                android:layout_height="22dp"
+                android:minWidth="22dp"
+                android:gravity="center"
+                android:includeFontPadding="false"
+                android:paddingHorizontal="6dp"
                 android:text="#2"
-                android:textSize="8sp"
+                android:textSize="9.5sp"
                 android:textStyle="bold"
-                android:textColor="#D4AF37" />
+                android:textColor="#4A2A0C" />
         </LinearLayout>
 
     </RelativeLayout>

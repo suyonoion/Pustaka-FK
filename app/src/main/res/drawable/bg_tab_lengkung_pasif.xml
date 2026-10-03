@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Tab tidak terpilih: lengkung runcing yang sama, hanya garis tipis di atas latar putih. -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="100dp" android:height="46dp"
+    android:viewportWidth="100" android:viewportHeight="46">
+    <path
+        android:fillColor="#FFFFFF"
+        android:strokeColor="#E2D3BA"
+        android:strokeWidth="1"
+        android:pathData="M1,46 L1,26 C1,15 22,10 50,1 C78,10 99,15 99,26 L99,46 Z" />
+</vector>

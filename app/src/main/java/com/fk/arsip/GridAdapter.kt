@@ -87,17 +87,27 @@ class GridAdapter(
                 holder.txtKategori.text = arsip.kategori
             }
             
-            // 2. PENGELASAN CUPLIKAN TEKS (Dikalibrasi ke batas 200 karakter untuk ruang 5 baris)
-            val cuplikan = if (arsip.kontenPenuh.length > 200) {
-                arsip.kontenPenuh.substring(0, 200) + "..."
-            } else {
-                arsip.kontenPenuh
-            }
-            holder.txtCuplikan.text = cuplikan 
-            
+            // 2. CUPLIKAN: maks 200 karakter, baris kosong/pemisah "====" dirapikan agar muat
+            // dalam 10 baris, lalu ditutup "Baca selengkapnya ..." (emas, tebal).
+            val bersih = arsip.kontenPenuh
+                .lines()
+                .filter { baris -> baris.isNotBlank() && !baris.trim().matches(Regex("^[=\\-_*~.]{3,}$")) }
+                .joinToString("\n") { it.trim() }
+            val potong = if (bersih.length > 200) bersih.substring(0, 200).trimEnd() + "… " else "$bersih "
+            val ajakan = "Baca selengkapnya ..."
+            val teks = android.text.SpannableString(potong + ajakan)
+            val mulai = potong.length
+            teks.setSpan(android.text.style.ForegroundColorSpan(android.graphics.Color.parseColor("#B8802E")),
+                mulai, teks.length, android.text.Spanned.SPAN_EXCLUSIVE_EXCLUSIVE)
+            teks.setSpan(android.text.style.StyleSpan(android.graphics.Typeface.BOLD),
+                mulai, teks.length, android.text.Spanned.SPAN_EXCLUSIVE_EXCLUSIVE)
+            holder.txtCuplikan.text = teks
+
             // 3. NOMOR URUT INDEKS
             val nomorUrut = material.posisiAsli + 1 
             holder.txtIndeksGrid.text = "#$nomorUrut"
+            // Nomor dibungkus biji tasbih menyala (emas)
+            holder.txtIndeksGrid.background = ManikDrawable(ManikDrawable.Gaya.MENYALA)
 
             // 4. ESEKUSI KLIK ITEM
             holder.itemView.setOnClickListener {

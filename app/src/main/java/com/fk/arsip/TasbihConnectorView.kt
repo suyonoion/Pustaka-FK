@@ -122,7 +122,7 @@ class TasbihConnectorView @JvmOverloads constructor(
     private fun bijiKayu(c: Canvas, x: Float, y: Float, rx: Float, ry: Float) {
         val oval = RectF(x - rx, y - ry, x + rx, y + ry)
         pIsi.style = Paint.Style.FILL
-        pIsi.shader = RadialGradient(
+        pIsi.alpha = 255; pIsi.shader = RadialGradient(
             x - rx * 0.35f, y - ry * 0.4f, rx * 1.5f,
             intArrayOf(Color.parseColor("#A07048"), Color.parseColor("#5E3B25"), Color.parseColor("#2B170C")),
             floatArrayOf(0f, 0.6f, 1f), Shader.TileMode.CLAMP
@@ -143,19 +143,19 @@ class TasbihConnectorView @JvmOverloads constructor(
     private fun bijiBesar(c: Canvas, x: Float, y: Float, nomor: Int, menyala: Boolean, aktif: Boolean) {
         if (menyala) {
             val rg = rBesar * (if (aktif) 2.9f else 2.3f)
-            pIsi.shader = RadialGradient(
+            pIsi.alpha = 255; pIsi.shader = RadialGradient(
                 x, y, rg,
                 intArrayOf(Color.argb(if (aktif) 190 else 130, 255, 170, 60), Color.argb(0, 255, 170, 60)),
                 floatArrayOf(0f, 1f), Shader.TileMode.CLAMP
             )
             c.drawCircle(x, y, rg, pIsi)
-            pIsi.shader = RadialGradient(
+            pIsi.alpha = 255; pIsi.shader = RadialGradient(
                 x - rBesar * 0.3f, y - rBesar * 0.35f, rBesar * 1.45f,
                 intArrayOf(Color.parseColor("#FFE2A8"), Color.parseColor("#F0A040"), Color.parseColor("#B05A1C")),
                 floatArrayOf(0f, 0.5f, 1f), Shader.TileMode.CLAMP
             )
         } else {
-            pIsi.shader = RadialGradient(
+            pIsi.alpha = 255; pIsi.shader = RadialGradient(
                 x - rBesar * 0.3f, y - rBesar * 0.35f, rBesar * 1.45f,
                 intArrayOf(Color.parseColor("#B2A596"), Color.parseColor("#6E645A"), Color.parseColor("#2F2924")),
                 floatArrayOf(0f, 0.5f, 1f), Shader.TileMode.CLAMP
@@ -183,7 +183,7 @@ class TasbihConnectorView @JvmOverloads constructor(
         c.translate(x, y); c.rotate(45f)
         val badan = RectF(-panjang, -lebar, panjang, lebar)
         pIsi.style = Paint.Style.FILL
-        pIsi.shader = LinearGradient(0f, -lebar, 0f, lebar,
+        pIsi.alpha = 255; pIsi.shader = LinearGradient(0f, -lebar, 0f, lebar,
             intArrayOf(Color.parseColor("#B07C50"), Color.parseColor("#6A4328"), Color.parseColor("#2E190D")),
             floatArrayOf(0f, 0.5f, 1f), Shader.TileMode.CLAMP)
         c.drawRoundRect(badan, lebar, lebar, pIsi)
@@ -199,7 +199,7 @@ class TasbihConnectorView @JvmOverloads constructor(
         // leher + bola rumbai di ujung
         pIsi.color = Color.parseColor("#3A2214")
         c.drawRect(panjang - dp(2f), -dp(4f), panjang + dp(10f), dp(4f), pIsi)
-        pIsi.shader = RadialGradient(panjang + dp(18f) - dp(3f), -dp(3f), dp(12f),
+        pIsi.alpha = 255; pIsi.shader = RadialGradient(panjang + dp(18f) - dp(3f), -dp(3f), dp(12f),
             intArrayOf(Color.parseColor("#A07048"), Color.parseColor("#4E3020"), Color.parseColor("#24120A")),
             floatArrayOf(0f, 0.6f, 1f), Shader.TileMode.CLAMP)
         c.drawCircle(panjang + dp(18f), 0f, dp(10f), pIsi)

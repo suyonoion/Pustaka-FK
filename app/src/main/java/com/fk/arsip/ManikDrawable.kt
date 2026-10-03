@@ -25,6 +25,8 @@ class ManikDrawable(private val gaya: Gaya, private val seri: Int = 0) : Drawabl
     private val dens = Resources.getSystem().displayMetrics.density
     private val pIsi = Paint(Paint.ANTI_ALIAS_FLAG)
     private val pGaris = Paint(Paint.ANTI_ALIAS_FLAG).apply { style = Paint.Style.STROKE }
+    private val pKilau = Paint(Paint.ANTI_ALIAS_FLAG)
+    private var alphaKu = 255
     private val jalur = Path()
 
     override fun draw(c: Canvas) {
@@ -36,10 +38,14 @@ class ManikDrawable(private val gaya: Gaya, private val seri: Int = 0) : Drawabl
         val cx = (l + r) / 2f; val cy = (t + bt) / 2f
 
         val (inti, tengah, tepi) = when (gaya) {
-            Gaya.KAYU -> if (seri == 0) Triple("#D2AE86", "#B3834F", "#84583A") else Triple("#C8A27A", "#A97A48", "#7C5232")
+            Gaya.KAYU -> if (seri == 0) Triple("#B58A5E", "#8A5E36", "#5A3A22") else Triple("#AD825A", "#82562F", "#553520")
             Gaya.MENYALA -> Triple("#FFE2A8", "#F0A040", "#B05A1C")
-            Gaya.RUNCING -> Triple("#C09566", "#946336", "#664226")
+            Gaya.RUNCING -> Triple("#A97A4C", "#74482A", "#4A2E1B")
         }
+        // PENTING: reset warna+alpha. Dulu pIsi.color dipakai utk kilau (alpha 70) dan nilainya
+        // "menempel" -> gambar ulang berikutnya (mis. balik dari recent) jadi transparan.
+        pIsi.color = Color.BLACK
+        pIsi.alpha = alphaKu
         pIsi.style = Paint.Style.FILL
         pIsi.shader = RadialGradient(cx - w * 0.2f, cy - h * 0.25f, maxOf(w, h) * 0.85f,
             intArrayOf(Color.parseColor(inti), Color.parseColor(tengah), Color.parseColor(tepi)),
@@ -77,11 +83,11 @@ class ManikDrawable(private val gaya: Gaya, private val seri: Int = 0) : Drawabl
         c.drawPath(jalur, pGaris)
 
         // kilau
-        pIsi.color = Color.argb(if (gaya == Gaya.MENYALA) 130 else 70, 255, 255, 255)
-        c.drawOval(RectF(cx - w * 0.33f, t + h * 0.10f, cx - w * 0.07f, t + h * 0.28f), pIsi)
+        pKilau.color = Color.argb(((if (gaya == Gaya.MENYALA) 130 else 70) * alphaKu / 255f).toInt(), 255, 255, 255)
+        c.drawOval(RectF(cx - w * 0.33f, t + h * 0.10f, cx - w * 0.07f, t + h * 0.28f), pKilau)
     }
 
-    override fun setAlpha(alpha: Int) { pIsi.alpha = alpha }
+    override fun setAlpha(alpha: Int) { alphaKu = alpha; invalidateSelf() }
     override fun setColorFilter(cf: ColorFilter?) { pIsi.colorFilter = cf }
     @Deprecated("Deprecated in Java")
     override fun getOpacity(): Int = PixelFormat.TRANSLUCENT
