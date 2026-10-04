@@ -352,17 +352,35 @@ class BookPageProvider(
             return
         }
 
+        // Sisi DALAM sampul depan (halaman kiri saat landscape di halaman 1): dulu polos abu-olive.
+        // Sekarang berisi halaman pengantar (basmalah, judul, ringkasan koleksi, petunjuk).
+        var sisiBelakang = warnaSampulBack
+        var bmpBelakang: Bitmap? = null
+        if (index == 0) {
+            val kunciDalam = "sampul_dalam:${w}x$h:${data.size}"
+            val tersimpan = cacheBitmap.get(kunciDalam)
+            if (tersimpan != null) {
+                bmpBelakang = tersimpan.copy(Bitmap.Config.ARGB_8888, false) // setTexture me-recycle bitmap-nya
+            } else {
+                mintaRenderLatarBelakang(kunciDalam, { renderSampulDalam(w, h, data) }, index)
+            }
+        }
+        fun pasangBelakang() {
+            if (bmpBelakang != null) page.setTexture(bmpBelakang, CurlPage.SIDE_BACK)
+            else page.setColor(sisiBelakang, CurlPage.SIDE_BACK)
+        }
+
         val fromCache = cacheBitmap.get(resolusi.cacheKey)
         if (fromCache != null) {
             val offsetUntukHalamanIni = if (index == indexSedangDibaca) offsetGeserPx else 0
             page.setTexture(potongUntukTampil(fromCache, w, h, offsetUntukHalamanIni), CurlPage.SIDE_FRONT)
-            page.setColor(warnaSampulBack, CurlPage.SIDE_BACK)
+            pasangBelakang()
             prefetchTetangga(index, data.size, w, h, data)
             return
         }
 
         page.setTexture(renderPlaceholder(w, h), CurlPage.SIDE_FRONT)
-        page.setColor(warnaSampulBack, CurlPage.SIDE_BACK)
+        pasangBelakang()
         mintaRenderLatarBelakang(resolusi.cacheKey, resolusi.tugas, index)
     }
 
@@ -419,6 +437,22 @@ class BookPageProvider(
             val view = LayoutInflater.from(context).inflate(R.layout.item_sampul_depan, null, true)
             view.findViewById<TextView>(R.id.txtJudulSampul)?.text = judul
             view.findViewById<TextView>(R.id.txtSubjudulSampul)?.text = subjudul
+            view
+        }
+    }
+
+    /** Halaman pengantar di sisi dalam sampul depan. */
+    private fun renderSampulDalam(width: Int, height: Int, data: List<ArsipEntity>): Bitmap {
+        return renderViewKeBitmapDiMainThread(width, height) {
+            val view = LayoutInflater.from(context).inflate(R.layout.item_sampul_dalam, null, true)
+            view.findViewById<FrameMandalaView>(R.id.bingkaiSampulDalam)?.tampilkanMedali = false
+            val ringkas = if (data.isEmpty()) "Belum ada arsip" else {
+                val awal = data.last().tanggalBaca.substringBefore(" ")
+                val akhir = data.first().tanggalBaca.substringBefore(" ")
+                "${data.size} status \u2022 $awal s.d. $akhir"
+            }
+            view.findViewById<BeadProgressView>(R.id.untaianSampulDalam)?.progress = 100 // untaian menyala penuh
+            view.findViewById<TextView>(R.id.txtRingkasSampulDalam)?.text = ringkas
             view
         }
     }
@@ -572,7 +606,18 @@ class BookPageProvider(
             // ikut arsip.namaPenulis (user->name JSON) meski datanya YW.
             view.findViewById<TextView>(R.id.txtNamaSumberBuku).text =
                 arsip.namaPenulis.ifBlank { "Fatwa Kehidupan" }
-            view.findViewById<ImageView>(R.id.imgProfilAbah)?.setImageResource(R.drawable.profil_abah)
+            view.findViewById<ImageView>(R.id.imgProfilAbah)?.let { iv ->
+                // Foto profil BULAT: crop persegi tengah dulu, baru dibulatkan (aman utk foto non-persegi).
+                val sumber = android.graphics.BitmapFactory.decodeResource(context.resources, R.drawable.profil_abah)
+                if (sumber != null) {
+                    val sisi = minOf(sumber.width, sumber.height)
+                    val persegi = Bitmap.createBitmap(sumber, (sumber.width - sisi) / 2, (sumber.height - sisi) / 2, sisi, sisi)
+                    val bulat = androidx.core.graphics.drawable.RoundedBitmapDrawableFactory.create(context.resources, persegi)
+                    bulat.isCircular = true
+                    bulat.setAntiAlias(true)
+                    iv.setImageDrawable(bulat)
+                } else iv.setImageResource(R.drawable.profil_abah)
+            }
             view.findViewById<View>(R.id.wadahProfilPenulis).visibility = View.VISIBLE
             view.findViewById<View>(R.id.wadahFooterDekoratif).visibility = View.GONE
 

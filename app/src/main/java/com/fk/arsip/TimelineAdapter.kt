@@ -51,7 +51,7 @@ class TimelineAdapter(
         if (holder is TahunViewHolder && titik.tipe == TIPE_TAHUN) {
             // Tahun = biji tasbih agak runcing
             holder.txtLabel.text = titik.teks
-            holder.txtLabel.textSize = 11f
+            holder.txtLabel.textSize = 10.5f
             holder.txtLabel.setTextColor(Color.parseColor("#F0CF94"))
             holder.txtLabel.setTypeface(null, Typeface.BOLD)
             holder.txtLabel.background = ManikDrawable(ManikDrawable.Gaya.RUNCING)

@@ -27,6 +27,10 @@ class FrameMandalaView @JvmOverloads constructor(
     var tampilkanLabelAlat: Boolean = false
         set(v) { field = v; invalidate() }
 
+    /** Medali kaligrafi samar di atas kiri/kanan. Matikan utk halaman yang pendek (mis. sampul dalam). */
+    var tampilkanMedali: Boolean = true
+        set(v) { field = v; invalidate() }
+
     private val dens = resources.displayMetrics.density
     private fun dp(v: Float) = v * dens
 
@@ -57,8 +61,10 @@ class FrameMandalaView @JvmOverloads constructor(
 
         // Medali kaligrafi samar (kiri & kanan atas)
         val ry = dp(108f); val rr = dp(27f)
-        medali(c, w * 0.21f, ry, rr, "القرآن الكريم")
-        medali(c, w * 0.79f, ry, rr, "القرآن الكريم")
+        if (tampilkanMedali) {
+            medali(c, w * 0.21f, ry, rr, "القرآن الكريم")
+            medali(c, w * 0.79f, ry, rr, "القرآن الكريم")
+        }
 
         if (tampilkanLabelAlat) {
             pTeks.typeface = Typeface.create(Typeface.SERIF, Typeface.BOLD_ITALIC)

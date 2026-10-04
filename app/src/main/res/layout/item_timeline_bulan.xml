@@ -6,8 +6,8 @@
 
     <TextView
         android:id="@+id/txtLabelTimeline"
-        android:layout_width="27dp"
-        android:layout_height="27dp"
+        android:layout_width="28dp"
+        android:layout_height="28dp"
         android:layout_gravity="center_horizontal"
         android:layout_marginVertical="-1.5dp"
         android:gravity="center"

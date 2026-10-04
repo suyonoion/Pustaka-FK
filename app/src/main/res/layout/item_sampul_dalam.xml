@@ -1,0 +1,71 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Halaman pengantar di sisi DALAM sampul depan (kiri saat landscape di halaman pertama). -->
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="#FBF3E2">
+
+    <com.fk.arsip.FrameMandalaView
+        android:id="@+id/bingkaiSampulDalam"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent" />
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:gravity="center"
+        android:orientation="vertical"
+        android:paddingHorizontal="40dp"
+        android:paddingVertical="26dp">
+
+        <com.fk.arsip.OrnamenBismillahView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content" />
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="8dp"
+            android:fontFamily="serif"
+            android:text="Pustaka FK"
+            android:textColor="#4A2E1B"
+            android:textSize="26sp"
+            android:textStyle="bold|italic" />
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="2dp"
+            android:fontFamily="serif"
+            android:text="Arsip Fatwa &amp; Kehidupan"
+            android:textColor="#B8802E"
+            android:textSize="13sp" />
+
+        <com.fk.arsip.BeadProgressView
+            android:id="@+id/untaianSampulDalam"
+            android:layout_width="220dp"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="10dp" />
+
+        <TextView
+            android:id="@+id/txtRingkasSampulDalam"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="6dp"
+            android:gravity="center"
+            android:text="-"
+            android:textColor="#5A4A3C"
+            android:textSize="12sp" />
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="8dp"
+            android:gravity="center"
+            android:fontFamily="serif"
+            android:text="Geser halaman untuk mulai membaca."
+            android:textColor="#8C6A45"
+            android:textSize="11sp"
+            android:textStyle="italic" />
+    </LinearLayout>
+</FrameLayout>
