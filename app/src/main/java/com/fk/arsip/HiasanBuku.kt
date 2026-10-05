@@ -123,16 +123,40 @@ object HiasanBuku {
 
     // ------------------------------------------------------------------ tepi
     private fun gambarTepiHalaman(c: Canvas, w: Int, h: Int, d: Float) {
+        // EFEK TUMPUKAN BUKU TEBAL: dari luar ke dalam di sisi kanan & bawah =
+        // celah 1dp (latar gelap spy tumpukan terlihat) -> sampul kayu -> 6 lembar bergantian krem/tan.
+        val gelap = Paint().apply { color = Color.parseColor("#1C1109") }
         val wood = Paint().apply { color = kayu }
-        c.drawRect(w - 3f * d, 0f, w.toFloat(), h.toFloat(), wood)          // bingkai kayu kanan
-        c.drawRect(0f, 0f, w.toFloat(), 2.5f * d, wood)                      // atas
-        c.drawRect(0f, h - 2.5f * d, w.toFloat(), h.toFloat(), wood)         // bawah
-        val garis = Paint().apply { strokeWidth = 0.9f * d }
-        for (k in 1..3) {                                                    // tumpukan halaman di bawah bingkai
-            garis.color = Color.argb(200 - k * 45, 190, 165, 120)
-            val x = w - 3f * d - k * 1.7f * d
-            c.drawLine(x, 3f * d, x, h - 3f * d, garis)
+        val lembar = Paint()
+        val cream = Color.parseColor("#F4EBD6"); val tan = Color.parseColor("#CDBB98")
+        val celah = 1f * d; val sampul = 2.5f * d; val tebalLembar = 1.5f * d
+        val jumlah = 6
+
+        // atas: bingkai kayu tipis saja
+        c.drawRect(0f, 0f, w.toFloat(), 2.5f * d, wood)
+
+        // KANAN
+        var x = w.toFloat()
+        c.drawRect(x - celah, 0f, x, h.toFloat(), gelap); x -= celah
+        c.drawRect(x - sampul, 0f, x, h.toFloat(), wood); x -= sampul
+        for (k in 0 until jumlah) {
+            lembar.color = if (k % 2 == 0) cream else tan
+            c.drawRect(x - tebalLembar, 2.5f * d, x, h.toFloat(), lembar); x -= tebalLembar
         }
+        // BAWAH
+        var y = h.toFloat()
+        c.drawRect(0f, y - celah, w.toFloat(), y, gelap); y -= celah
+        c.drawRect(0f, y - sampul, w.toFloat(), y, wood); y -= sampul
+        for (k in 0 until jumlah) {
+            lembar.color = if (k % 2 == 0) cream else tan
+            c.drawRect(0f, y - tebalLembar, w - (celah + sampul), y, lembar); y -= tebalLembar
+        }
+        // bayangan halus di bawah lembar teratas (kesan berlapis)
+        val bayang = Paint().apply {
+            shader = LinearGradient(x - 4f * d, 0f, x, 0f,
+                intArrayOf(Color.argb(0, 0, 0, 0), Color.argb(45, 60, 40, 15)), null, Shader.TileMode.CLAMP)
+        }
+        c.drawRect(x - 4f * d, 2.5f * d, x, y, bayang)
     }
 
     private fun gambarTepiSampul(c: Canvas, w: Int, h: Int, d: Float) {
@@ -161,7 +185,7 @@ object HiasanBuku {
             color = Color.argb(170, 168, 118, 44); textSize = 10f * d
             typeface = Typeface.create(Typeface.SERIF, Typeface.BOLD_ITALIC); textAlign = Paint.Align.RIGHT
         }
-        val xKanan = w - 16f * d; val y = h - 10f * d
+        val xKanan = w - 22f * d; val y = h - 20f * d
         c.drawText("Pustaka FK", xKanan, y, teks)
         val lebar = teks.measureText("Pustaka FK")
         val biji = Paint(Paint.ANTI_ALIAS_FLAG)

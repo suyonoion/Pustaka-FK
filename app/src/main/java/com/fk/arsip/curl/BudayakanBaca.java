@@ -276,6 +276,14 @@ public class BudayakanBaca extends GLSurfaceView implements View.OnTouchListener
 			}
 			mCurlState = CURL_NONE;
 			mAnimate = false;
+			// PERBAIKAN BUG "SCROLL & +/- UKURAN TEKS MACET SETELAH BALIK HALAMAN":
+			// mLastLeftIdx/RightIdx/CurlIdx cuma diisi di updatePages(). Setelah flip selesai
+			// mesh ditukar & mCurrentIndex berubah, tapi catatan itu masih berisi index LAMA,
+			// sehingga refreshPageTexture(index) tidak cocok dgn mesh mana pun dan diam2
+			// tidak melakukan apa-apa -- sampai ada pemicu yang memanggil updatePages()
+			// (pencarian, recent, rotasi). Dari grid -> buka status tidak kena karena
+			// langsung lewat setCurrentIndex() -> updatePages().
+			sinkronkanCatatanIndex();
 			requestRender();
 		} else {
 			mPointerPos.mPos.set(mAnimationSource);
@@ -954,6 +962,22 @@ public class BudayakanBaca extends GLSurfaceView implements View.OnTouchListener
 		// Ask page provider to fill it up with bitmaps and colors.
 		mPageProvider.updatePage(page, mPageBitmapWidth, mPageBitmapHeight,
 				index);
+	}
+
+	/**
+	 * Samakan catatan index mesh dgn keadaan "tidak sedang curl": kiri = current-1,
+	 * kanan = current, curl = tidak ada. Dipanggil di akhir animasi flip (GL thread).
+	 */
+	private void sinkronkanCatatanIndex() {
+		if (mPageProvider == null) {
+			return;
+		}
+		int n = mPageProvider.getPageCount();
+		int kiri = mCurrentIndex - 1;
+		int kanan = mCurrentIndex;
+		mLastLeftIdx = (kiri >= 0 && kiri < n) ? kiri : -1;
+		mLastRightIdx = (kanan >= 0 && kanan < n) ? kanan : -1;
+		mLastCurlIdx = -1;
 	}
 
 	/**
