@@ -352,34 +352,33 @@ class BookPageProvider(
             return
         }
 
-        // Sisi DALAM sampul depan (halaman kiri saat landscape di halaman 1): dulu polos abu-olive.
-        // Sekarang berisi halaman pengantar (basmalah, judul, ringkasan koleksi, petunjuk).
-        var sisiBelakang = warnaSampulBack
-        var bmpBelakang: Bitmap? = null
-        if (index == 0) {
-            val kunciDalam = "sampul_dalam:${w}x$h:${data.size}"
-            val tersimpan = cacheBitmap.get(kunciDalam)
-            if (tersimpan != null) {
-                bmpBelakang = tersimpan.copy(Bitmap.Config.ARGB_8888, false) // setTexture me-recycle bitmap-nya
-            } else {
-                mintaRenderLatarBelakang(kunciDalam, { renderSampulDalam(w, h, data) }, index)
-            }
+        val d = context.resources.displayMetrics.density
+        val jenis = when (index) { 0 -> HiasanBuku.SAMPUL_DEPAN; data.size + 1 -> HiasanBuku.SAMPUL_BELAKANG; else -> HiasanBuku.HALAMAN }
+
+        // SISI BALIK. index 0 = sisi dalam sampul depan (halaman pengantar); lainnya = kertas bergaris
+        // berwatermark cincin tasbih. Keduanya di-cache (terbaca normal), lalu dibalik horizontal +
+        // diberi jilid spiral tiap kali dipasang (CurlView memetakan sisi belakang secara mirror).
+        val kunciBalik = if (index == 0) "sampul_dalam:${w}x$h:${data.size}" else "kertas_balik:${w}x$h"
+        val kontenBalik = cacheBitmap.get(kunciBalik)
+        if (kontenBalik == null) {
+            val tugasBalik: () -> Bitmap = if (index == 0) { { renderSampulDalam(w, h, data) } } else { { HiasanBuku.buatKertasBalik(w, h, d) } }
+            mintaRenderLatarBelakang(kunciBalik, tugasBalik, index)
         }
         fun pasangBelakang() {
-            if (bmpBelakang != null) page.setTexture(bmpBelakang, CurlPage.SIDE_BACK)
-            else page.setColor(sisiBelakang, CurlPage.SIDE_BACK)
+            if (kontenBalik != null) page.setTexture(HiasanBuku.balikanDariKonten(kontenBalik, w, h, d), CurlPage.SIDE_BACK)
+            else page.setColor(warnaSampulBack, CurlPage.SIDE_BACK)
         }
 
         val fromCache = cacheBitmap.get(resolusi.cacheKey)
         if (fromCache != null) {
             val offsetUntukHalamanIni = if (index == indexSedangDibaca) offsetGeserPx else 0
-            page.setTexture(potongUntukTampil(fromCache, w, h, offsetUntukHalamanIni), CurlPage.SIDE_FRONT)
+            page.setTexture(HiasanBuku.potongDanHiasi(fromCache, w, h, offsetUntukHalamanIni, jenis, d), CurlPage.SIDE_FRONT)
             pasangBelakang()
             prefetchTetangga(index, data.size, w, h, data)
             return
         }
 
-        page.setTexture(renderPlaceholder(w, h), CurlPage.SIDE_FRONT)
+        page.setTexture(HiasanBuku.potongDanHiasi(renderPlaceholder(w, h), w, h, 0, jenis, d), CurlPage.SIDE_FRONT)
         pasangBelakang()
         mintaRenderLatarBelakang(resolusi.cacheKey, resolusi.tugas, index)
     }
