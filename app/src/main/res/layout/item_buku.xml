@@ -9,89 +9,89 @@
     android:paddingTop="16dp"
     android:paddingBottom="26dp">
 
-    <!-- HEADER HALAMAN (didesain ulang, portrait & landscape sama rapi):
-         baris 1 = foto profil BULAT berbingkai emas + nama + sumber, badge halaman (pil) di kanan;
-         baris 2 = tanggal • kategori selebar penuh (tidak lagi berdesakan dgn badge).
-         wadahProfilPenulis (avatar+nama+tanggal+kategori) disembunyikan di halaman lanjutan
-         (subIndex>0, lihat BookPageProvider); txtNomorHalaman selalu tampil. -->
+    <!-- HEADER HALAMAN (ringkas, setara ukuran isi; portrait & landscape sama):
+         baris 1 = foto profil bulat 36dp bercincin emas + nama (1 baris) + sumber;
+         baris 2 = tanggal • kategori (kiri) + badge halaman kecil (kanan). -->
     <LinearLayout
         android:id="@+id/wadahHeaderHalaman"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:orientation="horizontal"
-        android:gravity="top"
-        android:paddingBottom="10dp">
+        android:orientation="vertical"
+        android:paddingBottom="8dp">
 
         <LinearLayout
             android:id="@+id/wadahProfilPenulis"
-            android:layout_width="0dp"
-            android:layout_weight="1"
+            android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:orientation="vertical">
+            android:orientation="horizontal"
+            android:gravity="center_vertical">
+
+            <ImageView
+                android:id="@+id/imgProfilAbah"
+                android:layout_width="38dp"
+                android:layout_height="38dp"
+                android:padding="2dp"
+                android:background="@drawable/bg_avatar_cincin"
+                android:scaleType="centerCrop" />
 
             <LinearLayout
-                android:layout_width="match_parent"
+                android:layout_width="0dp"
                 android:layout_height="wrap_content"
-                android:orientation="horizontal"
-                android:gravity="center_vertical">
-
-                <ImageView
-                    android:id="@+id/imgProfilAbah"
-                    android:layout_width="52dp"
-                    android:layout_height="52dp"
-                    android:padding="2.5dp"
-                    android:background="@drawable/bg_avatar_cincin"
-                    android:scaleType="centerCrop" />
-
-                <LinearLayout
-                    android:layout_width="0dp"
+                android:layout_weight="1"
+                android:orientation="vertical"
+                android:layout_marginStart="9dp">
+                <TextView
+                    android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:layout_weight="1"
-                    android:orientation="vertical"
-                    android:layout_marginStart="12dp">
-                    <TextView
-                        android:layout_width="match_parent"
-                        android:layout_height="wrap_content"
-                        android:fontFamily="serif"
-                        android:text="Syeikh Muhammad Zuhri"
-                        android:textColor="#3A2313"
-                        android:textSize="16sp"
-                        android:textStyle="bold" />
-                    <TextView
-                        android:id="@+id/txtNamaSumberBuku"
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:layout_marginTop="0dp"
-                        android:text="Fatwa Kehidupan"
-                        android:textColor="#B8802E"
-                        android:textSize="9.5sp"
-                        android:textStyle="bold" />
-                </LinearLayout>
+                    android:fontFamily="serif"
+                    android:singleLine="true"
+                    android:ellipsize="end"
+                    android:text="Syeikh Muhammad Zuhri"
+                    android:textColor="#3A2313"
+                    android:textSize="12.5sp"
+                    android:textStyle="bold" />
+                <TextView
+                    android:id="@+id/txtNamaSumberBuku"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:singleLine="true"
+                    android:text="Fatwa Kehidupan"
+                    android:textColor="#B8802E"
+                    android:textSize="9sp"
+                    android:textStyle="bold" />
             </LinearLayout>
+        </LinearLayout>
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="6dp"
+            android:orientation="horizontal"
+            android:gravity="top">
 
             <TextView
                 android:id="@+id/txtTanggalKategori"
-                android:layout_width="match_parent"
+                android:layout_width="0dp"
                 android:layout_height="wrap_content"
-                android:layout_marginTop="8dp"
+                android:layout_weight="1"
                 android:text="Tanggal • Kategori"
-                android:textSize="11sp"
+                android:textSize="10sp"
                 android:lineSpacingExtra="1dp"
                 android:textColor="#5A4A3C" />
-        </LinearLayout>
 
-        <TextView
-            android:id="@+id/txtNomorHalaman"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:layout_marginStart="10dp"
-            android:background="@drawable/bg_badge_halaman"
-            android:text="Halaman : -/-"
-            android:textColor="#9A6A1E"
-            android:textSize="11sp"
-            android:textStyle="bold"
-            android:paddingHorizontal="10dp"
-            android:paddingVertical="4dp" />
+            <TextView
+                android:id="@+id/txtNomorHalaman"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="8dp"
+                android:background="@drawable/bg_badge_halaman"
+                android:text="Hal. -/-"
+                android:textColor="#9A6A1E"
+                android:textSize="9sp"
+                android:textStyle="bold"
+                android:paddingHorizontal="8dp"
+                android:paddingVertical="2.5dp" />
+        </LinearLayout>
     </LinearLayout>
 
     <View android:layout_width="match_parent" android:layout_height="1dp" android:background="#D8C7AB" android:layout_marginBottom="12dp"/>

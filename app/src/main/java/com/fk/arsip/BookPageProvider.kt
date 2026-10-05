@@ -358,14 +358,24 @@ class BookPageProvider(
         // SISI BALIK. index 0 = sisi dalam sampul depan (halaman pengantar); lainnya = kertas bergaris
         // berwatermark cincin tasbih. Keduanya di-cache (terbaca normal), lalu dibalik horizontal +
         // diberi jilid spiral tiap kali dipasang (CurlView memetakan sisi belakang secara mirror).
-        val kunciBalik = if (index == 0) "sampul_dalam:${w}x$h:${data.size}" else "kertas_balik:${w}x$h"
+        val sampulLuarBelakang = index == data.size + 1
+        val kunciBalik = when {
+            index == 0 -> "sampul_dalam:${w}x$h:${data.size}"
+            sampulLuarBelakang -> "sampul_luar_belakang:${w}x$h"
+            else -> "kertas_balik:${w}x$h"
+        }
         val kontenBalik = cacheBitmap.get(kunciBalik)
         if (kontenBalik == null) {
-            val tugasBalik: () -> Bitmap = if (index == 0) { { renderSampulDalam(w, h, data) } } else { { HiasanBuku.buatKertasBalik(w, h, d) } }
+            val tugasBalik: () -> Bitmap = when {
+                index == 0 -> { { renderSampulDalam(w, h, data) } }
+                // TUTUP BUKU: sisi luar sampul belakang (tampil di halaman kiri setelah halaman terakhir dibalik)
+                sampulLuarBelakang -> { { renderSampul(w, h, judul = "Wassalam", subjudul = "Semoga bermanfaat") } }
+                else -> { { HiasanBuku.buatKertasBalik(w, h, d) } }
+            }
             mintaRenderLatarBelakang(kunciBalik, tugasBalik, index)
         }
         fun pasangBelakang() {
-            if (kontenBalik != null) page.setTexture(HiasanBuku.balikanDariKonten(kontenBalik, w, h, d), CurlPage.SIDE_BACK)
+            if (kontenBalik != null) page.setTexture(HiasanBuku.balikanDariKonten(kontenBalik, w, h, d, sampulLuarBelakang), CurlPage.SIDE_BACK)
             else page.setColor(warnaSampulBack, CurlPage.SIDE_BACK)
         }
 
@@ -596,7 +606,7 @@ class BookPageProvider(
                 android.text.Spannable.SPAN_EXCLUSIVE_EXCLUSIVE
             )
             view.findViewById<TextView>(R.id.txtTanggalKategori).text = spannableTanggalKategori
-            view.findViewById<TextView>(R.id.txtNomorHalaman).text = "Halaman : $nomorArsip/$totalArsip"
+            view.findViewById<TextView>(R.id.txtNomorHalaman).text = "Hal. $nomorArsip/$totalArsip"
             // PERBAIKAN: txtNamaSumberBuku dulu tidak pernah di-bind di sini
             // (cuma ada di BukuAdapter.kt yang ternyata TIDAK dipakai lagi --
             // rendering halaman baca sesungguhnya lewat inflate manual di

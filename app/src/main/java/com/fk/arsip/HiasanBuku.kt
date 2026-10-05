@@ -47,7 +47,7 @@ object HiasanBuku {
     }
 
     /** Sisi BALIK: konten (terbaca normal) dibalik horizontal supaya tampil benar saat dipetakan mirror oleh CurlView. */
-    fun balikanDariKonten(konten: Bitmap, w: Int, h: Int, d: Float): Bitmap {
+    fun balikanDariKonten(konten: Bitmap, w: Int, h: Int, d: Float, sampulLuar: Boolean = false): Bitmap {
         val hasil = Bitmap.createBitmap(w, h, Bitmap.Config.ARGB_8888)
         val c = Canvas(hasil)
         c.save()
@@ -55,8 +55,9 @@ object HiasanBuku {
         c.drawBitmap(konten, Rect(0, 0, konten.width, konten.height), Rect(0, 0, w, h), null)
         c.restore()
         // Setelah dipetakan mirror, sisi KIRI tekstur tampil di tepi jilid (kanan halaman kiri).
+        if (sampulLuar) gambarTepiSampul(c, w, h, d) // tutup buku: bingkai kayu + blok tebal halaman di sisi luar
+        else gambarBayanganTepi(c, w, h, d)
         gambarJilid(c, w, h, d)
-        gambarBayanganTepi(c, w, h, d)
         return hasil
     }
 
