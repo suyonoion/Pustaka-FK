@@ -279,6 +279,7 @@ private var kecepatanEmaBytesPerSec: Double = 0.0
         recyclerGridMode.layoutManager = GridLayoutManager(this, 2)
         sesuaikanKompartemenGrid() 
         gridAdapter = GridAdapter { posisi -> bukaModeBuku(posisi) }
+        gridAdapter.idTersimpan = idBookmarkTersimpan()
         
         val layoutManagerGrid = GridLayoutManager(this, 2)
         layoutManagerGrid.spanSizeLookup = object : GridLayoutManager.SpanSizeLookup() {
@@ -312,6 +313,8 @@ private var kecepatanEmaBytesPerSec: Double = 0.0
         bookPageProvider = BookPageProvider(this, { daftarArsipAktif }, { skalaTeksSaatIni() }) { index ->
             curlViewBuku.refreshPageTexture(index)
         }
+        bookPageProvider.modeGelap = { modeBacaGelap() }
+        bookPageProvider.idTersimpan = { idBookmarkTersimpan() }
         curlViewBuku.setPageProvider(bookPageProvider)
         curlViewBuku.setBackgroundColor(android.graphics.Color.parseColor("#1C1109"))
         // PERBAIKAN TUMPANG TINDIH VISUAL: SurfaceView (curlViewBuku) dikomposit
@@ -370,26 +373,17 @@ private var kecepatanEmaBytesPerSec: Double = 0.0
         // di-queueEvent() ke GL thread.
         curlViewBuku.setContentScrollListener(object : com.fk.arsip.curl.BudayakanBaca.ContentScrollListener {
             override fun onScrollKonten(index: Int, deltaY: Float) {
-                // PERBAIKAN BUG "SCROLL TIDAK PERNAH JALAN": curlViewBuku.width/
-                // height (ukuran View) SELALU beda dgn ukuran bitmap halaman
-                // sungguhan -- CurlRenderer mengurangi margin 3% di tiap sisi
-                // (lihat setMargins di atas) sebelum memanggil onPageSizeChanged(),
-                // dan di SHOW_TWO_PAGES ukurannya dibagi dua lagi. Memakai
-                // curlViewBuku.width/height membuat cacheKey yg dihitung ulang di
-                // geserKontenHalaman() TIDAK PERNAH cocok dgn cacheKey asli saat
-                // bitmap itu dirender -- cacheBitmap.get() jadi selalu null & fungsi
-                // itu selalu return false di baris paling awal (scroll diam2 tidak
-                // pernah jalan, walau ditunggu berapa lama pun). Fix: pakai ukuran
-                // bitmap SEBENARNYA (getPageBitmapWidth/Height, getter baru di
-                // BudayakanBaca) -- ini PERSIS angka yg dipakai updatePage().
-                val pageW = curlViewBuku.pageBitmapWidth
-                val pageH = curlViewBuku.pageBitmapHeight
-                if (pageW > 0 && pageH > 0) {
-                    bookPageProvider.geserKontenHalaman(index, deltaY.toInt(), pageW, pageH)
-                    perbaruiIndikatorScroll(index)
+                // HALUS: jangan render ulang tekstur tiap event sentuh (bisa >100x/dtk, tiap kali
+                // alokasi + upload bitmap layar penuh). Kumpulkan delta lalu terapkan SEKALI per frame.
+                pendingScrollIndex = index
+                pendingScrollY += deltaY
+                if (!scrollDijadwalkan) {
+                    scrollDijadwalkan = true
+                    curlViewBuku.postOnAnimation { terapkanScrollTertunda() }
                 }
             }
             override fun onScrollSelesai(index: Int) {
+                terapkanScrollTertunda()
                 bookPageProvider.selesaiGeserKontenHalaman(index)
                 perbaruiIndikatorScroll(index)
             }
@@ -874,6 +868,7 @@ when (fase) {
     override fun onResume() {
         super.onResume()
         resumeCurlViewAman()
+        segarkanPenandaDariPrefs() // status bisa dihapus dari layar Status Tersimpan
     }
 
     override fun onDestroy() {
@@ -2039,6 +2034,25 @@ private fun perbaruiDetailKecepatan(persen: Int, byteDiterima: Long, totalByte: 
     // `arsipSedangTampil`, yang diperbarui oleh perbaruiBarAksiBaca() setiap
     // kali BudayakanBaca.PenggantiHalamanListener menyala.
     // ==========================================================================
+    private var pendingScrollY = 0f
+    private var pendingScrollIndex = -1
+    private var scrollDijadwalkan = false
+
+    /** Terapkan akumulasi scroll (lihat onScrollKonten). Memakai ukuran bitmap halaman SEBENARNYA. */
+    private fun terapkanScrollTertunda() {
+        scrollDijadwalkan = false
+        val total = pendingScrollY
+        val bulat = total.toInt()
+        pendingScrollY = total - bulat // sisa pecahan dibawa ke frame berikutnya
+        if (bulat == 0 || pendingScrollIndex < 0) return
+        val pageW = curlViewBuku.pageBitmapWidth
+        val pageH = curlViewBuku.pageBitmapHeight
+        if (pageW > 0 && pageH > 0) {
+            bookPageProvider.geserKontenHalaman(pendingScrollIndex, bulat, pageW, pageH)
+            perbaruiIndikatorScroll(pendingScrollIndex)
+        }
+    }
+
     private fun pasangBarAksiBaca() {
         findViewById<View>(R.id.btnAksiSumberAsli).setOnClickListener {
             val arsip = arsipSedangTampil ?: return@setOnClickListener
@@ -2106,16 +2120,60 @@ private fun perbaruiDetailKecepatan(persen: Int, byteDiterima: Long, totalByte: 
             bukaKatupDialogFilter()
         }
 
-        val belumTersedia = View.OnClickListener {
-            Toast.makeText(this, "Segera hadir.", Toast.LENGTH_SHORT).show()
+        findViewById<View>(R.id.btnBacaHome).setOnClickListener {
+            // Sama dgn tombol Home di grid: keluar dari mode baca & kembali ke "Semua Arsip" Tab aktif.
+            if (isMesinSibuk) {
+                Toast.makeText(this, "Mesin sedang bekerja, tahan instruksi.", Toast.LENGTH_SHORT).show()
+            } else {
+                eksekusiSaringanKombinasi("Semua Kategori", false, sumberAktifKode)
+            }
         }
+
         findViewById<View>(R.id.btnBacaEksporPdf).setOnClickListener { salinTeksStatusAktif() }
         findViewById<View>(R.id.btnBacaTandai).setOnClickListener { toggleBookmarkArsipAktif() }
         findViewById<View>(R.id.btnBacaUkuranTeks).setOnClickListener { tampilkanDialogUkuranTeks() }
         // Mode gelap/terang belum dibangun (butuh varian warna kertas/teks
         // terpisah di BookPageProvider.renderHalamanArsip, cakupan
         // tersendiri) -- dibiarkan placeholder utk sementara.
-        findViewById<View>(R.id.btnBacaModeGelap).setOnClickListener(belumTersedia)
+        findViewById<View>(R.id.btnBacaModeGelap).setOnClickListener { toggleModeGelap() }
+        terapkanTemaBaca()
+    }
+
+    // ==========================================================================
+    // MODE GELAP / TERANG halaman baca
+    // ==========================================================================
+    private fun modeBacaGelap(): Boolean = prefsBaca().getBoolean("mode_gelap", false)
+
+    /** Warna bar aksi bawah + ikon tombol mode mengikuti tema baca. (Halaman sendiri: lihat BookPageProvider.) */
+    private fun terapkanTemaBaca() {
+        val gelap = modeBacaGelap()
+        barAksiBaca.setBackgroundColor(android.graphics.Color.parseColor(if (gelap) "#2A1810" else "#FFFFFF"))
+        val warna = android.graphics.Color.parseColor(if (gelap) "#E8C77A" else "#6B4226")
+        val pemisah = android.graphics.Color.parseColor(if (gelap) "#5A4A33" else "#CDB896")
+        val satuDp = resources.displayMetrics.density.toInt().coerceAtLeast(1)
+        fun telusuri(v: View) {
+            when (v) {
+                is TextView -> v.setTextColor(warna)
+                is ImageView -> v.imageTintList = android.content.res.ColorStateList.valueOf(warna)
+                is android.view.ViewGroup -> for (i in 0 until v.childCount) telusuri(v.getChildAt(i))
+                else -> if (v.layoutParams?.width == satuDp) v.setBackgroundColor(pemisah)
+            }
+        }
+        for (i in 0 until barAksiBaca.childCount) telusuri(barAksiBaca.getChildAt(i))
+        findViewById<ImageButton>(R.id.btnBacaModeGelap).setImageResource(
+            if (gelap) R.drawable.ic_matahari else R.drawable.ic_bulan
+        )
+    }
+
+    private fun toggleModeGelap() {
+        val baru = !modeBacaGelap()
+        prefsBaca().edit().putBoolean("mode_gelap", baru).apply()
+        terapkanTemaBaca()
+        // cacheKey sudah memuat tema, tapi cache lama tetap dibuang agar memori tidak menumpuk
+        bookPageProvider.bersihkanCacheKarenaUkuranTeksBerubah()
+        curlViewBuku.refreshPageTexture(indexHalamanSaatIni)
+        perbaruiIndikatorScroll(indexHalamanSaatIni)
+        Toast.makeText(this, if (baru) "Mode gelap" else "Mode terang", Toast.LENGTH_SHORT).show()
     }
 
     // ==========================================================================
@@ -2145,7 +2203,10 @@ private fun perbaruiDetailKecepatan(persen: Int, byteDiterima: Long, totalByte: 
         Toast.makeText(this, "Teks status disalin.", Toast.LENGTH_SHORT).show()
     }
 
-    /** Toggle bookmark utk arsip yg SEDANG tampil, lalu segarkan ikon bintang. */
+    /**
+     * Tandai (simpan) status yang SEDANG tampil. Bintang HANYA menambah: kalau sudah tersimpan,
+     * tidak menghapus -- penghapusan dipindah ke layar Status Tersimpan (tombol hapus per item).
+     */
     private fun toggleBookmarkArsipAktif() {
         val arsip = arsipSedangTampil
         if (arsip == null) {
@@ -2153,26 +2214,36 @@ private fun perbaruiDetailKecepatan(persen: Int, byteDiterima: Long, totalByte: 
             return
         }
         val set = idBookmarkTersimpan()
-        val kiniTersimpan = if (set.contains(arsip.idPosting)) {
-            set.remove(arsip.idPosting)
-            false
-        } else {
-            set.add(arsip.idPosting)
-            true
+        if (set.contains(arsip.idPosting)) {
+            Toast.makeText(this, "Sudah tersimpan. Hapus lewat menu Status Tersimpan.", Toast.LENGTH_SHORT).show()
+            return
         }
+        set.add(arsip.idPosting)
         prefsBaca().edit().putStringSet("bookmark_ids", set).apply()
-        perbaruiIkonBintang(kiniTersimpan)
-        Toast.makeText(
-            this,
-            if (kiniTersimpan) "Status disimpan." else "Status dihapus dari simpanan.",
-            Toast.LENGTH_SHORT
-        ).show()
+        segarkanPenandaDariPrefs()
+        Toast.makeText(this, "Status disimpan \uD83D\uDCCC", Toast.LENGTH_SHORT).show()
     }
 
+    /** Ikon bintang: jelas (emas) bila status tertandai, buram (putih transparan) bila belum. */
     private fun perbaruiIkonBintang(tersimpan: Boolean) {
-        findViewById<ImageButton>(R.id.btnBacaTandai).setImageResource(
-            if (tersimpan) android.R.drawable.btn_star_big_on else android.R.drawable.btn_star_big_off
-        )
+        findViewById<ImageButton>(R.id.btnBacaTandai).apply {
+            setImageResource(R.drawable.ic_bintang)
+            imageTintList = android.content.res.ColorStateList.valueOf(
+                android.graphics.Color.parseColor(if (tersimpan) "#FFC83D" else "#FFFFFF")
+            )
+            alpha = if (tersimpan) 1f else 0.3f
+        }
+    }
+
+    /** Sinkronkan pin 📌 (grid + halaman baca) dan ikon bintang dengan data tersimpan terbaru. */
+    private fun segarkanPenandaDariPrefs() {
+        if (!::gridAdapter.isInitialized) return
+        val ids = idBookmarkTersimpan()
+        gridAdapter.idTersimpan = ids
+        gridAdapter.notifyDataSetChanged()
+        val arsip = arsipSedangTampil
+        perbaruiIkonBintang(arsip != null && ids.contains(arsip.idPosting))
+        if (sedangModeBuku) curlViewBuku.refreshPageTexture(indexHalamanSaatIni)
     }
 
     /**

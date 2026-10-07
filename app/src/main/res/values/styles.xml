@@ -5,11 +5,11 @@
          placeholder fitur mendatang). Ukuran 40dp pas utk jempol, dgn ripple
          bulat borderless & ikon putih supaya kontras di atas bg_panel_ikon_baca. -->
     <style name="TombolIkonPanelBaca">
-        <item name="android:layout_width">40dp</item>
+        <item name="android:layout_width">36dp</item>
         <item name="android:layout_height">40dp</item>
-        <item name="android:layout_marginStart">4dp</item>
-        <item name="android:layout_marginEnd">4dp</item>
-        <item name="android:padding">8dp</item>
+        <item name="android:layout_marginStart">2dp</item>
+        <item name="android:layout_marginEnd">2dp</item>
+        <item name="android:padding">7dp</item>
         <item name="android:background">?android:attr/selectableItemBackgroundBorderless</item>
         <item name="android:scaleType">fitCenter</item>
         <item name="android:tint">#FFFFFF</item>

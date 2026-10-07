@@ -36,11 +36,17 @@ import kotlinx.coroutines.withContext
 class HalamanTersimpanActivity : AppCompatActivity() {
 
     private lateinit var rvHalamanTersimpan: RecyclerView
-    private lateinit var txtKosong: TextView
+    private lateinit var wadahKosong: View
+    private lateinit var wadahRingkas: View
+    private lateinit var txtJumlah: TextView
+    private val daftar = mutableListOf<ArsipEntity>()
+    private lateinit var adapter: HalamanTersimpanAdapter
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_halaman_tersimpan)
+        // Tema belum mewarisi warna status bar kayu (tampil ungu bawaan) -- samakan dgn header.
+        window.statusBarColor = android.graphics.Color.parseColor("#2A1810")
 
         val toolbar = findViewById<MaterialToolbar>(R.id.toolbarHalamanTersimpan)
         setSupportActionBar(toolbar)
@@ -48,56 +54,88 @@ class HalamanTersimpanActivity : AppCompatActivity() {
 
         rvHalamanTersimpan = findViewById(R.id.rvHalamanTersimpan)
         rvHalamanTersimpan.layoutManager = LinearLayoutManager(this)
-        txtKosong = findViewById(R.id.txtHalamanTersimpanKosong)
+        wadahKosong = findViewById(R.id.txtHalamanTersimpanKosong)
+        wadahRingkas = findViewById(R.id.wadahRingkasTersimpan)
+        txtJumlah = findViewById(R.id.txtJumlahTersimpan)
+
+        adapter = HalamanTersimpanAdapter(daftar, onTap = { arsip ->
+            setResult(
+                RESULT_OK,
+                Intent().putExtra("idPosting", arsip.idPosting).putExtra("sumberArsip", arsip.sumberArsip)
+            )
+            finish()
+        }, onHapus = { arsip -> hapusDariTersimpan(arsip) })
+        rvHalamanTersimpan.adapter = adapter
 
         muatDaftarTersimpan()
     }
 
     // Nama file & key HARUS sama persis dgn MainActivity.prefsBaca()/idBookmarkTersimpan().
+    private fun prefs() = getSharedPreferences("preferensi_baca", MODE_PRIVATE)
     private fun idBookmarkTersimpan(): Set<String> =
-        getSharedPreferences("preferensi_baca", MODE_PRIVATE).getStringSet("bookmark_ids", emptySet()) ?: emptySet()
+        prefs().getStringSet("bookmark_ids", emptySet()) ?: emptySet()
+
+    private fun perbaruiTampilan() {
+        val kosong = daftar.isEmpty()
+        wadahKosong.visibility = if (kosong) View.VISIBLE else View.GONE
+        rvHalamanTersimpan.visibility = if (kosong) View.GONE else View.VISIBLE
+        wadahRingkas.visibility = if (kosong) View.GONE else View.VISIBLE
+        txtJumlah.text = "${daftar.size} status tersimpan"
+    }
 
     private fun muatDaftarTersimpan() {
         val ids = idBookmarkTersimpan()
-        if (ids.isEmpty()) {
-            txtKosong.visibility = View.VISIBLE
-            rvHalamanTersimpan.visibility = View.GONE
-            return
-        }
+        if (ids.isEmpty()) { perbaruiTampilan(); return }
         lifecycleScope.launch(Dispatchers.IO) {
             val database = ArsipDatabase.operasikanMesin(this@HalamanTersimpanActivity).arsipDao()
-            val semuaArsip = database.tarikSemuaArsip()
-            val tersimpan = semuaArsip.filter { it.idPosting in ids }
+            val tersimpan = database.tarikSemuaArsip().filter { it.idPosting in ids }
                 .sortedByDescending { it.waktuRilis }
             withContext(Dispatchers.Main) {
-                if (tersimpan.isEmpty()) {
-                    txtKosong.visibility = View.VISIBLE
-                    rvHalamanTersimpan.visibility = View.GONE
-                } else {
-                    txtKosong.visibility = View.GONE
-                    rvHalamanTersimpan.visibility = View.VISIBLE
-                    rvHalamanTersimpan.adapter = HalamanTersimpanAdapter(tersimpan) { arsip ->
-                        setResult(
-                            RESULT_OK,
-                            Intent().putExtra("idPosting", arsip.idPosting).putExtra("sumberArsip", arsip.sumberArsip)
-                        )
-                        finish()
-                    }
-                }
+                daftar.clear(); daftar.addAll(tersimpan)
+                adapter.notifyDataSetChanged()
+                perbaruiTampilan()
             }
         }
     }
+
+    /** Satu-satunya tempat menghapus status tersimpan (ikon bintang di mode baca hanya menambah). */
+    private fun hapusDariTersimpan(arsip: ArsipEntity) {
+        val posisi = daftar.indexOfFirst { it.idPosting == arsip.idPosting }
+        if (posisi < 0) return
+        val set = idBookmarkTersimpan().toMutableSet().apply { remove(arsip.idPosting) }
+        prefs().edit().putStringSet("bookmark_ids", set).apply()
+        daftar.removeAt(posisi)
+        adapter.notifyItemRemoved(posisi)
+        perbaruiTampilan()
+        com.google.android.material.snackbar.Snackbar
+            .make(rvHalamanTersimpan, "Dihapus dari tersimpan", com.google.android.material.snackbar.Snackbar.LENGTH_LONG)
+            .setAction("URUNGKAN") {
+                val lagi = idBookmarkTersimpan().toMutableSet().apply { add(arsip.idPosting) }
+                prefs().edit().putStringSet("bookmark_ids", lagi).apply()
+                val tujuan = posisi.coerceAtMost(daftar.size)
+                daftar.add(tujuan, arsip)
+                adapter.notifyItemInserted(tujuan)
+                perbaruiTampilan()
+            }
+            .setActionTextColor(android.graphics.Color.parseColor("#E8C77A"))
+            .setBackgroundTint(android.graphics.Color.parseColor("#3A2313"))
+            .show()
+    }
 }
 
-private class HalamanTersimpanAdapter(
-    private val data: List<ArsipEntity>,
-    private val onTap: (ArsipEntity) -> Unit
+class HalamanTersimpanAdapter(
+    private val data: MutableList<ArsipEntity>,
+    private val onTap: (ArsipEntity) -> Unit,
+    private val onHapus: (ArsipEntity) -> Unit
 ) : RecyclerView.Adapter<HalamanTersimpanAdapter.VH>() {
 
     class VH(view: View) : RecyclerView.ViewHolder(view) {
         val txtTanggal: TextView = view.findViewById(R.id.txtTanggalTersimpan)
+        val txtSumber: TextView = view.findViewById(R.id.txtSumberTersimpan)
+        val txtKategori: TextView = view.findViewById(R.id.txtKategoriTersimpan)
         val txtIsi: TextView = view.findViewById(R.id.txtIsiTersimpan)
         val wadah: View = view.findViewById(R.id.wadahItemTersimpan)
+        val btnHapus: View = view.findViewById(R.id.btnHapusTersimpan)
     }
 
     override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): VH {
@@ -108,8 +146,16 @@ private class HalamanTersimpanAdapter(
     override fun onBindViewHolder(holder: VH, position: Int) {
         val arsip = data[position]
         holder.txtTanggal.text = arsip.tanggalBaca.substringBefore(" ")
+        holder.txtSumber.text = arsip.namaPenulis.ifBlank { "Fatwa Kehidupan" }
+        if (arsip.kategori.isNullOrBlank()) {
+            holder.txtKategori.visibility = View.GONE
+        } else {
+            holder.txtKategori.visibility = View.VISIBLE
+            holder.txtKategori.text = arsip.kategori
+        }
         holder.txtIsi.text = arsip.kontenPenuh.trim()
         holder.wadah.setOnClickListener { onTap(arsip) }
+        holder.btnHapus.setOnClickListener { onHapus(arsip) }
     }
 
     override fun getItemCount(): Int = data.size

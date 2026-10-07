@@ -25,6 +25,9 @@ class GridAdapter(
     private val pemicuBuku: (Int) -> Unit
 ) : ListAdapter<KargoCampuran, RecyclerView.ViewHolder>(DIFF_CALLBACK) {
 
+    /** idPosting yang ditandai -> tampilkan pin 📌 di pojok kanan atas kartu. */
+    var idTersimpan: Set<String> = emptySet()
+
     companion object {
         const val TIPE_PEMBATAS = 0
         const val TIPE_KONTEN = 1
@@ -108,6 +111,7 @@ class GridAdapter(
             holder.txtIndeksGrid.text = "#$nomorUrut"
             // Nomor dibungkus biji tasbih menyala (emas)
             holder.txtIndeksGrid.background = ManikDrawable(ManikDrawable.Gaya.MENYALA)
+            holder.imgPin.visibility = if (arsip.idPosting in idTersimpan) View.VISIBLE else View.GONE
 
             // 4. ESEKUSI KLIK ITEM
             holder.itemView.setOnClickListener {
@@ -150,7 +154,8 @@ class GridAdapter(
         val txtTanggal: TextView = view.findViewById(R.id.txtGridTanggal)
         val txtKategori: TextView = view.findViewById(R.id.txtGridKategori)
         val txtCuplikan: TextView = view.findViewById(R.id.txtGridCuplikan)
-        val txtIndeksGrid: TextView = view.findViewById(R.id.txtIndeksGrid) 
+        val txtIndeksGrid: TextView = view.findViewById(R.id.txtIndeksGrid)
+        val imgPin: View = view.findViewById(R.id.imgPinGrid)
     }
 }
 

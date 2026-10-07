@@ -32,22 +32,62 @@ object HiasanBuku {
 
     private val kayu = Color.parseColor("#3A2313")
 
+    // Cache hiasan (overlay transparan & sisi balik jadi) supaya SCROLL/refresh tekstur tidak
+    // menggambar ulang gradasi + path jilid tiap kejadian sentuh -- itu yang bikin scroll kurang mulus.
+    private val cacheOverlay = object : LinkedHashMap<String, Bitmap>(8, 0.75f, true) {
+        override fun removeEldestEntry(eldest: MutableMap.MutableEntry<String, Bitmap>?) = size > 8
+    }
+    private val cacheBalik = object : LinkedHashMap<String, Bitmap>(8, 0.75f, true) {
+        override fun removeEldestEntry(eldest: MutableMap.MutableEntry<String, Bitmap>?) = size > 6
+    }
+
+    fun bersihkanCache() {
+        synchronized(cacheOverlay) { cacheOverlay.clear() }
+        synchronized(cacheBalik) { cacheBalik.clear() }
+    }
+
+    private fun overlay(w: Int, h: Int, jenis: Int, d: Float, gelap: Boolean): Bitmap {
+        val kunci = "$jenis:$w:$h:$gelap"
+        synchronized(cacheOverlay) { cacheOverlay[kunci]?.let { if (!it.isRecycled) return it } }
+        val bmp = Bitmap.createBitmap(w, h, Bitmap.Config.ARGB_8888)
+        val c = Canvas(bmp)
+        hiasiDepan(c, w, h, jenis, d, gelap)
+        synchronized(cacheOverlay) { cacheOverlay[kunci] = bmp }
+        return bmp
+    }
+
     /** Potong bagian [offsetY] dari bitmap konten tinggi ke bitmap baru seukuran layar, lalu hiasi. */
-    fun potongDanHiasi(sumber: Bitmap, w: Int, h: Int, offsetY: Int, jenis: Int, d: Float): Bitmap {
+    fun potongDanHiasi(
+        sumber: Bitmap, w: Int, h: Int, offsetY: Int, jenis: Int, d: Float,
+        gelap: Boolean = false, tertandai: Boolean = false
+    ): Bitmap {
         val hasil = Bitmap.createBitmap(w, h, Bitmap.Config.ARGB_8888)
         val c = Canvas(hasil)
-        c.drawColor(Color.parseColor("#FFFDF7"))
+        c.drawColor(if (gelap) Color.parseColor("#201B16") else Color.parseColor("#FFFDF7"))
         val maxOffset = (sumber.height - h).coerceAtLeast(0)
         val y0 = offsetY.coerceIn(0, maxOffset)
         val tinggi = min(h, sumber.height - y0).coerceAtLeast(1)
         val lebar = min(w, sumber.width).coerceAtLeast(1)
         c.drawBitmap(sumber, Rect(0, y0, lebar, y0 + tinggi), Rect(0, 0, lebar, tinggi), null)
-        hiasiDepan(c, w, h, jenis, d)
+        c.drawBitmap(overlay(w, h, jenis, d, gelap), 0f, 0f, null)
+        if (tertandai && jenis == HALAMAN) gambarPin(c, w - 34f * d, 7f * d, d)
         return hasil
     }
 
-    /** Sisi BALIK: konten (terbaca normal) dibalik horizontal supaya tampil benar saat dipetakan mirror oleh CurlView. */
-    fun balikanDariKonten(konten: Bitmap, w: Int, h: Int, d: Float, sampulLuar: Boolean = false): Bitmap {
+    /**
+     * Sisi BALIK: konten (terbaca normal) dibalik horizontal supaya tampil benar saat dipetakan
+     * mirror oleh CurlView. Hasil jadi di-cache per [kunci]; yang dikembalikan SALINAN
+     * (CurlPage.setTexture me-recycle bitmap yang diberikan).
+     */
+    fun balikanDariKonten(
+        konten: Bitmap, w: Int, h: Int, d: Float,
+        sampulLuar: Boolean = false, gelap: Boolean = false, kunci: String = ""
+    ): Bitmap {
+        val k = "$kunci:$w:$h:$sampulLuar:$gelap"
+        if (kunci.isNotEmpty()) {
+            val ada = synchronized(cacheBalik) { cacheBalik[k] }
+            if (ada != null && !ada.isRecycled) return ada.copy(Bitmap.Config.ARGB_8888, false)
+        }
         val hasil = Bitmap.createBitmap(w, h, Bitmap.Config.ARGB_8888)
         val c = Canvas(hasil)
         c.save()
@@ -58,17 +98,41 @@ object HiasanBuku {
         if (sampulLuar) gambarTepiSampul(c, w, h, d) // tutup buku: bingkai kayu + blok tebal halaman di sisi luar
         else gambarBayanganTepi(c, w, h, d)
         gambarJilid(c, w, h, d)
-        return hasil
+        if (kunci.isNotEmpty()) synchronized(cacheBalik) { cacheBalik[k] = hasil }
+        return if (kunci.isNotEmpty()) hasil.copy(Bitmap.Config.ARGB_8888, false) else hasil
     }
 
-    private fun hiasiDepan(c: Canvas, w: Int, h: Int, jenis: Int, d: Float) {
+    private fun hiasiDepan(c: Canvas, w: Int, h: Int, jenis: Int, d: Float, gelap: Boolean) {
         if (jenis == HALAMAN) {
-            gambarTepiHalaman(c, w, h, d)
+            gambarTepiHalaman(c, w, h, d, gelap)
             gambarLabel(c, w, h, d)
         } else {
             gambarTepiSampul(c, w, h, d)
         }
         gambarJilid(c, w, h, d)
+    }
+
+    /** Pin penanda ala 📌 (digambar sendiri, tidak bergantung font emoji). (x,y) = kiri-atas kotak 26dp. */
+    private fun gambarPin(c: Canvas, x: Float, y: Float, d: Float) {
+        c.save()
+        c.translate(x + 13f * d, y + 13f * d)
+        c.rotate(35f)
+        val p = Paint(Paint.ANTI_ALIAS_FLAG)
+        // bayangan
+        p.color = Color.argb(60, 0, 0, 0)
+        c.drawCircle(1.5f * d, 1.8f * d, 6.2f * d, p)
+        // jarum
+        p.color = Color.parseColor("#7A7A7A")
+        val jarum = Path().apply {
+            moveTo(-0.9f * d, 0f); lineTo(0.9f * d, 0f); lineTo(0f, 13f * d); close()
+        }
+        c.drawPath(jarum, p)
+        // kepala
+        p.color = Color.parseColor("#B71C1C"); c.drawCircle(0f, -4.5f * d, 6.4f * d, p)
+        p.color = Color.parseColor("#E53935"); c.drawCircle(0f, -4.8f * d, 5.5f * d, p)
+        p.color = Color.argb(215, 255, 138, 128); c.drawOval(RectF(-3.6f * d, -8.8f * d, -0.6f * d, -6.4f * d), p)
+        p.color = Color.parseColor("#8E1B1B"); c.drawRect(-4.8f * d, 0.6f * d, 4.8f * d, 2.2f * d, p)
+        c.restore()
     }
 
     // ------------------------------------------------------------------ jilid spiral
@@ -123,13 +187,14 @@ object HiasanBuku {
     }
 
     // ------------------------------------------------------------------ tepi
-    private fun gambarTepiHalaman(c: Canvas, w: Int, h: Int, d: Float) {
+    private fun gambarTepiHalaman(c: Canvas, w: Int, h: Int, d: Float, gelap: Boolean = false) {
         // EFEK TUMPUKAN BUKU TEBAL: dari luar ke dalam di sisi kanan & bawah =
         // celah 1dp (latar gelap spy tumpukan terlihat) -> sampul kayu -> 6 lembar bergantian krem/tan.
         val gelap = Paint().apply { color = Color.parseColor("#1C1109") }
         val wood = Paint().apply { color = kayu }
         val lembar = Paint()
-        val cream = Color.parseColor("#F4EBD6"); val tan = Color.parseColor("#CDBB98")
+        val cream = Color.parseColor(if (gelap) "#4A4034" else "#F4EBD6")
+        val tan = Color.parseColor(if (gelap) "#352D24" else "#CDBB98")
         val celah = 1f * d; val sampul = 2.5f * d; val tebalLembar = 1.5f * d
         val jumlah = 6
 
@@ -201,11 +266,11 @@ object HiasanBuku {
 
     // ------------------------------------------------------------------ kertas balik
     /** Kertas bergaris + watermark cincin tasbih "PUSTAKA FK" (terbaca normal; belum dibalik). */
-    fun buatKertasBalik(w: Int, h: Int, d: Float): Bitmap {
+    fun buatKertasBalik(w: Int, h: Int, d: Float, gelap: Boolean = false): Bitmap {
         val bmp = Bitmap.createBitmap(w, h, Bitmap.Config.ARGB_8888)
         val c = Canvas(bmp)
-        c.drawColor(Color.parseColor("#F6EEDC"))
-        val garis = Paint().apply { color = Color.parseColor("#E3D7BF"); strokeWidth = 1f * d }
+        c.drawColor(Color.parseColor(if (gelap) "#1B1612" else "#F6EEDC"))
+        val garis = Paint().apply { color = Color.parseColor(if (gelap) "#272019" else "#E3D7BF"); strokeWidth = 1f * d }
         var y = 28f * d
         while (y < h) { c.drawLine(0f, y, w.toFloat(), y, garis); y += 28f * d }
 
@@ -218,7 +283,7 @@ object HiasanBuku {
             val bx = cx + r * cos(a).toFloat(); val by = cy + r * sin(a).toFloat()
             val br = r * 0.062f * (if (i % 9 == 0) 1.5f else 1f)
             biji.shader = android.graphics.RadialGradient(bx - br * 0.3f, by - br * 0.3f, br * 1.4f,
-                intArrayOf(Color.argb(95, 150, 105, 60), Color.argb(70, 95, 62, 32)), null, Shader.TileMode.CLAMP)
+                if (gelap) intArrayOf(Color.argb(110, 201, 166, 107), Color.argb(80, 150, 112, 60)) else intArrayOf(Color.argb(95, 150, 105, 60), Color.argb(70, 95, 62, 32)), null, Shader.TileMode.CLAMP)
             c.drawCircle(bx, by, br, biji)
         }
         biji.shader = null
@@ -229,7 +294,7 @@ object HiasanBuku {
         c.drawCircle(cx, cy, r * 0.74f, lingkar)
 
         val judul = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-            color = Color.argb(95, 90, 58, 30); textAlign = Paint.Align.CENTER
+            color = if (gelap) Color.argb(120, 201, 166, 107) else Color.argb(95, 90, 58, 30); textAlign = Paint.Align.CENTER
             typeface = Typeface.create(Typeface.SERIF, Typeface.BOLD_ITALIC); textSize = r * 0.34f
         }
         c.drawText("Pustaka FK", cx, cy + r * 0.04f, judul)

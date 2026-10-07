@@ -71,6 +71,10 @@ class BookPageProvider(
     private val refreshHalaman: (Int) -> Unit
 ) : BudayakanBaca.PageProvider {
 
+    /** Diset MainActivity: tema halaman (gelap/terang) & daftar idPosting yang ditandai (pin 📌). */
+    var modeGelap: () -> Boolean = { false }
+    var idTersimpan: () -> Set<String> = { emptySet() }
+
     private val mainHandler = Handler(Looper.getMainLooper())
     private val warnaKertas = 0xFFFFFDF7.toInt()
     private val warnaSampulBack = Color.rgb(160, 155, 140)
@@ -311,12 +315,12 @@ class BookPageProvider(
                 renderSampul(w, h, judul = "Pustaka FK", subjudul = "Arsip Fatwa & Kehidupan")
             }
             index == data.size + 1 -> ResolusiHalaman("sampul_belakang:${w}x$h") {
-                renderSampul(w, h, judul = "Tamat", subjudul = "Pustaka FK")
+                renderSampul(w, h, judul = "Tamat", subjudul = "")
             }
             else -> {
                 val arsipIndex = index - 1
                 val arsip = data.getOrNull(arsipIndex) ?: return null
-                ResolusiHalaman("${arsip.idPosting}:${w}x$h") {
+                ResolusiHalaman("${arsip.idPosting}:${w}x$h:${if (modeGelap()) "g" else "t"}") {
                     renderHalamanArsip(w, h, arsip, arsipIndex + 1, data.size)
                 }
             }
@@ -353,6 +357,8 @@ class BookPageProvider(
         }
 
         val d = context.resources.displayMetrics.density
+        val gelap = modeGelap()
+        val tertandai = data.getOrNull(index - 1)?.idPosting?.let { it in idTersimpan() } ?: false
         val jenis = when (index) { 0 -> HiasanBuku.SAMPUL_DEPAN; data.size + 1 -> HiasanBuku.SAMPUL_BELAKANG; else -> HiasanBuku.HALAMAN }
 
         // SISI BALIK. index 0 = sisi dalam sampul depan (halaman pengantar); lainnya = kertas bergaris
@@ -362,33 +368,33 @@ class BookPageProvider(
         val kunciBalik = when {
             index == 0 -> "sampul_dalam:${w}x$h:${data.size}"
             sampulLuarBelakang -> "sampul_luar_belakang:${w}x$h"
-            else -> "kertas_balik:${w}x$h"
+            else -> "kertas_balik:${w}x$h:${if (gelap) "g" else "t"}"
         }
         val kontenBalik = cacheBitmap.get(kunciBalik)
         if (kontenBalik == null) {
             val tugasBalik: () -> Bitmap = when {
                 index == 0 -> { { renderSampulDalam(w, h, data) } }
                 // TUTUP BUKU: sisi luar sampul belakang (tampil di halaman kiri setelah halaman terakhir dibalik)
-                sampulLuarBelakang -> { { renderSampul(w, h, judul = "Wassalam", subjudul = "Semoga bermanfaat") } }
-                else -> { { HiasanBuku.buatKertasBalik(w, h, d) } }
+                sampulLuarBelakang -> { { renderSampul(w, h, judul = "", subjudul = "") } }
+                else -> { { HiasanBuku.buatKertasBalik(w, h, d, gelap) } }
             }
             mintaRenderLatarBelakang(kunciBalik, tugasBalik, index)
         }
         fun pasangBelakang() {
-            if (kontenBalik != null) page.setTexture(HiasanBuku.balikanDariKonten(kontenBalik, w, h, d, sampulLuarBelakang), CurlPage.SIDE_BACK)
+            if (kontenBalik != null) page.setTexture(HiasanBuku.balikanDariKonten(kontenBalik, w, h, d, sampulLuarBelakang, gelap, kunciBalik), CurlPage.SIDE_BACK)
             else page.setColor(warnaSampulBack, CurlPage.SIDE_BACK)
         }
 
         val fromCache = cacheBitmap.get(resolusi.cacheKey)
         if (fromCache != null) {
             val offsetUntukHalamanIni = if (index == indexSedangDibaca) offsetGeserPx else 0
-            page.setTexture(HiasanBuku.potongDanHiasi(fromCache, w, h, offsetUntukHalamanIni, jenis, d), CurlPage.SIDE_FRONT)
+            page.setTexture(HiasanBuku.potongDanHiasi(fromCache, w, h, offsetUntukHalamanIni, jenis, d, gelap, tertandai), CurlPage.SIDE_FRONT)
             pasangBelakang()
             prefetchTetangga(index, data.size, w, h, data)
             return
         }
 
-        page.setTexture(HiasanBuku.potongDanHiasi(renderPlaceholder(w, h), w, h, 0, jenis, d), CurlPage.SIDE_FRONT)
+        page.setTexture(HiasanBuku.potongDanHiasi(renderPlaceholder(w, h), w, h, 0, jenis, d, gelap, tertandai), CurlPage.SIDE_FRONT)
         pasangBelakang()
         mintaRenderLatarBelakang(resolusi.cacheKey, resolusi.tugas, index)
     }
@@ -444,8 +450,12 @@ class BookPageProvider(
     private fun renderSampul(width: Int, height: Int, judul: String, subjudul: String): Bitmap {
         return renderViewKeBitmapDiMainThread(width, height) {
             val view = LayoutInflater.from(context).inflate(R.layout.item_sampul_depan, null, true)
-            view.findViewById<TextView>(R.id.txtJudulSampul)?.text = judul
-            view.findViewById<TextView>(R.id.txtSubjudulSampul)?.text = subjudul
+            view.findViewById<TextView>(R.id.txtJudulSampul)?.apply {
+                text = judul; visibility = if (judul.isBlank()) View.GONE else View.VISIBLE
+            }
+            view.findViewById<TextView>(R.id.txtSubjudulSampul)?.apply {
+                text = subjudul; visibility = if (subjudul.isBlank()) View.GONE else View.VISIBLE
+            }
             view
         }
     }
@@ -466,6 +476,24 @@ class BookPageProvider(
         }
     }
 
+    /** Varian warna MODE GELAP untuk elemen-elemen item_buku (kertas & teks utama sudah di-set di render). */
+    private fun terapkanTemaGelapHalaman(view: View, adaShared: Boolean) {
+        view.findViewById<TextView>(R.id.txtKontenShared)?.setTextColor(Color.parseColor("#DCCFB8"))
+        view.findViewById<TextView>(R.id.txtNamaPenulis)?.setTextColor(Color.parseColor("#F0DDB8"))
+        view.findViewById<TextView>(R.id.txtNamaSumberBuku)?.setTextColor(Color.parseColor("#D9A441"))
+        view.findViewById<TextView>(R.id.txtTanggalKategori)?.setTextColor(Color.parseColor("#BDAE96"))
+        view.findViewById<TextView>(R.id.txtNomorHalaman)?.apply {
+            setBackgroundResource(R.drawable.bg_badge_halaman_gelap)
+            setTextColor(Color.parseColor("#E8C77A"))
+        }
+        view.findViewById<View>(R.id.imgProfilAbah)?.setBackgroundResource(R.drawable.bg_avatar_cincin_gelap)
+        view.findViewById<View>(R.id.garisHeaderHalaman)?.setBackgroundColor(Color.parseColor("#4A3E30"))
+        if (adaShared) {
+            view.findViewById<View>(R.id.wadahDinamisKonten)?.setBackgroundResource(R.drawable.bg_border_sharedpost_gelap)
+            view.findViewById<TextView>(R.id.txtNamaPemilikShared)?.setTextColor(Color.parseColor("#E8C77A"))
+        }
+    }
+
     data class KontenBerbagi(val teksAsli: String, val namaPemilik: String, val kontenShared: String)
 
     /** Dipakai bersama oleh render & pengecekan panjang  SATU tempat parsing, hindari duplikasi/inkonsistensi. */
@@ -480,14 +508,14 @@ class BookPageProvider(
         return KontenBerbagi(teksAsli, nama, shared)
     }
 
-    private fun warnaiKontenTanyaJawab(teksLengkap: String): Spannable {
+    private fun warnaiKontenTanyaJawab(teksLengkap: String, gelap: Boolean = false): Spannable {
         val spannable = SpannableString(teksLengkap)
         val batas = teksLengkap.indexOf("=====")
         if (batas != -1) {
-            spannable.setSpan(ForegroundColorSpan(Color.parseColor("#3A2313")), 0, batas, Spannable.SPAN_EXCLUSIVE_EXCLUSIVE)
-            spannable.setSpan(ForegroundColorSpan(Color.parseColor("#212121")), batas, teksLengkap.length, Spannable.SPAN_EXCLUSIVE_EXCLUSIVE)
+            spannable.setSpan(ForegroundColorSpan(Color.parseColor(if (gelap) "#F0DDB8" else "#3A2313")), 0, batas, Spannable.SPAN_EXCLUSIVE_EXCLUSIVE)
+            spannable.setSpan(ForegroundColorSpan(Color.parseColor(if (gelap) "#E3DACB" else "#212121")), batas, teksLengkap.length, Spannable.SPAN_EXCLUSIVE_EXCLUSIVE)
         } else {
-            spannable.setSpan(ForegroundColorSpan(Color.parseColor("#212121")), 0, teksLengkap.length, Spannable.SPAN_EXCLUSIVE_EXCLUSIVE)
+            spannable.setSpan(ForegroundColorSpan(Color.parseColor(if (gelap) "#E3DACB" else "#212121")), 0, teksLengkap.length, Spannable.SPAN_EXCLUSIVE_EXCLUSIVE)
         }
         return spannable
     }
@@ -528,9 +556,13 @@ class BookPageProvider(
         val kontenBersih = arsip.kontenPenuh
         val kb = parseKontenBerbagi(kontenBersih)
 
+        val gelap = modeGelap()
         return renderViewKeBitmapTinggi(width, height) {
             val view = LayoutInflater.from(context).inflate(R.layout.item_buku, null, true)
-            view.background = KertasBergarisDrawable(density = context.resources.displayMetrics.density)
+            view.background = if (gelap) KertasBergarisDrawable(
+                warnaDasar = 0xFF201B16.toInt(), warnaGaris = 0xFF2E2822.toInt(), warnaMargin = 0xFF7A3F36.toInt(),
+                density = context.resources.displayMetrics.density
+            ) else KertasBergarisDrawable(density = context.resources.displayMetrics.density)
 
             val txtKontenUtama = view.findViewById<TextView>(R.id.txtKontenUtama)
             val txtKontenShared = view.findViewById<TextView>(R.id.txtKontenShared)
@@ -561,7 +593,7 @@ class BookPageProvider(
             val txtNamaPemilikShared = view.findViewById<TextView>(R.id.txtNamaPemilikShared)
 
             if (kb == null) {
-                txtKontenUtama.text = warnaiKontenTanyaJawab(kontenBersih)
+                txtKontenUtama.text = warnaiKontenTanyaJawab(kontenBersih, gelap)
                 txtKontenUtama.visibility = View.VISIBLE
                 wadahDinamisKonten.setBackgroundResource(0)
                 wadahDinamisKonten.setPadding(0, 0, 0, 0)
@@ -569,7 +601,7 @@ class BookPageProvider(
                 txtKontenShared.visibility = View.GONE
             } else {
                 if (kb.teksAsli.isNotBlank()) {
-                    txtKontenUtama.text = warnaiKontenTanyaJawab(kb.teksAsli)
+                    txtKontenUtama.text = warnaiKontenTanyaJawab(kb.teksAsli, gelap)
                     txtKontenUtama.visibility = View.VISIBLE
                 } else {
                     txtKontenUtama.visibility = View.GONE
@@ -601,7 +633,7 @@ class BookPageProvider(
                 android.text.Spannable.SPAN_EXCLUSIVE_EXCLUSIVE
             )
             spannableTanggalKategori.setSpan(
-                android.text.style.ForegroundColorSpan(android.graphics.Color.parseColor("#D32F2F")),
+                android.text.style.ForegroundColorSpan(android.graphics.Color.parseColor(if (gelap) "#FF8A80" else "#D32F2F")),
                 mulaiKategori, teksTanggalKategori.length,
                 android.text.Spannable.SPAN_EXCLUSIVE_EXCLUSIVE
             )
@@ -627,6 +659,7 @@ class BookPageProvider(
                     iv.setImageDrawable(bulat)
                 } else iv.setImageResource(R.drawable.profil_abah)
             }
+            if (gelap) terapkanTemaGelapHalaman(view, kb != null)
             view.findViewById<View>(R.id.wadahProfilPenulis).visibility = View.VISIBLE
             view.findViewById<View>(R.id.wadahFooterDekoratif).visibility = View.GONE
 

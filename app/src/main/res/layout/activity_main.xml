@@ -198,6 +198,12 @@
             android:visibility="gone">
 
             <ImageButton
+                android:id="@+id/btnBacaHome"
+                style="@style/TombolIkonPanelBaca"
+                android:src="@drawable/ic_home_baca"
+                android:contentDescription="Beranda (daftar arsip)" />
+
+            <ImageButton
                 android:id="@+id/btnBacaDrawer"
                 style="@style/TombolIkonPanelBaca"
                 android:src="@drawable/ic_hamburger_menu"
@@ -232,7 +238,7 @@
             <ImageButton
                 android:id="@+id/btnBacaTandai"
                 style="@style/TombolIkonPanelBaca"
-                android:src="@android:drawable/btn_star_big_off"
+                android:src="@drawable/ic_bintang"
                 android:contentDescription="Simpan / tandai halaman" />
 
             <!-- PERBAIKAN: ikon "Halaman tersimpan" (btnBacaHalamanTersimpan)
@@ -248,7 +254,7 @@
             <ImageButton
                 android:id="@+id/btnBacaModeGelap"
                 style="@style/TombolIkonPanelBaca"
-                android:src="@android:drawable/ic_menu_compass"
+                android:src="@drawable/ic_bulan"
                 android:contentDescription="Mode gelap / terang" />
         </LinearLayout>
 

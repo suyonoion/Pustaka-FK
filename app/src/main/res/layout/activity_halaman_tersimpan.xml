@@ -4,27 +4,64 @@
     xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:background="#FAF8F5"
+    android:background="#FFFFFF"
     android:orientation="vertical">
 
-    <!-- TOOLBAR HEADER, gaya sama dgn activity_galeri.xml supaya konsisten
-         dgn layar "arsip tambahan" lain (Biografi/Sosmed/Galeri). -->
     <com.google.android.material.appbar.AppBarLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:background="#2C1D11">
+        android:background="#2A1810">
 
         <com.google.android.material.appbar.MaterialToolbar
             android:id="@+id/toolbarHalamanTersimpan"
             android:layout_width="match_parent"
             android:layout_height="?attr/actionBarSize"
             app:navigationIcon="?attr/homeAsUpIndicator"
-            app:navigationIconTint="#D4AF37"
+            app:navigationIconTint="#E8C77A"
             app:title="STATUS TERSIMPAN"
             app:titleCentered="true"
             app:titleTextAppearance="@style/TextAppearance.MaterialComponents.Headline6"
-            app:titleTextColor="#D4AF37" />
+            app:titleTextColor="#E8C77A" />
     </com.google.android.material.appbar.AppBarLayout>
+
+    <!-- Ringkasan jumlah + garis emas -->
+    <LinearLayout
+        android:id="@+id/wadahRingkasTersimpan"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:gravity="center_vertical"
+        android:paddingHorizontal="16dp"
+        android:paddingVertical="10dp"
+        android:background="#FBF3E2"
+        android:visibility="gone">
+        <ImageView
+            android:layout_width="18dp"
+            android:layout_height="18dp"
+            android:src="@drawable/ic_pin"
+            android:contentDescription="@null" />
+        <TextView
+            android:id="@+id/txtJumlahTersimpan"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:layout_marginStart="8dp"
+            android:fontFamily="serif"
+            android:textColor="#6B4226"
+            android:textSize="13sp"
+            android:textStyle="bold" />
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Ketuk kartu untuk membuka"
+            android:textColor="#A88B5E"
+            android:textSize="10.5sp"
+            android:textStyle="italic" />
+    </LinearLayout>
+    <View
+        android:layout_width="match_parent"
+        android:layout_height="1dp"
+        android:background="#E2C98F" />
 
     <androidx.recyclerview.widget.RecyclerView
         android:id="@+id/rvHalamanTersimpan"
@@ -32,19 +69,42 @@
         android:layout_height="0dp"
         android:layout_weight="1"
         android:clipToPadding="false"
-        android:paddingVertical="8dp" />
+        android:paddingTop="6dp"
+        android:paddingBottom="16dp" />
 
-    <!-- Tampil kalau belum ada status yg ditandai sama sekali. -->
-    <TextView
+    <!-- Keadaan kosong -->
+    <LinearLayout
         android:id="@+id/txtHalamanTersimpanKosong"
         android:layout_width="match_parent"
         android:layout_height="0dp"
         android:layout_weight="1"
         android:gravity="center"
+        android:orientation="vertical"
         android:padding="32dp"
-        android:text="Belum ada status yang disimpan.\nTekan ikon bintang saat membaca status utk menyimpannya di sini."
-        android:textColor="#8A8A8A"
-        android:textSize="14sp"
-        android:visibility="gone" />
-
+        android:visibility="gone">
+        <ImageView
+            android:layout_width="64dp"
+            android:layout_height="64dp"
+            android:alpha="0.55"
+            android:src="@drawable/ic_pin"
+            android:contentDescription="@null" />
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="14dp"
+            android:fontFamily="serif"
+            android:text="Belum ada status tersimpan"
+            android:textColor="#6B4226"
+            android:textSize="17sp"
+            android:textStyle="bold" />
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="6dp"
+            android:gravity="center"
+            android:lineSpacingExtra="3dp"
+            android:text="Tekan ikon bintang saat membaca\nuntuk menyimpan status di sini."
+            android:textColor="#8C7A66"
+            android:textSize="13sp" />
+    </LinearLayout>
 </LinearLayout>
