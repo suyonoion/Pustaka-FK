@@ -86,7 +86,7 @@ object HiasanBuku {
         val k = "$kunci:$w:$h:$sampulLuar:$gelap"
         if (kunci.isNotEmpty()) {
             val ada = synchronized(cacheBalik) { cacheBalik[k] }
-            if (ada != null && !ada.isRecycled) return ada.copy(Bitmap.Config.ARGB_8888, false)
+            if (ada != null && !ada.isRecycled) return ada.copy(Bitmap.Config.ARGB_8888, false) ?: ada
         }
         val hasil = Bitmap.createBitmap(w, h, Bitmap.Config.ARGB_8888)
         val c = Canvas(hasil)
@@ -99,7 +99,7 @@ object HiasanBuku {
         else gambarBayanganTepi(c, w, h, d)
         gambarJilid(c, w, h, d)
         if (kunci.isNotEmpty()) synchronized(cacheBalik) { cacheBalik[k] = hasil }
-        return if (kunci.isNotEmpty()) hasil.copy(Bitmap.Config.ARGB_8888, false) else hasil
+        return if (kunci.isNotEmpty()) (hasil.copy(Bitmap.Config.ARGB_8888, false) ?: hasil) else hasil
     }
 
     private fun hiasiDepan(c: Canvas, w: Int, h: Int, jenis: Int, d: Float, gelap: Boolean) {
@@ -190,7 +190,7 @@ object HiasanBuku {
     private fun gambarTepiHalaman(c: Canvas, w: Int, h: Int, d: Float, gelap: Boolean = false) {
         // EFEK TUMPUKAN BUKU TEBAL: dari luar ke dalam di sisi kanan & bawah =
         // celah 1dp (latar gelap spy tumpukan terlihat) -> sampul kayu -> 6 lembar bergantian krem/tan.
-        val gelap = Paint().apply { color = Color.parseColor("#1C1109") }
+        val catCelah = Paint().apply { color = Color.parseColor("#1C1109") }
         val wood = Paint().apply { color = kayu }
         val lembar = Paint()
         val cream = Color.parseColor(if (gelap) "#4A4034" else "#F4EBD6")
@@ -203,7 +203,7 @@ object HiasanBuku {
 
         // KANAN
         var x = w.toFloat()
-        c.drawRect(x - celah, 0f, x, h.toFloat(), gelap); x -= celah
+        c.drawRect(x - celah, 0f, x, h.toFloat(), catCelah); x -= celah
         c.drawRect(x - sampul, 0f, x, h.toFloat(), wood); x -= sampul
         for (k in 0 until jumlah) {
             lembar.color = if (k % 2 == 0) cream else tan
@@ -211,7 +211,7 @@ object HiasanBuku {
         }
         // BAWAH
         var y = h.toFloat()
-        c.drawRect(0f, y - celah, w.toFloat(), y, gelap); y -= celah
+        c.drawRect(0f, y - celah, w.toFloat(), y, catCelah); y -= celah
         c.drawRect(0f, y - sampul, w.toFloat(), y, wood); y -= sampul
         for (k in 0 until jumlah) {
             lembar.color = if (k % 2 == 0) cream else tan
