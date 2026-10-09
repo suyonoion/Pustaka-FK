@@ -9,7 +9,7 @@
     <TextView
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:text="PARAMETER PENYARINGAN"
+        android:text="Filter &amp; Urutan"
         android:textSize="14sp"
         android:textStyle="bold"
         android:textColor="#3A2313"
@@ -18,7 +18,7 @@
     <TextView
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:text="Urutan Waktu (Timeline):"
+        android:text="Urutan tanggal:"
         android:textSize="12sp"
         android:textColor="#555555" />
 
@@ -33,8 +33,7 @@
             android:id="@+id/rbTerbaru"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="Terbaru (Default)"
-            android:checked="true"
+            android:text="Terbaru"
             android:textSize="12sp" />
 
         <RadioButton
@@ -42,7 +41,8 @@
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:layout_marginStart="24dp"
-            android:text="Terlama"
+            android:text="Terlama (Default)"
+            android:checked="true"
             android:textSize="12sp" />
     </RadioGroup>
 
@@ -60,6 +60,24 @@
         android:layout_marginTop="8dp"
         android:layout_marginBottom="24dp"
         android:background="#EFEFEF" />
+
+    <TextView
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="Tanggal status:"
+        android:textSize="12sp"
+        android:textColor="#555555" />
+
+    <Button
+        android:id="@+id/btnPilihTanggalFilter"
+        style="@style/Widget.MaterialComponents.Button.OutlinedButton"
+        android:layout_width="match_parent"
+        android:layout_height="45dp"
+        android:layout_marginTop="8dp"
+        android:layout_marginBottom="24dp"
+        android:text="Pilih tanggal..."
+        android:textColor="#3A2313"
+        android:textSize="12sp" />
 
     <TextView
         android:layout_width="wrap_content"
@@ -86,7 +104,7 @@
             android:id="@+id/btnResetFilter"
             android:layout_width="wrap_content"
             android:layout_height="40dp"
-            android:text="RESET KUNCI"
+            android:text="ATUR ULANG"
             android:textSize="11sp"
             android:textColor="#555555"
             android:backgroundTint="#D6D6D6"
@@ -96,7 +114,7 @@
             android:id="@+id/btnTerapkanFilter"
             android:layout_width="wrap_content"
             android:layout_height="40dp"
-            android:text="TERAPKAN INJEKSI"
+            android:text="TERAPKAN"
             android:textSize="11sp"
             android:textColor="#FFFFFF"
             android:backgroundTint="#3A2313" />

@@ -30,7 +30,7 @@ class MesinInjeksiWorker(context: Context, params: WorkerParameters) : Coroutine
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             val kanal = NotificationChannel(
                 ID_KANAL_NOTIFIKASI,
-                "Penyusunan Database Arsip",
+                "Menyiapkan Arsip",
                 NotificationManager.IMPORTANCE_LOW
             )
             manajerNotif.createNotificationChannel(kanal)
@@ -138,7 +138,7 @@ try {
             "TOTAL" to estimasiTotalItem
         ))
         try {
-            setForeground(buatInfoForeground("Menyusun database... $kalkulasiPersen% ($indeks/$estimasiTotalItem)"))
+            setForeground(buatInfoForeground("Menyiapkan arsip... $kalkulasiPersen% ($indeks dari $estimasiTotalItem status)"))
         } catch (e: Exception) {
             e.printStackTrace()
         }

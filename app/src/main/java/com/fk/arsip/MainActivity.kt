@@ -70,11 +70,11 @@ data class TitikNavigasi(
 
 object KoleksiNasehat {
     val DAFTAR_TEKS = listOf(
-        "Mencari ilmu adalah proses menata pemahaman, sebagaimana sistem ini sedang menata data untuk Anda.",
+        "Mencari ilmu adalah proses menata pemahaman, sebagaimana aplikasi ini sedang menata arsip untuk Anda.",
         "Proses ini hanya dilakukan 1 kali di awal agar aplikasi bisa diakses secara cepat dan offline tanpa internet.",
         "Kesabaran dalam menunggu adalah bagian dari adab menuntut ilmu.",
         "Setiap data yang tersusun rapi akan memudahkan Anda menemukan jawaban dengan cepat.",
-        "Mohon tidak menutup aplikasi saat penyusunan database berlangsung agar data tidak rusak."
+        "Mohon jangan menutup aplikasi sampai proses selesai agar data tidak rusak."
     )
 }
 
@@ -84,13 +84,13 @@ enum class FaseInjeksi(
     val idGambar: Int,
     val isIndeterminate: Boolean = true
 ) {
-    FASE_1("Mempersiapkan Jalur Data", R.drawable.img_1_persiapan, isIndeterminate = true),
-    FASE_2("Menghubungkan ke Server Data", R.drawable.img_2_koneksi, isIndeterminate = true),
-    FASE_3("Mengunduh Arsip Status Fatwa Kehidupan", R.drawable.img_3_unduh, isIndeterminate = false), 
-    KONEKSI_BURUK("Koneksi Terputus, Cek Koneksi ...", R.drawable.img_koneksi_buruk, isIndeterminate = true), 
-    FASE_4("Membongkar & Menyusun Data...", R.drawable.img_4_bongkar, isIndeterminate = true),
-    FASE_5("Checking Keutuhan Data & Injeksi baris data ke SQLite...", R.drawable.img_5_injeksi, isIndeterminate = false), 
-    FASE_6("Proses selesai. Data Siap Digunakan.", R.drawable.img_6_selesai, isIndeterminate = false) 
+    FASE_1("Menyiapkan Aplikasi", R.drawable.img_1_persiapan, isIndeterminate = true),
+    FASE_2("Menghubungi Server", R.drawable.img_2_koneksi, isIndeterminate = true),
+    FASE_3("Mengunduh Arsip Status", R.drawable.img_3_unduh, isIndeterminate = false), 
+    KONEKSI_BURUK("Koneksi internet terputus. Periksa jaringan Anda.", R.drawable.img_koneksi_buruk, isIndeterminate = true), 
+    FASE_4("Membuka dan Merapikan Arsip...", R.drawable.img_4_bongkar, isIndeterminate = true),
+    FASE_5("Memeriksa dan Menyimpan Arsip ke Perangkat...", R.drawable.img_5_injeksi, isIndeterminate = false), 
+    FASE_6("Selesai. Arsip siap dibaca.", R.drawable.img_6_selesai, isIndeterminate = false) 
 }
 
 
@@ -181,7 +181,11 @@ private var kecepatanEmaBytesPerSec: Double = 0.0
     // Default "FK" (Halaman Fatwa Kehidupan) -- lihat terapkanMuatanAwal(),
     // dipakai sbg tab yang tersorot pertama kali app dibuka.
     private var sumberAktifKode: String = "FK"
-    private var sortTerlamaAktif: Boolean = false
+    // DEFAULT: tampilkan status dari yang TERLAMA lebih dulu (permintaan user).
+    private var sortTerlamaAktif: Boolean = true
+    // Filter tanggal (format "yyyy-MM-dd"); null = tidak aktif. Diisi lewat date picker.
+    private var tanggalMulaiAktif: String? = null
+    private var tanggalAkhirAktif: String? = null
     // Kata kunci pencarian yang SEDANG aktif (kosong = tidak sedang mencari),
     // disimpan terpisah dari isi SearchView krn eksekusiSaringanKombinasi()
     // mengosongkan SearchView tiap kali dipanggil. Dipakai supaya pencarian
@@ -231,9 +235,9 @@ private var kecepatanEmaBytesPerSec: Double = 0.0
         // semua reset itu (dipakai juga oleh Tab FK/YW & dialog filter).
         findViewById<ImageButton>(R.id.btnHomeArsip).setOnClickListener {
             if (isMesinSibuk) {
-                Toast.makeText(this@MainActivity, "Mesin sedang bekerja, tahan instruksi.", Toast.LENGTH_SHORT).show()
+                Toast.makeText(this@MainActivity, "Mohon tunggu, aplikasi sedang bekerja.", Toast.LENGTH_SHORT).show()
             } else {
-                eksekusiSaringanKombinasi("Semua Kategori", false, sumberAktifKode)
+                muatSemuaArsipDefault(sumberAktifKode)
             }
         }
         panelStatusPencarian = findViewById(R.id.panelStatusPencarian)
@@ -261,7 +265,7 @@ private var kecepatanEmaBytesPerSec: Double = 0.0
                 // yang memanggilnya.
                 if (sedangSinkronTabSumber) return
                 if (isMesinSibuk) {
-                    Toast.makeText(this@MainActivity, "Mesin sedang bekerja, tahan instruksi.", Toast.LENGTH_SHORT).show()
+                    Toast.makeText(this@MainActivity, "Mohon tunggu, aplikasi sedang bekerja.", Toast.LENGTH_SHORT).show()
                     sinkronkanTabSumber(sumberAktifKode)
                     return
                 }
@@ -452,7 +456,7 @@ private var kecepatanEmaBytesPerSec: Double = 0.0
                     isSearchMode = false
                     kataKunciAktif = ""
                     modeKategoriAktif = false 
-                    sortTerlamaAktif = false
+                    sortTerlamaAktif = true
                     
                     edtPencarian.setQuery("", false)
                     edtPencarian.clearFocus()
@@ -505,12 +509,13 @@ private var kecepatanEmaBytesPerSec: Double = 0.0
         inisialisasiSirkuitAppDrawer()
         inisialisasiKategoriDrawer()
         aktifkanSirkuitPencarian()
+        findViewById<View>(R.id.btnKalenderCari).setOnClickListener { bukaPemilihTanggal() }
         eksekusiPabrikData()
     }
     
     private fun bukaKatupDialogFilter() {
     if (isMesinSibuk) {
-        Toast.makeText(this, "Mesin sedang bekerja, tahan instruksi.", Toast.LENGTH_SHORT).show()
+        Toast.makeText(this, "Mohon tunggu, aplikasi sedang bekerja.", Toast.LENGTH_SHORT).show()
         aturKunciDrawer(true)
         return
     }
@@ -525,6 +530,16 @@ private var kecepatanEmaBytesPerSec: Double = 0.0
     val spinnerSumber = panelDialog.findViewById<android.widget.Spinner>(R.id.spinnerSumber)
     val btnTerapkan = panelDialog.findViewById<android.widget.Button>(R.id.btnTerapkanFilter)
     val btnReset = panelDialog.findViewById<android.widget.Button>(R.id.btnResetFilter)
+    val btnTanggal = panelDialog.findViewById<android.widget.Button>(R.id.btnPilihTanggalFilter)
+    val rbTerbaruDlg = panelDialog.findViewById<android.widget.RadioButton>(R.id.rbTerbaru)
+    rbTerlama.isChecked = sortTerlamaAktif
+    rbTerbaruDlg.isChecked = !sortTerlamaAktif
+    val labelTgl = labelTanggalAktif().removePrefix(" \u2022 ")
+    btnTanggal.text = if (labelTgl.isEmpty()) "Pilih tanggal..." else labelTgl
+    btnTanggal.setOnClickListener {
+        mesinDialog.dismiss()
+        bukaPemilihTanggal()
+    }
 
     // Tarik daftar kategori dinamis dari Cetak Biru untuk menghindari Hardcoding murni
     val daftarKategoriBaku = mutableListOf("Semua Kategori")
@@ -558,16 +573,82 @@ private var kecepatanEmaBytesPerSec: Double = 0.0
 
     btnReset.setOnClickListener {
         mesinDialog.dismiss()
-        eksekusiSaringanKombinasi("Semua Kategori", false, "")
+        muatSemuaArsipDefault("")
     }
 
     mesinDialog.show()
 }
 
+/** Kembali ke tampilan awal: semua kategori, urutan terlama dulu, tanpa filter tanggal. */
+private fun muatSemuaArsipDefault(sumber: String) {
+    tanggalMulaiAktif = null
+    tanggalAkhirAktif = null
+    eksekusiSaringanKombinasi("Semua Kategori", true, sumber)
+}
+
+/** Terapkan filter tanggal (kalau aktif) lalu urutkan sesuai pilihan (default terlama dulu). */
+private fun urutkanDanSaringTanggal(data: List<ArsipEntity>): List<ArsipEntity> {
+    var hasil = data
+    val mulai = tanggalMulaiAktif
+    val akhir = tanggalAkhirAktif
+    if (mulai != null && akhir != null) {
+        hasil = hasil.filter { val t = it.tanggalBaca.substringBefore(" "); t >= mulai && t <= akhir }
+    }
+    return if (sortTerlamaAktif) hasil.sortedBy { it.waktuRilis } else hasil.sortedByDescending { it.waktuRilis }
+}
+
+private fun formatTanggalTampil(iso: String): String {
+    val e = iso.split("-")
+    return if (e.size == 3) "${e[2]}/${e[1]}/${e[0]}" else iso
+}
+
+private fun labelTanggalAktif(): String {
+    val m = tanggalMulaiAktif; val a = tanggalAkhirAktif
+    return if (m != null && a != null) {
+        if (m == a) " \u2022 ${formatTanggalTampil(m)}" else " \u2022 ${formatTanggalTampil(m)} - ${formatTanggalTampil(a)}"
+    } else ""
+}
+
+/** Date picker rentang tanggal. Hasil langsung diterapkan; tombol kiri = hapus filter bila sedang aktif. */
+private fun bukaPemilihTanggal() {
+    if (isMesinSibuk) {
+        Toast.makeText(this, "Mohon tunggu, aplikasi sedang bekerja.", Toast.LENGTH_SHORT).show()
+        return
+    }
+    val fmt = java.text.SimpleDateFormat("yyyy-MM-dd", java.util.Locale.US).apply {
+        timeZone = java.util.TimeZone.getTimeZone("UTC")
+    }
+    val builder = com.google.android.material.datepicker.MaterialDatePicker.Builder.dateRangePicker()
+        .setTitleText("Cari status berdasarkan tanggal")
+        .setPositiveButtonText("Terapkan")
+        .setNegativeButtonText(if (tanggalMulaiAktif != null) "Hapus tanggal" else "Batal")
+    val m0 = tanggalMulaiAktif?.let { fmt.parse(it)?.time }
+    val a0 = tanggalAkhirAktif?.let { fmt.parse(it)?.time }
+    if (m0 != null && a0 != null) builder.setSelection(androidx.core.util.Pair(m0, a0))
+    val picker = builder.build()
+    picker.addOnPositiveButtonClickListener { pilihan ->
+        val awal = pilihan.first
+        val akhir = pilihan.second ?: awal
+        if (awal != null) {
+            tanggalMulaiAktif = fmt.format(java.util.Date(awal))
+            tanggalAkhirAktif = fmt.format(java.util.Date(akhir ?: awal))
+            eksekusiSaringanKombinasi(kategoriAktifNama, sortTerlamaAktif, sumberAktifKode)
+        }
+    }
+    picker.addOnNegativeButtonClickListener {
+        if (tanggalMulaiAktif != null) {
+            tanggalMulaiAktif = null
+            tanggalAkhirAktif = null
+            eksekusiSaringanKombinasi(kategoriAktifNama, sortTerlamaAktif, sumberAktifKode)
+        }
+    }
+    picker.show(supportFragmentManager, "pemilih_tanggal")
+}
+
 private fun eksekusiSaringanKombinasi(kategori: String, urutTerlama: Boolean, sumber: String = sumberAktifKode) {
     if (isMesinSibuk) return
     isMesinSibuk = true
-    tampilkanIndikator("Mereset jalur dan menyaring kargo...", true)
+    tampilkanIndikator("Memuat daftar status...", true)
 
     lifecycleScope.launch(Dispatchers.IO) {
         val lenganRobot = ArsipDatabase.operasikanMesin(this@MainActivity).arsipDao()
@@ -575,7 +656,7 @@ private fun eksekusiSaringanKombinasi(kategori: String, urutTerlama: Boolean, su
         // Pemilah Arah Kueri -- jalur "Semua Sumber" (sumber == "") TIDAK
         // disentuh sama sekali, tetap persis seperti sebelum fitur sumber
         // ditambahkan. Jalur baru (sumber spesifik) lewat query kombinasi.
-        val kargoSaringan = if (sumber.isEmpty()) {
+        val kargoDb = if (sumber.isEmpty()) {
             if (kategori == "Semua Kategori") {
                 if (urutTerlama) lenganRobot.tarikSemuaArsipTerlama() else lenganRobot.tarikSemuaArsip()
             } else {
@@ -585,6 +666,9 @@ private fun eksekusiSaringanKombinasi(kategori: String, urutTerlama: Boolean, su
             val namaKategoriQuery = if (kategori == "Semua Kategori") "" else kategori
             if (urutTerlama) lenganRobot.saringKombinasiSumberTerlama(namaKategoriQuery, sumber) else lenganRobot.saringKombinasiSumber(namaKategoriQuery, sumber)
         }
+
+        sortTerlamaAktif = urutTerlama // dipakai urutkanDanSaringTanggal()
+        val kargoSaringan = urutkanDanSaringTanggal(kargoDb)
 
         withContext(Dispatchers.Main) {
             isSearchMode = false
@@ -622,9 +706,9 @@ private fun eksekusiSaringanKombinasi(kategori: String, urutTerlama: Boolean, su
                 else -> ""
             }
             val indikatorTeks = if (kategori == "Semua Kategori") {
-                "Semua Arsip (${kargoSaringan.size} status)$labelSumber"
+                "Semua Arsip (${kargoSaringan.size} status)$labelSumber${labelTanggalAktif()}"
             } else {
-                "$kategori (${kargoSaringan.size} status)$labelSumber"
+                "$kategori (${kargoSaringan.size} status)$labelSumber${labelTanggalAktif()}"
             }
             
             tampilkanIndikator(indikatorTeks, false)
@@ -681,7 +765,7 @@ private fun sinkronkanTabSumber(sumber: String) {
 // data yang sebenarnya tidak hilang dari pandangan user.
 private fun terapkanMuatanAwal(daftarLengkap: List<ArsipEntity>) {
     muatDataAwalKeSasis(daftarLengkap)
-    eksekusiSaringanKombinasi("Semua Kategori", false, sumberAktifKode)
+    muatSemuaArsipDefault(sumberAktifKode)
 }
 
 
@@ -724,7 +808,7 @@ panelStepper.visibility = View.VISIBLE
     // 4. Set teks dan gambar dari enum
     teksStatus.text = when(fase) {
         FaseInjeksi.FASE_3 -> metrikKhusus
-        FaseInjeksi.FASE_5 -> "Progres: $persentase% • Baris diinjeksi: $volumeSelesai / $volumeTotal"
+        FaseInjeksi.FASE_5 -> "Menyimpan arsip: $persentase% \u2022 $volumeSelesai dari $volumeTotal status"
         else -> fase.pesan
     }
     
@@ -1083,7 +1167,7 @@ when (fase) {
 
     private fun eksekusiSaringanKategori(labelKategori: String) {
         if (isMesinSibuk) {
-            Toast.makeText(this, "Sistem sedang merakit data. Harap tunggu.", Toast.LENGTH_SHORT).show()
+            Toast.makeText(this, "Arsip sedang disiapkan. Mohon tunggu.", Toast.LENGTH_SHORT).show()
             return
         }
         aturKunciDrawer(true)
@@ -1106,7 +1190,7 @@ when (fase) {
     kataKunciAktif = ""
     modeKategoriAktif = true
     kategoriAktifNama = labelKategori
-    sortTerlamaAktif = false
+    sortTerlamaAktif = true
     edtPencarian.setQuery("", false)
     edtPencarian.clearFocus()
 
@@ -1150,7 +1234,7 @@ when (fase) {
             try {
                 startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(url)))
             } catch (e: Exception) {
-                Toast.makeText(this, "Gagal membuka jalur ke peramban.", Toast.LENGTH_SHORT).show()
+                Toast.makeText(this, "Tidak dapat membuka tautan di peramban.", Toast.LENGTH_SHORT).show()
             }
         }
 
@@ -1355,7 +1439,7 @@ when (fase) {
             idUnduhanSudahDitangani = idUnduhan
         }
         if (!sukses) {
-            Toast.makeText(this, "Tekanan unduhan gagal. Cek jaringan.", Toast.LENGTH_LONG).show()
+            Toast.makeText(this, "Unduhan gagal. Periksa koneksi internet Anda.", Toast.LENGTH_LONG).show()
             tampilkanDataYangAdaSajaDahulu()
             return
         }
@@ -1378,7 +1462,7 @@ when (fase) {
             aturKunciDrawer(true)
             jalankanMesinInjeksiOtonom(fileAsli.absolutePath)
         } else {
-            Toast.makeText(this, "Gagal memproses pendaratan file. Ruang penuh atau terkunci.", Toast.LENGTH_LONG).show()
+            Toast.makeText(this, "Gagal menyimpan berkas. Penyimpanan penuh atau tidak dapat diakses.", Toast.LENGTH_LONG).show()
             tampilkanDataYangAdaSajaDahulu()
         }
     }
@@ -1570,7 +1654,7 @@ private fun pantauTekananUnduhan(idUnduhan: Long, downloadManager: DownloadManag
         
         // BUFFER PENAHAN FLUKTUASI (Mencegah kedip kedip)
         var hitunganArusNol = 0
-        var tangkiMemoriTelemetri = "Membuka katup aliran data..."
+        var tangkiMemoriTelemetri = "Menghubungi server..."
         // PERBAIKAN "HALAMAN LOADING KOSONG TERUS-MENERUS KALAU INTERNET
         // OFF/BURUK": sama seperti fix di aktifkanMesinPenyedot() -- jangan
         // blokir user tanpa batas waktu kalau koneksi terputus DI TENGAH
@@ -1855,7 +1939,7 @@ private fun perbaruiDetailKecepatan(persen: Int, byteDiterima: Long, totalByte: 
                             // bukan error ke user. Observer akan tetap menerima update
                             // dari worker BARU yang menggantikannya.
                         } else {
-                            Toast.makeText(this@MainActivity, "Gagal memproses data arsip.", Toast.LENGTH_LONG).show()
+                            Toast.makeText(this@MainActivity, "Gagal membaca data arsip.", Toast.LENGTH_LONG).show()
                         }
                     }
                     else -> {}
@@ -1876,7 +1960,8 @@ private fun perbaruiDetailKecepatan(persen: Int, byteDiterima: Long, totalByte: 
     // benar-benar terkunci sampai loop selesai, baru redraw. Sekarang loop ini
     // dipindah ke Dispatchers.Default (murni komputasi, tidak menyentuh View),
     // dan hanya bagian yang benar-benar mengubah UI yang balik ke Main.
-    private fun pompaDataKeLayar(kargoMentah: List<ArsipEntity>) {
+    private fun pompaDataKeLayar(kargoAsli: List<ArsipEntity>) {
+        val kargoMentah = urutkanDanSaringTanggal(kargoAsli)
         daftarArsipAktif = kargoMentah
         lifecycleScope.launch(Dispatchers.Default) {
             val kargoSiapRakit = mutableListOf<KargoCampuran>()
@@ -2123,9 +2208,9 @@ private fun perbaruiDetailKecepatan(persen: Int, byteDiterima: Long, totalByte: 
         findViewById<View>(R.id.btnBacaHome).setOnClickListener {
             // Sama dgn tombol Home di grid: keluar dari mode baca & kembali ke "Semua Arsip" Tab aktif.
             if (isMesinSibuk) {
-                Toast.makeText(this, "Mesin sedang bekerja, tahan instruksi.", Toast.LENGTH_SHORT).show()
+                Toast.makeText(this, "Mohon tunggu, aplikasi sedang bekerja.", Toast.LENGTH_SHORT).show()
             } else {
-                eksekusiSaringanKombinasi("Semua Kategori", false, sumberAktifKode)
+                muatSemuaArsipDefault(sumberAktifKode)
             }
         }
 
@@ -2268,7 +2353,7 @@ private fun perbaruiDetailKecepatan(persen: Int, byteDiterima: Long, totalByte: 
      */
     private fun tanganiHasilHalamanTersimpan(idPosting: String, sumberArsipTarget: String) {
         idPostingTujuanLompat = idPosting
-        eksekusiSaringanKombinasi("Semua Kategori", false, sumberArsipTarget)
+        muatSemuaArsipDefault(sumberArsipTarget)
     }
 
     private fun cobaLompatKeArsipTertunda() {
@@ -2514,7 +2599,7 @@ private fun perbaruiDetailKecepatan(persen: Int, byteDiterima: Long, totalByte: 
 
 private fun eksekusiLogikaPencarian(kataKunciMentah: String?) {
     if (isMesinSibuk) {
-        Toast.makeText(this@MainActivity, "Mesin sedang merakit data. Pencarian ditangguhkan.", Toast.LENGTH_SHORT).show()
+        Toast.makeText(this@MainActivity, "Arsip sedang disiapkan. Pencarian bisa dipakai setelah selesai.", Toast.LENGTH_SHORT).show()
         return
     }
 
@@ -2661,12 +2746,13 @@ private fun eksekusiLogikaPencarian(kataKunciMentah: String?) {
     // dipakai lagi -- BookPageProvider baca `daftarArsipAktif` langsung.
     // Dihapus di sini (bukan cuma didiamkan) supaya tidak membingungkan kode
     // mana yang sebenarnya aktif dipakai.
-    private fun muatDataAwalKeSasis(daftarArsipGlobal: List<ArsipEntity>) {
+    private fun muatDataAwalKeSasis(daftarArsipAsli: List<ArsipEntity>) {
+    val daftarArsipGlobal = urutkanDanSaringTanggal(daftarArsipAsli)
     // Pastikan loading dimatikan jika pemrosesan selesai
     loadingPencarian.visibility = View.GONE
     
     if (daftarArsipGlobal.isNotEmpty()) {
-        val tglMentah = daftarArsipGlobal.first().tanggalBaca.substringBefore(" ")
+        val tglMentah = daftarArsipGlobal.maxByOrNull { it.tanggalBaca }!!.tanggalBaca.substringBefore(" ")
         val elemen = tglMentah.split("-")
         val tanggalTerbaruFormatted = if (elemen.size == 3) {
             "${elemen[2]}/${elemen[1]}/${elemen[0]}"
@@ -2677,7 +2763,7 @@ private fun eksekusiLogikaPencarian(kataKunciMentah: String?) {
         val totalVolume = daftarArsipGlobal.size
         txtStatusPencarian.text = "Arsip 24/03/2014 s.d $tanggalTerbaruFormatted Total $totalVolume Status"
     } else {
-        txtStatusPencarian.text = if (isJaringanTersedia()) "Sistem Telemetri: 0 Arsip Terdeteksi"
+        txtStatusPencarian.text = if (isJaringanTersedia()) "Belum ada arsip yang ditemukan"
                                   else "Belum ada data arsip \u2022 Perangkat offline"
     }
 }
@@ -2723,12 +2809,12 @@ private fun perbaruiVisualStepper(faseAktif: FaseInjeksi) {
     val nomorUrut = getNomorVisualUrut(faseAktif)
 
     val dataStepper = listOf(
-        "Mempersiapkan Jalur Data",
-        "Langkah 2: Menghubungkan ke Server",
+        "Menyiapkan Aplikasi",
+        "Langkah 2: Menghubungi Server",
         "Langkah 3: Mengunduh Arsip",
-        "Langkah 4: Membongkar Arsip",
-        "Langkah 5: Injeksi ke SQLite",
-        "Langkah 6: Inisialisasi Selesai"
+        "Langkah 4: Membuka Arsip",
+        "Langkah 5: Menyimpan ke Perangkat",
+        "Langkah 6: Selesai"
     )
 
     val warnaAktif = android.graphics.Color.parseColor("#F5D79A")

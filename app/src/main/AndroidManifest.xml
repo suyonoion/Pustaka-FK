@@ -14,9 +14,9 @@
 
   <application
     android:allowBackup="true"
-    android:icon="@drawable/ic_launcher_fk"
+    android:icon="@mipmap/ic_launcher"
     android:label="Pustaka FK"
-    android:roundIcon="@drawable/ic_launcher_fk"
+    android:roundIcon="@mipmap/ic_launcher_round"
     android:supportsRtl="true"
     android:largeHeap="true" 
     android:theme="@style/Theme.PustakaFK">
