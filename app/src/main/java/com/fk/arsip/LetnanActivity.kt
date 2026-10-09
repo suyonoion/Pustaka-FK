@@ -142,7 +142,7 @@ class LetnanAdapter(private val list: List<DataLetnan>) : RecyclerView.Adapter<L
     try {
         holder.imgFoto.setImageResource(data.fotoResId)
     } catch (e: Exception) {
-        holder.imgFoto.setImageResource(R.drawable.ic_launcher_fk)
+        holder.imgFoto.setImageResource(R.drawable.ic_logo_app)
     }
 }
 

@@ -21,6 +21,11 @@ interface ArsipDao {
     @Query("SELECT * FROM tabel_arsip ORDER BY waktuRilis DESC")
     fun tarikSemuaArsip(): List<ArsipEntity>
 
+    // Ambil hanya baris yang dibutuhkan (mis. daftar Halaman Tersimpan) -- jauh lebih cepat
+    // daripada memuat ~18 ribu baris lalu menyaringnya di memori.
+    @Query("SELECT * FROM tabel_arsip WHERE idPosting IN (:ids)")
+    fun ambilBerdasarkanId(ids: List<String>): List<ArsipEntity>
+
     // Katup Saringan Resolusi Tinggi (Search)
     @Query("SELECT * FROM tabel_arsip WHERE kontenPenuh LIKE '%' || :kataKunci || '%' ORDER BY waktuRilis DESC")
     fun saringArsip(kataKunci: String): List<ArsipEntity>

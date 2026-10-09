@@ -72,6 +72,19 @@
         android:paddingTop="6dp"
         android:paddingBottom="16dp" />
 
+    <!-- Sedang memuat (tasbih berputar) -->
+    <FrameLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:paddingTop="48dp"
+        android:layout_marginTop="-8dp">
+        <com.fk.arsip.TasbihSpinnerView
+            android:id="@+id/spinnerTersimpan"
+            android:layout_width="56dp"
+            android:layout_height="56dp"
+            android:layout_gravity="center_horizontal" />
+    </FrameLayout>
+
     <!-- Keadaan kosong -->
     <LinearLayout
         android:id="@+id/txtHalamanTersimpanKosong"

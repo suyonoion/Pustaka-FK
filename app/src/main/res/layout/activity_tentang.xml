@@ -45,7 +45,7 @@
                     android:layout_height="50dp"
                     android:background="@drawable/bg_logo_circle"
                     android:padding="5dp"
-                    app:srcCompat="@drawable/ic_launcher_fk" />
+                    app:srcCompat="@drawable/ic_logo_app" />
 
                 <LinearLayout
                     android:layout_width="wrap_content"
@@ -138,7 +138,7 @@
                                     android:id="@+id/imgProfilDeskripsi"
                                     android:layout_width="28dp"
                                     android:layout_height="28dp"
-                                    android:src="@drawable/ic_launcher_fk"
+                                    android:src="@drawable/ic_logo_app"
                                     android:scaleType="centerCrop"
                                     app:shapeAppearanceOverlay="@style/ShapeAppearance.PustakaFK.Circle" />
 

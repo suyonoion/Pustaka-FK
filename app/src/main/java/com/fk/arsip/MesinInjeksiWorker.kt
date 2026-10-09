@@ -48,7 +48,7 @@ class MesinInjeksiWorker(context: Context, params: WorkerParameters) : Coroutine
         val notifikasi: Notification = NotificationCompat.Builder(applicationContext, ID_KANAL_NOTIFIKASI)
             .setContentTitle("Pustaka FK")
             .setContentText(teks)
-            .setSmallIcon(R.drawable.ic_launcher_fk)
+            .setSmallIcon(R.drawable.ic_launcher_mono)
             .setContentIntent(pendingBuka)
             .setOngoing(true)
             .setOnlyAlertOnce(true)

@@ -708,7 +708,8 @@
 
         <ScrollView
             android:layout_width="match_parent"
-            android:layout_height="match_parent"
+            android:layout_height="0dp"
+            android:layout_weight="1"
             android:fillViewport="true">
 
             <LinearLayout
@@ -838,5 +839,34 @@
             </LinearLayout>
 
         </ScrollView>
+
+        <!-- FOOTER DRAWER: tetap di bawah, tidak ikut ter-scroll -->
+        <View android:layout_width="match_parent" android:layout_height="1dp" android:background="#D8C7AB" />
+        <LinearLayout
+            android:id="@+id/footerDrawerTentang"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:gravity="center_vertical"
+            android:paddingHorizontal="16dp"
+            android:paddingVertical="12dp"
+            android:background="?android:attr/selectableItemBackground"
+            android:clickable="true"
+            android:focusable="true">
+            <ImageView
+                android:layout_width="20dp"
+                android:layout_height="20dp"
+                android:src="@drawable/ic_info_tentang"
+                android:contentDescription="@null" />
+            <TextView
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:layout_marginStart="12dp"
+                android:text="Tentang Aplikasi"
+                android:textColor="#3A2313"
+                android:textSize="13sp"
+                android:textStyle="bold" />
+        </LinearLayout>
     </LinearLayout>
 </androidx.drawerlayout.widget.DrawerLayout>

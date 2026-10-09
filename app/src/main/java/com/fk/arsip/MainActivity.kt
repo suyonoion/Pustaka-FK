@@ -522,7 +522,20 @@ private var kecepatanEmaBytesPerSec: Double = 0.0
 
     val mesinDialog = com.google.android.material.bottomsheet.BottomSheetDialog(this)
     val panelDialog = layoutInflater.inflate(R.layout.dialog_filter, null)
+    // LANDSCAPE: tinggi layar pendek -> kunci tinggi dialog (92% layar), form di-scroll,
+    // tombol Atur Ulang/Terapkan tetap menempel di bawah dan tidak pernah terpotong.
+    val landscape = resources.configuration.orientation == android.content.res.Configuration.ORIENTATION_LANDSCAPE
+    if (landscape) {
+        panelDialog.layoutParams = android.view.ViewGroup.LayoutParams(
+            android.view.ViewGroup.LayoutParams.MATCH_PARENT,
+            (resources.displayMetrics.heightPixels * 0.92f).toInt()
+        )
+        panelDialog.findViewById<View>(R.id.scrollFormFilter).layoutParams =
+            LinearLayout.LayoutParams(android.view.ViewGroup.LayoutParams.MATCH_PARENT, 0, 1f)
+    }
     mesinDialog.setContentView(panelDialog)
+    mesinDialog.behavior.skipCollapsed = true
+    mesinDialog.behavior.state = com.google.android.material.bottomsheet.BottomSheetBehavior.STATE_EXPANDED
 
     val rgUrutan = panelDialog.findViewById<android.widget.RadioGroup>(R.id.rgUrutan)
     val rbTerlama = panelDialog.findViewById<android.widget.RadioButton>(R.id.rbTerlama)
@@ -994,6 +1007,11 @@ when (fase) {
         startActivity(intent)
     }
     
+    findViewById<View>(R.id.footerDrawerTentang).setOnClickListener {
+        drawerLayout.closeDrawer(GravityCompat.START)
+        startActivity(Intent(this, AboutActivity::class.java))
+    }
+
     menuGammaLocking.setOnClickListener {
         sorotMenuTerpilih(menuGammaLocking)
         drawerLayout.closeDrawer(GravityCompat.START)
@@ -2512,6 +2530,18 @@ private fun perbaruiDetailKecepatan(persen: Int, byteDiterima: Long, totalByte: 
      * risikonya kecil sebagai kode baru yang belum sempat diuji di device
      * asli.
      */
+    /** Parameter "oe" pada URL CDN Facebook = batas waktu berlaku (epoch detik, heksadesimal). */
+    private fun urlSudahKedaluwarsa(url: String): Boolean {
+        val oe = try { Uri.parse(url).getQueryParameter("oe") } catch (e: Exception) { null } ?: return false
+        val batas = oe.toLongOrNull(16) ?: return false
+        return System.currentTimeMillis() / 1000 > batas
+    }
+
+    private fun bukaPostinganAsli(arsip: ArsipEntity) {
+        try { startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(arsip.tautanAsli))) }
+        catch (e: Exception) { Toast.makeText(this, "Tautan asli tidak tersedia untuk halaman ini.", Toast.LENGTH_SHORT).show() }
+    }
+
     private fun tampilkanDialogLampiran(arsip: ArsipEntity) {
         val daftarMedia = arsip.daftarFoto.split(",").map { it.trim() }.filter { it.isNotEmpty() }
         if (daftarMedia.isEmpty()) return
@@ -2537,8 +2567,40 @@ private fun perbaruiDetailKecepatan(persen: Int, byteDiterima: Long, totalByte: 
                 layoutParams = FrameLayout.LayoutParams(FrameLayout.LayoutParams.MATCH_PARENT, FrameLayout.LayoutParams.MATCH_PARENT)
                 scaleType = android.widget.ImageView.ScaleType.CENTER_CROP
             }
-            Glide.with(this).load(urlBersih).error(android.R.drawable.ic_menu_report_image).into(gambar)
+            // Tautan foto/video Facebook bertanda tangan & KEDALUWARSA (parameter "oe"). Kalau sudah
+            // lewat, jangan memaksa unduh: coba ambil dari cache lokal saja; gagal -> beri penjelasan
+            // + jalan keluar (buka postingan aslinya).
+            var gagalMuat = false
+            val infoGagal = TextView(this).apply {
+                layoutParams = FrameLayout.LayoutParams(FrameLayout.LayoutParams.MATCH_PARENT, FrameLayout.LayoutParams.WRAP_CONTENT)
+                    .apply { gravity = android.view.Gravity.CENTER }
+                gravity = android.view.Gravity.CENTER
+                setPadding(24, 0, 24, 0)
+                text = if (isVideo) "Pratinjau video sudah kedaluwarsa.\nKetuk untuk membuka di Facebook."
+                       else "Foto ini sudah kedaluwarsa.\nKetuk untuk membuka postingan aslinya."
+                setTextColor(android.graphics.Color.parseColor("#6B4226"))
+                textSize = 12f
+                visibility = View.GONE
+            }
+            var permintaan = Glide.with(this).load(urlBersih)
+            if (urlSudahKedaluwarsa(urlBersih)) permintaan = permintaan.onlyRetrieveFromCache(true)
+            permintaan.listener(object : com.bumptech.glide.request.RequestListener<android.graphics.drawable.Drawable> {
+                override fun onLoadFailed(
+                    e: com.bumptech.glide.load.engine.GlideException?, model: Any?,
+                    target: com.bumptech.glide.request.target.Target<android.graphics.drawable.Drawable>, isFirstResource: Boolean
+                ): Boolean {
+                    gagalMuat = true
+                    infoGagal.visibility = View.VISIBLE
+                    return false
+                }
+                override fun onResourceReady(
+                    resource: android.graphics.drawable.Drawable, model: Any,
+                    target: com.bumptech.glide.request.target.Target<android.graphics.drawable.Drawable>?,
+                    dataSource: com.bumptech.glide.load.DataSource, isFirstResource: Boolean
+                ): Boolean = false
+            }).into(gambar)
             baris.addView(gambar)
+            baris.addView(infoGagal)
 
             if (isVideo) {
                 val playIcon = android.widget.ImageView(this).apply {
@@ -2547,12 +2609,11 @@ private fun perbaruiDetailKecepatan(persen: Int, byteDiterima: Long, totalByte: 
                     setColorFilter(android.graphics.Color.WHITE)
                 }
                 baris.addView(playIcon)
-                baris.setOnClickListener {
-                    try { startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(arsip.tautanAsli))) }
-                    catch (e: Exception) { Toast.makeText(this, "Gagal membuka video.", Toast.LENGTH_SHORT).show() }
-                }
+                baris.setOnClickListener { bukaPostinganAsli(arsip) }
             } else {
-                baris.setOnClickListener { tampilkanFotoPenuh(urlBersih) }
+                baris.setOnClickListener {
+                    if (gagalMuat) bukaPostinganAsli(arsip) else tampilkanFotoPenuh(urlBersih)
+                }
             }
             wadahDaftar.addView(baris)
         }

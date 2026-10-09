@@ -76,6 +76,7 @@ class HalamanTersimpanActivity : AppCompatActivity() {
         prefs().getStringSet("bookmark_ids", emptySet()) ?: emptySet()
 
     private fun perbaruiTampilan() {
+        findViewById<View>(R.id.spinnerTersimpan).visibility = View.GONE
         val kosong = daftar.isEmpty()
         wadahKosong.visibility = if (kosong) View.VISIBLE else View.GONE
         rvHalamanTersimpan.visibility = if (kosong) View.GONE else View.VISIBLE
@@ -88,7 +89,8 @@ class HalamanTersimpanActivity : AppCompatActivity() {
         if (ids.isEmpty()) { perbaruiTampilan(); return }
         lifecycleScope.launch(Dispatchers.IO) {
             val database = ArsipDatabase.operasikanMesin(this@HalamanTersimpanActivity).arsipDao()
-            val tersimpan = database.tarikSemuaArsip().filter { it.idPosting in ids }
+            // chunked: batas variabel SQLite (999) pada Android lama
+            val tersimpan = ids.toList().chunked(500).flatMap { database.ambilBerdasarkanId(it) }
                 .sortedByDescending { it.waktuRilis }
             withContext(Dispatchers.Main) {
                 daftar.clear(); daftar.addAll(tersimpan)

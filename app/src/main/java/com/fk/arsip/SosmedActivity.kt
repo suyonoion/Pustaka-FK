@@ -140,7 +140,7 @@ class SosmedAdapter(
         try {
             holder.imgFoto.setImageResource(data.fotoResId)
         } catch (e: Exception) {
-            holder.imgFoto.setImageResource(R.drawable.ic_launcher_fk)
+            holder.imgFoto.setImageResource(R.drawable.ic_logo_app)
         }
 
         holder.tvTautan.movementMethod = android.text.method.LinkMovementMethod.getInstance()
